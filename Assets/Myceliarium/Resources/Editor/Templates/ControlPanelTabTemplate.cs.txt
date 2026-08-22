@@ -1,0 +1,9 @@
+namespace AtMycelia.Myceliarium
+{
+    public sealed class #SCRIPTNAME# : ControlPanelTab
+    {
+        public override string DisplayName => "#DISPLAYNAME#";
+
+        public override string PathToUxml => "Editor/Uxml/#SCRIPTNAME#";
+    }
+}

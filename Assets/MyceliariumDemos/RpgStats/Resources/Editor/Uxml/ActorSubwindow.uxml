@@ -1,0 +1,3 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/MyceliariumDemos/RpgStats/Resources/Editor/Stylesheets/actorSubwindowStyle.uss?fileID=7433441132597879392&amp;guid=0280b8c21b8e1a545bf7d1e61150f45c&amp;type=3#actorSubwindowStyle" />
+</ui:UXML>

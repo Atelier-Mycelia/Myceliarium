@@ -1,0 +1,7 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" noNamespaceSchemaLocation="../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <ui:VisualElement name="Root" class="wizard-root">
+        <ui:Label text="Create Myceliarium Control Panel Template" name="Title" class="wizard-title" />
+        <ui:TextField label="Name" name="NameField" value="NewControlPanel" class="wizard-name-field" />
+        <ui:Button text="Create" name="CreateButton" class="wizard-create-button" />
+    </ui:VisualElement>
+</ui:UXML>

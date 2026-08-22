@@ -1,0 +1,9 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" noNamespaceSchemaLocation="../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
+    <Style src="project://database/Assets/Myceliarium/Resources/Editor/Stylesheets/baseTabStyle.uss?fileID=7433441132597879392&amp;guid=e529783e7fb76b44ab24de2f7649c171&amp;type=3#baseTabStyle" />
+    <ui:VisualElement name="Root" class="tabRoot">
+        <ui:Button text="New Text" name="Button" selectable="true" class="tabButton" />
+        <ui:VisualElement name="IconHolder" class="tabIconHolder">
+            <ui:Label tabindex="-1" parse-escape-sequences="true" display-tooltip-when-elided="true" picking-mode="Ignore" name="Icon" class="tabIcon" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
