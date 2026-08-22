@@ -1,0 +1,77 @@
+:root {
+    --default-tab-selected-color: rgb(0, 255, 255);
+    --default-icon: resource('Editor/Icons/defaultTabIcon');
+    --mascot-icon: resource('Editor/Icons/nelSideMugshotIcon_01');
+    --default-icon-left-offset: 10px;
+    --default-icon-width: 60px;
+}
+
+.tabRoot {
+    height: 60px;
+    flex-direction: row;
+    margin-bottom: 5px;
+}
+
+.tabButton {
+    font-size: 32px;
+    padding-left: 50px;
+    justify-content: center;
+    color: rgb(222, 222, 222);
+    -unity-text-align: middle-center;
+    background-color: rgb(60, 60, 60);
+    border-color: rgb(30, 30, 30);
+    border-width: 1px;
+    transition-property: background-color;
+    transition-duration: 0.2s;
+    width: 100%;
+    flex-direction: column;
+    height: 60px;
+    flex-grow: 0;
+}
+
+.tabButton > Toggle {
+    height: 100%;
+}
+
+.tabButton > Toggle > VisualElement {
+    height: 100%;
+}
+
+.tabButton > Toggle > VisualElement > Label {
+    scale: 0.9 1;
+}
+
+.unity-toggle__checkmark {
+    visibility: hidden;
+    opacity: 0;
+    display: none;
+}
+
+.tabIcon {
+    background-image: var(--mascot-icon);
+    -unity-background-scale-mode: scale-to-fit;
+    background-position-y: bottom; 
+    /* ^Prevents empty space below the icon that wasn't in the source image. */
+
+    height: 100%;
+    width: 100%;
+
+    /* padding-top: 0;
+    padding-bottom: 0;
+    padding-right: 0;
+    padding-left: 0;
+    position: relative;
+    
+    margin: 0; */
+}
+
+.tabIconHolder
+{
+    padding: 5px 0px 1px 0px;
+    margin: 0px 0px 0px 3px;
+    width: 60px;
+}
+
+.tab-selected {
+    background-color: var(--default-tab-selected-color);
+}

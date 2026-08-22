@@ -1,0 +1,55 @@
+:root {
+    --default-tab-selected-color: rgb(0, 255, 255);
+    --default-icon: resource('Editor/Icons/defaultTabIcon');
+    --default-icon-left-offset: 10px;
+    --default-icon-width: 60px;
+}
+
+.tabRoot {
+    height: 60px;
+    width: 180px;
+    flex-direction: row;
+    margin: 5px 0px 5px 0px;
+}
+
+.tabButton {
+    flex-direction: row;
+    width: 100%;
+    justify-content: flex-start;
+    align-items: center;
+    border-radius: 5px;
+    -unity-text-align: middle-left;
+    padding: 3px 5px 3px 72px;
+    margin: 0;
+    font-size: 32px;
+    padding-left: 60px;
+    background-color: rgb(60, 60, 60);
+    color: rgb(222, 222, 222);
+}
+
+.tabIcon {
+    background-image: none;
+    -unity-background-scale-mode: stretch-to-fill;
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-right: 0;
+    padding-left: 0;
+    position: relative;
+    height: 100%;
+    width: 100%;
+    margin: 0;
+}
+
+.tabIconHolder {
+    position: absolute;
+    left: 0;
+    height: 100%;
+    width: 50px;
+    padding-bottom: 5px;
+    padding-top: 5px;
+    padding-left: 5px;
+}
+
+.tab-selected {
+    background-color: var(--default-tab-selected-color);
+}
