@@ -1,0 +1,19 @@
+{
+    "name": "AtMycelia.Myceliarium.Editor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:315f594c192fac84b811333747e5ecb0",
+        "GUID:41af332b37b809145b0174e58618f6c0"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
