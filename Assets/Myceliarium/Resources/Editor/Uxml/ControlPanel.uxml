@@ -1,5 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
-    <Style src="project://database/Assets/Hyphlow/Resources/Editor/Stylesheets/ControlPanel.uss?fileID=7433441132597879392&amp;guid=4ffdf2d58c180d947b2454a570dcdfb1&amp;type=3#ControlPanel" />
+    <Style src="project://database/Assets/Myceliarium/Resources/Editor/Stylesheets/ControlPanelStyle.uss?fileID=7433441132597879392&amp;guid=4ffdf2d58c180d947b2454a570dcdfb1&amp;type=3#ControlPanelStyle" />
     <ui:VisualElement name="Root" class="root" style="flex-direction: column;">
         <ui:VisualElement name="MainContainer" class="main-container">
             <ui:VisualElement name="MainTabSet" class="main-tab-set" />

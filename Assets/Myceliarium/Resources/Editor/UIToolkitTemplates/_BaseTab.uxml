@@ -1,6 +1,0 @@
-<ui:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
-    <Style src="project://database/Assets/Hyphlow/Resources/Editor/Stylesheets/ControlPanel/baseTabStyle.uss?fileID=7433441132597879392&amp;guid=e529783e7fb76b44ab24de2f7649c171&amp;type=3#baseTabStyle" />
-    <ui:VisualElement name="Root" class="tabRoot">
-        <ui:Button text="Name Here" icon-image="project://database/Assets/Hyphlow/Resources/Editor/Textures/rainbowTex.png?fileID=2800000&amp;guid=2e8b7f49f62b233428ae25aa116be67a&amp;type=3#rainbowTex" name="Button" selectable="true" class="tabButton" />
-    </ui:VisualElement>
-</ui:UXML>
