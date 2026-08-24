@@ -17,6 +17,12 @@ namespace AtMycelia.Myceliarium
         private const string BaseStyleResourcePath =
             "Editor/Stylesheets/_baseTabStyle";
 
+        private const string BaseSubwindowUxmlResourcePath =
+            "Editor/Uxml/_BaseSubwindow";
+
+        private const string BaseSubwindowStyleResourcePath =
+            "Editor/Stylesheets/_baseSubwindowStyle";
+
         private const string WizardUxmlPath =
             "Editor/Uxml/ControlPanelTemplateWizard";
 
@@ -128,6 +134,8 @@ namespace AtMycelia.Myceliarium
             // Resolve base assets dynamically via Resources
             string baseUxmlAssetPath = FindAssetPathFromResources(BaseUxmlResourcePath);
             string baseStyleAssetPath = FindAssetPathFromResources(BaseStyleResourcePath);
+            string baseSubwindowUxmlAssetPath = FindAssetPathFromResources(BaseSubwindowUxmlResourcePath);
+            string baseSubwindowStyleAssetPath = FindAssetPathFromResources(BaseSubwindowStyleResourcePath);
 
             if (string.IsNullOrEmpty(baseUxmlAssetPath) || string.IsNullOrEmpty(baseStyleAssetPath))
             {
@@ -138,12 +146,23 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
+            if (string.IsNullOrEmpty(baseSubwindowUxmlAssetPath) || string.IsNullOrEmpty(baseSubwindowStyleAssetPath))
+            {
+                EditorUtility.DisplayDialog("Myceliarium",
+                    "Could not locate base subwindow template assets. Ensure _BaseSubwindow.uxml and " +
+                    "_baseSubwindowStyle.uss are in a Resources folder.",
+                    "OK");
+                return;
+            }
+
             string displayName = ObjectNames.NicifyVariableName(coreName);
             string tabClassName = coreName + "Tab";
             string entryClassName = coreName + "Entry";
             string subwindowClassName = coreName + "Subwindow";
             string styleFileName = coreName + "Style.uss";
             string tabUxmlFileName = tabClassName + ".uxml";
+            string subwindowStyleFileName = subwindowClassName + "Style.uss";
+            string subwindowUxmlFileName = subwindowClassName + ".uxml";
 
             string generatedAssetsRoot = $"Assets/Resources/{GeneratedAssetsRootFolderName}";
             string entryFolderAssetPath = $"{generatedAssetsRoot}/{coreName}";
@@ -153,10 +172,14 @@ namespace AtMycelia.Myceliarium
             string subwindowScriptAssetPath = $"{entryFolderAssetPath}/{subwindowClassName}.cs";
             string uxmlAssetPath = $"{entryFolderAssetPath}/{tabUxmlFileName}";
             string styleAssetPath = $"{entryFolderAssetPath}/{styleFileName}";
+            string subwindowUxmlAssetPath = $"{entryFolderAssetPath}/{subwindowUxmlFileName}";
+            string subwindowStyleAssetPath = $"{entryFolderAssetPath}/{subwindowStyleFileName}";
             string tabUxmlResourcePath = BuildResourcesLoadPath(uxmlAssetPath);
+            string subwindowUxmlResourcePath = BuildResourcesLoadPath(subwindowUxmlAssetPath);
 
             if (!VerifyNoConflicts(tabScriptAssetPath, entryScriptAssetPath,
-                subwindowScriptAssetPath, uxmlAssetPath, styleAssetPath))
+                subwindowScriptAssetPath, uxmlAssetPath, styleAssetPath,
+                subwindowUxmlAssetPath, subwindowStyleAssetPath))
             {
                 return;
             }
@@ -166,20 +189,34 @@ namespace AtMycelia.Myceliarium
             EnsureParentDirectoryExists(tabScriptAssetPath);
             EnsureParentDirectoryExists(entryScriptAssetPath);
             EnsureParentDirectoryExists(subwindowScriptAssetPath);
+            EnsureParentDirectoryExists(subwindowStyleAssetPath);
+            EnsureParentDirectoryExists(subwindowUxmlAssetPath);
 
+            // Copy and patch tab style
             CopyTextFile(baseStyleAssetPath, styleAssetPath);
             AssetDatabase.ImportAsset(styleAssetPath, ImportAssetOptions.ForceSynchronousImport);
             string styleGuid = AssetDatabase.AssetPathToGUID(styleAssetPath);
 
+            // Copy and patch tab UXML
             CopyTextFile(baseUxmlAssetPath, uxmlAssetPath);
             PatchUxml(uxmlAssetPath, displayName, styleAssetPath, styleGuid, baseStyleAssetPath);
+
+            // Copy and patch subwindow style
+            CopyTextFile(baseSubwindowStyleAssetPath, subwindowStyleAssetPath);
+            AssetDatabase.ImportAsset(subwindowStyleAssetPath, ImportAssetOptions.ForceSynchronousImport);
+            string subwindowStyleGuid = AssetDatabase.AssetPathToGUID(subwindowStyleAssetPath);
+
+            // Copy and patch subwindow UXML
+            CopyTextFile(baseSubwindowUxmlAssetPath, subwindowUxmlAssetPath);
+            PatchUxml(subwindowUxmlAssetPath, displayName, subwindowStyleAssetPath, 
+                subwindowStyleGuid, baseSubwindowStyleAssetPath);
 
             WriteTextFile(tabScriptAssetPath,
                 BuildTabScript(tabClassName, displayName, tabUxmlResourcePath));
             WriteTextFile(entryScriptAssetPath,
                 BuildEntryScript(entryClassName, tabClassName, subwindowClassName, displayName));
             WriteTextFile(subwindowScriptAssetPath,
-                BuildSubwindowScript(subwindowClassName, entryClassName));
+                BuildSubwindowScript(subwindowClassName, entryClassName, subwindowUxmlResourcePath));
 
             AssetDatabase.Refresh();
             EditorUtility.FocusProjectWindow();
@@ -262,8 +299,7 @@ namespace AtMycelia.Myceliarium
             File.Copy(sourceFullPath, destinationFullPath, overwrite: false);
         }
 
-        private static void WriteTextFile(string assetPath, string content
-        )
+        private static void WriteTextFile(string assetPath, string content)
         {
             File.WriteAllText(ToFullPath(assetPath), content, new UTF8Encoding(false));
         }
@@ -293,7 +329,7 @@ namespace AtMycelia.Myceliarium
         {
             const string ResourcesFolderPrefix = "Assets/Resources/";
 
-            if (!assetPath.StartsWith(ResourcesFolderPrefix, StringComparison.Ordinal))
+            if (!assetPath.StartsWith(ResourcesFolderPrefix, System.StringComparison.Ordinal))
             {
                 throw new InvalidOperationException(
                     $"Asset path '{assetPath}' is not under Assets/Resources.");
@@ -362,7 +398,7 @@ namespace AtMycelia.Myceliarium
 
         private static string StripSuffix(string value, string suffix)
         {
-            if (value.EndsWith(suffix, StringComparison.OrdinalIgnoreCase) &&
+            if (value.EndsWith(suffix, System.StringComparison.OrdinalIgnoreCase) &&
                 value.Length > suffix.Length)
             {
                 return value.Substring(0, value.Length - suffix.Length);
@@ -405,7 +441,7 @@ namespace AtMycelia.Myceliarium
         }
 
         private static string BuildSubwindowScript(string subwindowClassName,
-            string entryClassName)
+            string entryClassName, string pathToUxml)
         {
             string template = LoadTemplate(SubwindowTemplateResourcePath);
             if (string.IsNullOrEmpty(template))
@@ -416,7 +452,8 @@ namespace AtMycelia.Myceliarium
 
             return template
                 .Replace("#SCRIPTNAME#", subwindowClassName)
-                .Replace("#ENTRYCLASSNAME#", entryClassName);
+                .Replace("#ENTRYCLASSNAME#", entryClassName)
+                .Replace("#UXMLPATH#", pathToUxml);
         }
 
         private static string LoadTemplate(string resourcePath)
