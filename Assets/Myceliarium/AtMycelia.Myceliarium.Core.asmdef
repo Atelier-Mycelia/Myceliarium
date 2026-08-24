@@ -1,9 +1,7 @@
 {
     "name": "AtMycelia.Myceliarium.Core",
     "rootNamespace": "",
-    "references": [
-        "GUID:315f594c192fac84b811333747e5ecb0"
-    ],
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [
         "Editor"
