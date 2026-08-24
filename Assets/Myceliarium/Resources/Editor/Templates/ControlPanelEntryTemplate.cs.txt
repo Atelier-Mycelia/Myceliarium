@@ -1,0 +1,25 @@
+namespace AtMycelia.Myceliarium
+{
+    public sealed class #SCRIPTNAME# : ControlPanelEntry
+    {
+        public override bool IsTopLevel => true;
+
+        public override string MainDisplayName => "#DISPLAYNAME#";
+
+        public override bool IsMeantToHaveSubwindow => true;
+
+        protected override void PrepareLeftSidebarTab()
+        {
+            Tab = new #TABCLASSNAME#();
+            Tab.Init();
+        }
+
+        protected override void PrepareSubwindow()
+        {
+            Subwindow = new #SUBWINDOWCLASSNAME#();
+            Subwindow.Init();
+        }
+
+        public override string StringifiedState => string.Empty;
+    }
+}

@@ -1,0 +1,49 @@
+using UnityEngine.UIElements;
+
+namespace AtMycelia.Myceliarium
+{
+    public sealed class #SCRIPTNAME# : IControlPanelSubwindow
+    {
+        public VisualElement Root { get; private set; }
+        public string PathToUxml => string.Empty;
+        public bool IsVisible => Root != null && Root.style.display == DisplayStyle.Flex;
+
+        public void Init()
+        {
+            if (Root != null)
+            {
+                return;
+            }
+
+            Root = new VisualElement { name = "#ENTRYCLASSNAME#Subwindow" };
+        }
+
+        public void Bind() { }
+        public void Unbind() { }
+
+        public void Show()
+        {
+            Root.style.display = DisplayStyle.Flex;
+        }
+
+        public void Hide()
+        {
+            Root.style.display = DisplayStyle.None;
+        }
+
+        public T Q<T>(string name) where T : VisualElement
+        {
+            return Root == null ? null : Root.Q<T>(name);
+        }
+
+        public void RemoveFromHierarchy()
+        {
+            Root?.RemoveFromHierarchy();
+        }
+
+        public void Dispose()
+        {
+            RemoveFromHierarchy();
+        }
+    }
+}

@@ -9,7 +9,7 @@ namespace AtMycelia.Myceliarium
     public class AtMyceliaControlPanel : ControlPanel
     {
         #region Configurable Properties
-        protected override string PathToUxml => "Editor/UIToolkitTemplates/ControlPanel";
+        protected override string PathToUxml => "Editor/Uxml/ControlPanel";
         protected override string WindowTitle => "Atelier Mycelia Control Panel";
         #endregion
 
