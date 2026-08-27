@@ -9,7 +9,7 @@ namespace AtMycelia.Myceliarium
     {
         #region Configurables
         private const string WizardUxmlPath = "Editor/Uxml/ControlPanelTemplateWizard";
-        private const string GeneratedAssetsRootFolderName = "AtMycelia/Myceliarium/Editor";
+        private const string DefaultTargetFolder = "Assets/Resources/AtMycelia/Myceliarium/Editor";
         private const string Title = "Control Panel Template Wizard";
         #endregion
 
@@ -99,9 +99,24 @@ namespace AtMycelia.Myceliarium
 
         private void CreateTemplate()
         {
-            string templateName = _nameField.value;
-            string targetFolderAssetPath = $"Assets/Resources/{GeneratedAssetsRootFolderName}";
+            string selectedFolder = GetSelectedFolder(out bool folderChosen);
+            if (!folderChosen)
+            {
+                return;
+            }
 
+            string targetFolderAssetPath = ConvertToAssetPath(selectedFolder);
+
+            if (string.IsNullOrEmpty(targetFolderAssetPath))
+            {
+                EditorUtility.DisplayDialog(
+                    "Myceliarium",
+                    "The selected folder must be within the project's Assets folder.",
+                    "OK");
+                return;
+            }
+
+            string templateName = _nameField.value;
             if (!ControlPanelTemplateGenerator.Generate(templateName,
                 targetFolderAssetPath, out string errorMessage))
             {
@@ -109,7 +124,7 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
-            // Show the created files in the Project window
+            #region Show the created files in the Project window
             string coreName = BuildCoreName(templateName);
             string entryFolderAssetPath = $"{targetFolderAssetPath}/{coreName}";
             
@@ -126,8 +141,33 @@ namespace AtMycelia.Myceliarium
             {
                 EditorGUIUtility.PingObject(createdAsset);
             }
+            #endregion
 
             Close();
+        }
+
+        private string GetSelectedFolder(out bool success)
+        {
+            string selectedFolder = EditorUtility.OpenFolderPanel(
+                "Select Target Folder for Control Panel Entry",
+                DefaultTargetFolder,
+                string.Empty);
+
+            success = !string.IsNullOrEmpty(selectedFolder);
+            return selectedFolder;
+        }
+
+        private static string ConvertToAssetPath(string absolutePath)
+        {
+            string dataPath = Application.dataPath;
+            
+            if (!absolutePath.StartsWith(dataPath, System.StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            string relativePath = "Assets" + absolutePath.Substring(dataPath.Length);
+            return relativePath.Replace('\\', '/');
         }
 
         // Helper method to match the generator's naming logic
