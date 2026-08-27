@@ -22,7 +22,7 @@ namespace AtMycelia.Myceliarium
             window.ShowUtility();
         }
 
-        private static readonly Vector2 WindowSize = new Vector2(500f, 250f);
+        private static readonly Vector2 WindowSize = new Vector2(580f, 320f);
 
         private void CreateGUI()
         {
@@ -33,6 +33,10 @@ namespace AtMycelia.Myceliarium
                 return;
             }
             RegisterCallbacks();
+
+            // Set default folder
+            _selectedFolderPath = DefaultTargetFolder;
+            _folderField.value = _selectedFolderPath;
 
             _nameField.Focus();
             _nameField.SelectAll();
@@ -69,9 +73,11 @@ namespace AtMycelia.Myceliarium
         {
             success = false;
             _nameField = rootVisualElement.Q<TextField>("NameField");
+            _folderField = rootVisualElement.Q<TextField>("FolderField");
+            _browseButton = rootVisualElement.Q<Button>("BrowseButton");
             _createButton = rootVisualElement.Q<Button>("CreateButton");
 
-            if (_nameField == null || _createButton == null)
+            if (_nameField == null || _folderField == null || _browseButton == null || _createButton == null)
             {
                 string logMessage = $"Failed to find required UI elements in " +
                     $"wizard UXML at {WizardUxmlPath}.";
@@ -83,11 +89,15 @@ namespace AtMycelia.Myceliarium
         }
 
         private TextField _nameField;
+        private TextField _folderField;
+        private Button _browseButton;
         private Button _createButton;
+        private string _selectedFolderPath;
 
         private void RegisterCallbacks()
         {
             _nameField.RegisterValueChangedCallback(OnNameChanged);
+            _browseButton.clicked += OnBrowseClicked;
             _createButton.clicked += CreateTemplate;
         }
 
@@ -97,17 +107,29 @@ namespace AtMycelia.Myceliarium
             _createButton.SetEnabled(isNameValid);
         }
 
-        private void CreateTemplate()
+        private void OnBrowseClicked()
         {
-            string selectedFolder = GetSelectedFolder(out bool folderChosen);
-            if (!folderChosen)
+            string currentFolder = string.IsNullOrEmpty(_selectedFolderPath) 
+                ? DefaultTargetFolder 
+                : _selectedFolderPath;
+
+            // Convert to absolute path for the folder panel
+            string absolutePath = System.IO.Path.Combine(
+                System.IO.Path.GetDirectoryName(Application.dataPath),
+                currentFolder);
+
+            string selectedFolder = EditorUtility.OpenFolderPanel(
+                "Select Target Folder for Control Panel Entry",
+                absolutePath,
+                string.Empty);
+
+            if (string.IsNullOrEmpty(selectedFolder))
             {
-                return;
+                return; // User cancelled
             }
 
-            string targetFolderAssetPath = ConvertToAssetPath(selectedFolder);
-
-            if (string.IsNullOrEmpty(targetFolderAssetPath))
+            string assetPath = ConvertToAssetPath(selectedFolder);
+            if (string.IsNullOrEmpty(assetPath))
             {
                 EditorUtility.DisplayDialog(
                     "Myceliarium",
@@ -116,9 +138,25 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
+            _selectedFolderPath = assetPath;
+            _folderField.value = _selectedFolderPath;
+        }
+
+        private void CreateTemplate()
+        {
+            if (string.IsNullOrEmpty(_selectedFolderPath))
+            {
+                EditorUtility.DisplayDialog(
+                    "Myceliarium",
+                    "Please select a target folder first.",
+                    "OK");
+                return;
+            }
+
             string templateName = _nameField.value;
+            _createButton.SetEnabled(false); // To prevent multiple clicks
             if (!ControlPanelTemplateGenerator.Generate(templateName,
-                targetFolderAssetPath, out string errorMessage))
+                _selectedFolderPath, out string errorMessage))
             {
                 EditorUtility.DisplayDialog("Myceliarium", errorMessage, "OK");
                 return;
@@ -126,7 +164,7 @@ namespace AtMycelia.Myceliarium
 
             #region Show the created files in the Project window
             string coreName = BuildCoreName(templateName);
-            string entryFolderAssetPath = $"{targetFolderAssetPath}/{coreName}";
+            string entryFolderAssetPath = $"{_selectedFolderPath}/{coreName}";
             
             EditorUtility.FocusProjectWindow();
 
@@ -144,17 +182,6 @@ namespace AtMycelia.Myceliarium
             #endregion
 
             Close();
-        }
-
-        private string GetSelectedFolder(out bool success)
-        {
-            string selectedFolder = EditorUtility.OpenFolderPanel(
-                "Select Target Folder for Control Panel Entry",
-                DefaultTargetFolder,
-                string.Empty);
-
-            success = !string.IsNullOrEmpty(selectedFolder);
-            return selectedFolder;
         }
 
         private static string ConvertToAssetPath(string absolutePath)

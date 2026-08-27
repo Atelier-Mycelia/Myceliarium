@@ -1,8 +1,12 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" noNamespaceSchemaLocation="../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
-    <ui:VisualElement name="Root" class="wizard-root" style="padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; height: 250px;">
+    <ui:VisualElement name="Root" class="wizard-root" style="padding-top: 10px; padding-right: 10px; padding-bottom: 10px; padding-left: 10px; height: 300px;">
         <ui:Label text="Create New Control Panel Entry" name="Title" class="wizard-title" style="-unity-text-align: middle-center; font-size: 28px; margin-bottom: 2px;" />
         <ui:Label tabindex="-1" text="This will create the source files and Uitk assets for &#10;a new ControlPanelEntry." parse-escape-sequences="true" display-tooltip-when-elided="true" name="Explanation" style="-unity-text-align: middle-center; font-size: 20px; margin-bottom: 10px; width: 80%; align-self: center; flex-wrap: wrap;" />
         <ui:TextField label="Name" name="NameField" value="NewControlPanel" class="wizard-name-field" style="height: 40px; font-size: 24px; margin-bottom: 6px;" />
+        <ui:VisualElement name="FolderContainer" style="flex-direction: column; margin-bottom: 6px; height: 100px; flex-shrink: 0;">
+            <ui:TextField label="Target Folder" name="FolderField" readonly="true" class="wizard-folder-field" style="flex-grow: 0; font-size: 16px; width: 100%; padding-right: 8px;" />
+            <ui:Button text="Browse..." name="BrowseButton" class="wizard-browse-button" style="font-size: 16px; width: 30%; margin-left: 5px; align-self: center; margin-top: 5px; height: 40px;" />
+        </ui:VisualElement>
         <ui:Button text="Create" name="CreateButton" class="wizard-create-button" style="font-size: 24px; height: 40px; width: 50%; align-self: center;" />
     </ui:VisualElement>
 </ui:UXML>
