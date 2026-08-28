@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UitkButton = UnityEngine.UIElements.Button;
@@ -72,7 +73,7 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         protected virtual void ApplyOverridesTo(IControlPanelTab subtab)
         {
-            bool doNothing = OverrideSubtabHeight == StyleKeyword.Null && 
+            bool doNothing = OverrideSubtabHeight == StyleKeyword.Null &&
                 OverrideSubtabWidth == StyleKeyword.Null;
             if (doNothing)
             {
@@ -123,20 +124,40 @@ namespace AtMycelia.Myceliarium
 
         protected virtual void RegisterIcon()
         {
+            _iconHolder = Root.Q("IconHolder");
             _icon = Root.Q<VisualElement>("Icon");
             HideIconAsAppropriate();
         }
 
-        protected VisualElement _icon;
+        protected VisualElement _iconHolder, _icon;
 
         private void HideIconAsAppropriate()
         {
             // Since we don't want the icon taking up space if it has no bg image.
-            if (_icon != null && _icon.style.backgroundImage.value.texture == null)
+            if (_icon == null)
             {
-                _icon.style.width = 0;
-                _icon.style.height = 0;
+                return;
             }
+            _icon.schedule.Execute(HideIconIfNoBgImage).StartingIn(1);
+            void HideIconIfNoBgImage()
+            {
+                var bgImage = _icon.resolvedStyle.backgroundImage;
+                if (bgImage == null)
+                {
+                    _iconHolder.style.width = 0;
+                    _iconHolder.style.height = 0;
+                    _iconHolder.style.flexShrink = 1;
+                    _iconHolder.visible = false;
+                    OnIconHidden();
+                }
+            }
+        }
+
+        protected virtual void OnIconHidden()
+        {
+            // Since in the default uxml, we have a lot of left padding applied
+            // to make room for the icon//
+            _mainClickable.style.paddingLeft = 5;
         }
 
         public virtual string Text
