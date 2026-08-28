@@ -34,26 +34,67 @@ namespace AtMycelia.Myceliarium
 
         public virtual void Register(IControlPanelTab subtab)
         {
-            string logMessage = null;
+            ValidateSubtabPreRegistration(subtab);
+            _subtabs.Add(subtab);
+            ApplyOverridesTo(subtab);
+        }
+
+        private void ValidateSubtabPreRegistration(IControlPanelTab subtab)
+        {
+            string logMessage;
+
             if (subtab == null)
             {
                 throw new ArgumentNullException(nameof(subtab));
             }
+
             if (subtab == this)
             {
                 logMessage = $"Cannot attach {GetType().Name} to itself.";
                 throw new InvalidOperationException(logMessage);
             }
+
             if (_subtabs.Contains(subtab))
             {
                 logMessage = $"Subtab {subtab.GetType().Name} is already attached " +
                     $"to {GetType().Name}.";
                 throw new InvalidOperationException(logMessage);
             }
-            _subtabs.Add(subtab);
         }
 
         public VisualElement Root { get; protected set; }
+
+        /// <summary>
+        /// By default, this applies right after the subtab is registered.
+        /// This method is to help deal with any Uitk weirdness screwing 
+        /// up things like the height and width of the subtab.
+        /// </summary>
+        protected virtual void ApplyOverridesTo(IControlPanelTab subtab)
+        {
+            bool doNothing = OverrideSubtabHeight == StyleKeyword.Null && 
+                OverrideSubtabWidth == StyleKeyword.Null;
+            if (doNothing)
+            {
+                return;
+            }
+
+            var subRoot = subtab.Root;
+            var subStyle = subRoot.style;
+            subStyle.flexGrow = subStyle.flexShrink = 0; // Helps make sure the overrides stick
+
+            if (OverrideSubtabHeight != StyleKeyword.Null)
+            {
+                subStyle.height = OverrideSubtabHeight;
+            }
+
+            if (OverrideSubtabWidth != StyleKeyword.Null)
+            {
+                subStyle.width = OverrideSubtabWidth;
+            }
+        }
+
+        protected virtual StyleLength OverrideSubtabWidth { get; set; } = StyleKeyword.Null;
+        protected virtual StyleLength OverrideSubtabHeight { get; set; } = StyleKeyword.Null;
 
         protected virtual void RegisterVisualElements()
         {
