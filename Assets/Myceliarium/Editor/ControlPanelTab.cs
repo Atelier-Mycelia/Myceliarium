@@ -36,6 +36,7 @@ namespace AtMycelia.Myceliarium
         {
             ValidateSubtabPreRegistration(subtab);
             _subtabs.Add(subtab);
+            _mainClickable.Add(subtab.Root);
             ApplyOverridesTo(subtab);
         }
 
@@ -99,6 +100,7 @@ namespace AtMycelia.Myceliarium
         protected virtual void RegisterVisualElements()
         {
             RegisterMainClickable();
+            RegisterIcon();
         }
 
         /// <summary>
@@ -118,6 +120,24 @@ namespace AtMycelia.Myceliarium
         }
 
         protected VisualElement _mainClickable;
+
+        protected virtual void RegisterIcon()
+        {
+            _icon = Root.Q<VisualElement>("Icon");
+            HideIconAsAppropriate();
+        }
+
+        protected VisualElement _icon;
+
+        private void HideIconAsAppropriate()
+        {
+            // Since we don't want the icon taking up space if it has no bg image.
+            if (_icon != null && _icon.style.backgroundImage.value.texture == null)
+            {
+                _icon.style.width = 0;
+                _icon.style.height = 0;
+            }
+        }
 
         public virtual string Text
         {
