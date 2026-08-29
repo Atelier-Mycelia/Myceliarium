@@ -15,15 +15,16 @@ namespace AtMycelia.Myceliarium
             EditorCoroutineUtility.StartCoroutine(coroutine, this);
         }
 
-        protected abstract bool IsCompatibleWith(IControlPanelEntry toLoadFor);
         protected abstract IEnumerator LoadProcess(IControlPanelEntry toLoadFor,
             Action onComplete = null);
 
+        public abstract bool IsCompatibleWith(IControlPanelEntry toLoadFor);
     }
 
     public interface IControlPanelEntryLoader
     {
         void Load(IControlPanelEntry toLoadFor, Action onComplete = null);
+        bool IsCompatibleWith(IControlPanelEntry toLoadFor);
     }
 
     public interface IAtMyceliaControlPanelEntryLoader : IControlPanelEntryLoader

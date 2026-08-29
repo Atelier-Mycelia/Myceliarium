@@ -4,10 +4,14 @@ using UnityEditor;
 
 namespace AtMycelia.Myceliarium
 {
+    /// <summary>
+    /// Registry of all the IControlPanelEntrySaver instances in the project. This is what
+    /// you should usually use to access such instances (rather than instantiating them yourself).
+    /// </summary>
     [InitializeOnLoad]
-    public static class ControlPanelEntrySaverRegistry
+    public static class CpEntrySaverReg
     {
-        static ControlPanelEntrySaverRegistry()
+        static CpEntrySaverReg()
         {
             ToggleSubs(false);
             ToggleSubs(true);
@@ -51,11 +55,16 @@ namespace AtMycelia.Myceliarium
         public static IList<IControlPanelEntrySaver> GetSaversOfType<T>() 
             where T : IControlPanelEntrySaver
         {
+            return GetSaversOfType(typeof(T));
+        }
+
+        public static IList<IControlPanelEntrySaver> GetSaversOfType(Type saverType)
+        {
             var result = new List<IControlPanelEntrySaver>();
             for (int i = 0; i < _savers.Count; i++)
             {
                 var saver = _savers[i];
-                if (saver is T)
+                if (saverType.IsAssignableFrom(saver.GetType()))
                 {
                     result.Add(saver);
                 }

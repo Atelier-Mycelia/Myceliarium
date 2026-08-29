@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -25,7 +24,27 @@ namespace AtMycelia.Myceliarium
         public virtual Vector2 MaxWindowSize => DefaultWindowSize;
         #endregion
 
-        public virtual IList<IControlPanelEntry> Entries { get; } = new List<IControlPanelEntry>();
+        protected virtual void OnEnable()
+        {
+            ToggleSubs(true);
+        }
+
+        protected virtual void ToggleSubs(bool on)
+        {
+            if (on)
+            {
+                ControlPanelSignals.SaveRequested += OnSaveRequested;
+                ControlPanelSignals.LoadRequested += OnLoadRequested;
+            }
+            else
+            {
+                ControlPanelSignals.SaveRequested -= OnSaveRequested;
+                ControlPanelSignals.LoadRequested -= OnLoadRequested;
+            }
+        }
+
+        protected abstract void OnLoadRequested(IControlPanelEntry entry);
+        protected abstract void OnSaveRequested(IControlPanelEntry entry);
 
         public virtual void CreateGUI()
         {
@@ -51,6 +70,9 @@ namespace AtMycelia.Myceliarium
         {
             SetTitleContent();
             SetWindowSizeBounds();
+            RefreshEntryCache();
+            RefreshEntrySaverCache();
+            RefreshEntryLoaderCache();
             success = true;
         }
 
@@ -64,6 +86,10 @@ namespace AtMycelia.Myceliarium
             minSize = MinWindowSize;
             maxSize = MaxWindowSize;
         }
+
+        protected abstract void RefreshEntryCache();
+        protected abstract void RefreshEntrySaverCache();
+        protected abstract void RefreshEntryLoaderCache();
 
         protected virtual void RootPrep()
         {
@@ -89,14 +115,15 @@ namespace AtMycelia.Myceliarium
             _attacher?.Dispose();
             _attacher.Init(rootVisualElement);
 
-            var toAttach = GetEntriesToAttach().ToList();
-            Sort(toAttach);
-            _attacher.Attach(toAttach);
+            Sort(_entries);
+            _attacher.Attach(_entries);
         }
 
         private ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
 
-        protected abstract IEnumerable<IControlPanelEntry> GetEntriesToAttach();
+        public virtual IReadOnlyList<IControlPanelEntry> Entries => _entries;
+
+        protected readonly List<IControlPanelEntry> _entries = new List<IControlPanelEntry>();
 
         /// <summary>
         /// Default implementation does nothing. Subclasses can override to
@@ -118,12 +145,17 @@ namespace AtMycelia.Myceliarium
             // Default implementation does nothing. Subclasses can override to provide
             // logic for handling a language bar if needed.
         }
+
+        protected virtual void OnDisable()
+        {
+            ToggleSubs(false);
+        }
     }
 
     public interface IControlPanel
     {
         VisualElement Root { get; }
-        IList<IControlPanelEntry> Entries { get; }
+        IReadOnlyList<IControlPanelEntry> Entries { get; }
     }
 
 }

@@ -15,7 +15,7 @@ namespace AtMycelia.Myceliarium
             EditorCoroutineUtility.StartCoroutine(coroutine, this);
         }
 
-        protected abstract bool IsCompatibleWith(IControlPanelEntry toSaveFor);
+        public abstract bool IsCompatibleWith(IControlPanelEntry toSaveFor);
         protected abstract IEnumerator SaveProcess(IControlPanelEntry toSaveFor,
             Action onComplete);
 
@@ -24,6 +24,7 @@ namespace AtMycelia.Myceliarium
     public interface IControlPanelEntrySaver
     {
         void Save(IControlPanelEntry toSaveFor, Action onComplete = null);
+        bool IsCompatibleWith(IControlPanelEntry toSaveFor);
     }
 
     public interface IAtMyceliaControlPanelEntrySaver : IControlPanelEntrySaver
