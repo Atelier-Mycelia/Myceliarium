@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
 using UnityEngine.UIElements;
+using UnityDebug = UnityEngine.Debug;
 
 namespace AtMycelia.Myceliarium
 {
@@ -143,7 +143,15 @@ namespace AtMycelia.Myceliarium
 
         public void Attach(IList<IControlPanelEntry> toAttach)
         {
-            _entries = toAttach ?? throw new ArgumentNullException(nameof(toAttach));
+            for (int i = 0; i < toAttach.Count; i++)
+            {
+                var entry = toAttach[i];
+                if (!_entries.Contains(entry))
+                {
+                    _entries.Add(entry);
+                }
+            }
+
             foreach (var elem in _entries)
             {
                 if (!elem.IsTopLevel)
@@ -155,7 +163,7 @@ namespace AtMycelia.Myceliarium
             }
         }
 
-        private IList<IControlPanelEntry> _entries;
+        private readonly IList<IControlPanelEntry> _entries = new List<IControlPanelEntry>();
 
         private void Attach(IControlPanelEntry entry)
         {
@@ -173,13 +181,12 @@ namespace AtMycelia.Myceliarium
                 {
                     string logMessage = $"Failed to attach {entry.GetType().Name} " +
                         $"to ControlPanel: {ex.Message}";
-                    Debug.LogError(logMessage);
+                    UnityDebug.LogError(logMessage);
                 }
             }
 
             _mainTabSet.Add(entry.Tab.Root);
             RegisterSubwindowsOf(entry);
-
         }
 
         private void RegisterSubwindowsOf(IControlPanelEntry entry)
@@ -216,12 +223,14 @@ namespace AtMycelia.Myceliarium
 
             ToggleSubs(false);
             _entryBeingDisplayed = null;
-            _entries = null;
+            _entries.Clear();
             _mainTabSet = null;
             _subwindowDisplay = null;
             _rootElement = null;
             _isDisposed = true;
         }
 
+        public IReadOnlyList<IControlPanelEntry> Entries => 
+            (IReadOnlyList<IControlPanelEntry>)_entries;
     }
 }
