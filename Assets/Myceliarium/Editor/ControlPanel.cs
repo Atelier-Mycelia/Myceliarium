@@ -25,6 +25,8 @@ namespace AtMycelia.Myceliarium
         public virtual Vector2 MaxWindowSize => DefaultWindowSize;
         #endregion
 
+        public virtual IList<IControlPanelEntry> Entries { get; } = new List<IControlPanelEntry>();
+
         public virtual void CreateGUI()
         {
             PreRootPrep(out bool success);
@@ -121,6 +123,7 @@ namespace AtMycelia.Myceliarium
     public interface IControlPanel
     {
         VisualElement Root { get; }
+        IList<IControlPanelEntry> Entries { get; }
     }
 
 }

@@ -1,3 +1,5 @@
+using System;
+
 namespace AtMycelia.Myceliarium
 {
     /// <summary>
@@ -6,11 +8,18 @@ namespace AtMycelia.Myceliarium
     /// </summary>
     public static class ControlPanelSignals 
     {
-        public static System.Action<IControlPanel> OnControlPanelOpened = delegate { };
-        public static System.Action<IControlPanel> OnControlPanelClosed = delegate { };
+        public static Action<IControlPanel> OnControlPanelOpened = delegate { };
+        public static Action<IControlPanel> OnControlPanelClosed = delegate { };
 
-        public static System.Action<IControlPanelEntry> OnEntryTabClicked = delegate { };
+        public static Action<IControlPanelEntry> OnEntryTabClicked = delegate { };
 
-        public static System.Action<IControlPanel> SaveRequested = delegate { };
+        public static Action<IControlPanelEntry> SaveRequested = delegate { };
+        public static Action<IControlPanelEntry> LoadRequested = delegate { };
+
+        public static Action<IControlPanelEntry> SaveCompleted = delegate { };
+        public static Action<IControlPanelEntry> LoadCompleted = delegate { };
+
+        public static Action<IControlPanelEntry> SaveFailed = delegate { };
+        public static Action<IControlPanelEntry> LoadFailed = delegate { };
     }
 }
