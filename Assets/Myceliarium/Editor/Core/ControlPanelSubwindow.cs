@@ -109,6 +109,7 @@ namespace AtMycelia.Myceliarium
             }
             return element;
         }
+
         public virtual void Dispose()
         {
             if (_isDisposed)
@@ -128,9 +129,17 @@ namespace AtMycelia.Myceliarium
         }
 
         public virtual bool IsVisible => Root != null && Root.style.display == DisplayStyle.Flex;
+
+        /// <summary>
+        /// No-op by default. Subclasses can override to implement refreshing logic.
+        /// </summary>
+        public virtual void Refresh()
+        {
+
+        }
     }
 
-    public interface IControlPanelSubwindow
+    public interface IControlPanelSubwindow : IRefreshable
     {
         VisualElement Root { get; }
 
