@@ -129,7 +129,14 @@ namespace AtMycelia.Myceliarium
         }
 
         public virtual bool IsVisible => Root != null && Root.style.display == DisplayStyle.Flex;
-        public abstract void Refresh();
+
+        /// <summary>
+        /// No-op by default. Subclasses can override to implement refreshing logic.
+        /// </summary>
+        public virtual void Refresh()
+        {
+
+        }
     }
 
     public interface IControlPanelSubwindow : IRefreshable
