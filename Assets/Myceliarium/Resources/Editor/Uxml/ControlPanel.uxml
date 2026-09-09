@@ -3,7 +3,7 @@
     <ui:VisualElement name="Root" class="root" style="flex-direction: column;">
         <ui:VisualElement name="MainContainer" class="main-container">
             <ui:VisualElement name="MainTabSet" class="main-tab-set" />
-            <ui:ScrollView name="CategorySubwindowDisplay" style="flex-grow: 1; flex-shrink: 0;" />
+            <ui:ScrollView name="CategorySubwindowDisplay" class="category-subwindow-display" />
         </ui:VisualElement>
         <ui:VisualElement name="BottomBar" class="bottom-bar">
             <ui:DropdownField name="LanguageDropdown" label="Language" class="bottom-control-left" />
