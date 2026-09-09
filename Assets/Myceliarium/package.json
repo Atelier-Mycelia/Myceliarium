@@ -1,6 +1,6 @@
 {
   "name": "com.ateliermycelia.myceliarium",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "displayName": "Myceliarium: Control Panels Made Easy",
   "description": "An framework for making editor windows similar to RPG Maker's Database Window.",
   "unity": "2022.3",
