@@ -241,7 +241,15 @@ namespace AtMycelia.Myceliarium
         bool IsInitted { get; }
         void RemoveFromHierarchy();
 
+        /// <summary>
+        /// Should execute when this entry is selected in the Control Panel (usually through
+        /// its tab on the left sidebar).
+        /// </summary>
         void OnSelected();
+
+        /// <summary>
+        /// Should execute when another entry is switched to in the Control Panel.
+        /// </summary>
         void OnDeselected();
         bool HasSubentries { get; }
 
