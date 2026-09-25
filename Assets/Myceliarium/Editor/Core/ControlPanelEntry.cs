@@ -13,6 +13,12 @@ namespace AtMycelia.Myceliarium
     /// </summary>
     public abstract class ControlPanelEntry : IControlPanelEntry, IDisposable
     {
+        /// <summary>
+        /// Affects how this is sorted in the Control Panel's left sidebar.
+        /// Lower numbers are sorted higher.
+        /// </summary>
+        public virtual int SortingOrder => 100;
+
         public virtual bool IsTopLevel => false;
         // ^Why false as the default? We expect that most entries will be
         // nested under others.
@@ -61,10 +67,10 @@ namespace AtMycelia.Myceliarium
 
         protected IControlPanelTab _tab;
 
-
         // Expected for subclasses to override this method if they have subentries.
         // The default implementation does nothing.
         protected virtual void PrepareSubentries() { }
+
         public virtual IReadOnlyList<IControlPanelEntry> GetSubentries(bool recursive = false)
         {
             List<IControlPanelEntry> result;
@@ -122,17 +128,6 @@ namespace AtMycelia.Myceliarium
         private void OnTabClicked(IControlPanelTab tabClicked)
         {
             ControlPanelSignals.OnEntryTabClicked(this);
-        }
-
-        /// <summary>
-        /// Meant to be overridden by subclasses that have state that needs
-        /// to be stringified for whatever purposes.
-        /// </summary>
-        public abstract string StringifiedState { get; }
-
-        public virtual void Apply(string stringifiedState, out bool success)
-        {
-            success = false;
         }
 
         // Clients shouldn't even try to access the Subwindow or tab before
@@ -210,6 +205,13 @@ namespace AtMycelia.Myceliarium
     public interface IControlPanelEntry
     {
         /// <summary>
+        /// Decides how this entry is sorted in the Control Panel's left sidebar.
+        /// Lower numbers are sorted higher. When two entries have the same sorting order,
+        /// they are sorted alphabetically by their MainDisplayName.
+        /// </summary>
+        int SortingOrder { get; }
+
+        /// <summary>
         /// Functions as the constructor for this entry. Should be called once when the 
         /// entry is first created, and can be called again if the entry needs to 
         /// be reinitialized.
@@ -224,15 +226,6 @@ namespace AtMycelia.Myceliarium
 
         IControlPanelTab Tab { get; }
         IControlPanelSubwindow Subwindow { get; }
-
-        /// <summary>
-        /// Some entries may have state that needs to be stringified for saving/loading purposes.
-        /// This method returns a string representation of the entry's state.
-        /// </summary>
-        /// <returns></returns>
-        string StringifiedState { get; }
-
-        void Apply(string stringifiedState, out bool success);
 
         bool IsTopLevel { get; }
 

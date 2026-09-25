@@ -358,12 +358,37 @@ namespace AtMycelia.Myceliarium
         private ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
 
         /// <summary>
-        /// Default implementation does nothing. Subclasses can override to
-        /// provide sorting logic for the entries before they are
+        /// Default implementation sorts the entries by SortingOrder first,
+        /// then by MainDisplayName. Subclasses can override to provide
+        /// different sorting logic for the entries before they are
         /// attached to the control panel.
         /// </summary>
-        protected virtual void Sort(IEnumerable<IControlPanelEntry> entries)
+        protected virtual void Sort(IList<IControlPanelEntry> entries)
         {
+            if (entries is List<IControlPanelEntry> list)
+            {
+                list.Sort(CompareEntries);
+                return;
+            }
+
+            var buffer = new List<IControlPanelEntry>(entries);
+            buffer.Sort(CompareEntries);
+            entries.Clear();
+            for (int i = 0; i < buffer.Count; i++)
+            {
+                entries.Add(buffer[i]);
+            }
+        }
+
+        private static int CompareEntries(IControlPanelEntry a, IControlPanelEntry b)
+        {
+            int sortingOrderComparison = a.SortingOrder.CompareTo(b.SortingOrder);
+            if (sortingOrderComparison != 0)
+            {
+                return sortingOrderComparison;
+            }
+
+            return string.Compare(a.MainDisplayName, b.MainDisplayName, System.StringComparison.Ordinal);
         }
         protected readonly List<IControlPanelEntry> _topLevelEntries = new List<IControlPanelEntry>();
 
