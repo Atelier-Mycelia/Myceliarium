@@ -219,7 +219,7 @@ namespace AtMycelia.Myceliarium
         protected virtual void OnClicked(ClickEvent evt)
         {
             IsSelected = true;
-            Clicked.Invoke(this);
+            Clicked.Invoke(this);//
         }
 
         public event Action<IControlPanelTab> Clicked = delegate { };
