@@ -67,7 +67,7 @@
 
 .tabIconHolder
 {
-    padding: 5px 0px 0px 0px;
+    padding: 5px 0px 1px 0px;
     margin: 0px 0px 0px 3px;
     width: 60px;
 }

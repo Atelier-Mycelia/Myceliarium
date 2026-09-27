@@ -125,7 +125,7 @@ namespace AtMycelia.Myceliarium
             }
         }
 
-        private void OnTabClicked(IControlPanelTab tabClicked)
+        protected virtual void OnTabClicked(IControlPanelTab tabClicked)
         {
             ControlPanelSignals.OnEntryTabClicked(this);
         }

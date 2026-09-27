@@ -7,36 +7,33 @@ namespace AtMycelia.Myceliarium
     {
         public override string PathToUxml => "Editor/Uxml/MyceliariumAboutSubwindow";
         
-        public override void Init()
-        {
-            base.Init();
-            UpdateLabels();
-        }
-
-        private void UpdateLabels()
-        {
-            _versionLabel.text = $"Version: {MyceliariumAboutEntry.VersionString}";
-            _copyrightLabel.text = "Copyright © 2026 Atelier Mycelia. All rights reserved.";
-            _multiLinksLabel.text = string.Join("\n", Links);
-        }
-
         private UitkLabel _versionLabel;
         private UitkLabel _copyrightLabel;
         private UitkLabel _multiLinksLabel;
 
-        private static readonly string[] Links = new string[]
-        {
-            "Twitter/X: https://x.com/AtelierMycelia",
-            "Itch.io: https://ateliermycelia.itch.io/",
-            "Github: https://github.com/Atelier-Mycelia",
-            "Repository: https://github.com/Atelier-Mycelia/Myceliarium"
-        };
-    
         protected override void RegisterVisualElements()
         {
             _versionLabel = Root.Q<UitkLabel>("VersionLabel");
             _copyrightLabel = Root.Q<UitkLabel>("CopyrightLabel");
             _multiLinksLabel = Root.Q<UitkLabel>("MultiLinksLabel");
+        }
+
+        public string VersionText
+        {
+            get => _versionLabel.text;
+            set => _versionLabel.text = value;
+        }
+
+        public string CopyrightText
+        {
+            get => _copyrightLabel.text;
+            set => _copyrightLabel.text = value;
+        }
+
+        public string MultiLinksText
+        {
+            get => _multiLinksLabel.text;
+            set => _multiLinksLabel.text = value;
         }
 
     }
