@@ -1,10 +1,9 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
     <Style src="project://database/Assets/Myceliarium/Resources/Editor/Stylesheets/_baseSubwindowStyle.uss?fileID=7433441132597879392&amp;guid=4ab135ff0f2e71c429341386bafafc44&amp;type=3#_baseSubwindowStyle" />
     <Style src="project://database/Assets/Myceliarium/Resources/Editor/Stylesheets/MyceliariumAboutSubwindowStyle.uss?fileID=7433441132597879392&amp;guid=b8dd1c9be1cf8f24f93c249386f09175&amp;type=3#MyceliariumAboutSubwindowStyle" />
-    <ui:VisualElement name="Root" style="flex-grow: 1;">
-        <ui:Label tabindex="-1" text="Created by" parse-escape-sequences="true" display-tooltip-when-elided="true" name="VersionLabel" style="align-self: center;" />
-        <ui:Label tabindex="-1" text="Repo" parse-escape-sequences="true" display-tooltip-when-elided="true" name="MultiLinksLabel" style="align-self: center;" />
-        <ui:Label tabindex="-1" text="Copyright" parse-escape-sequences="true" display-tooltip-when-elided="true" name="CopyrightLabel" style="align-self: center;" />
-        <ui:Label tabindex="-1" text="Version:" parse-escape-sequences="true" display-tooltip-when-elided="true" name="VersionLabel" style="align-self: center;" />
+    <ui:VisualElement name="Root">
+        <ui:Label tabindex="-1" text="Created by" parse-escape-sequences="true" display-tooltip-when-elided="true" name="VersionLabel" class="aboutLabel" style="-unity-text-align: upper-center;" />
+        <ui:Label tabindex="-1" text="Repo" parse-escape-sequences="true" display-tooltip-when-elided="true" name="MultiLinksLabel" class="aboutLabel" style="-unity-text-align: upper-center;" />
+        <ui:Label tabindex="-1" text="Copyright" parse-escape-sequences="true" display-tooltip-when-elided="true" name="CopyrightLabel" class="aboutLabel" style="-unity-text-align: upper-center;" />
     </ui:VisualElement>
 </ui:UXML>

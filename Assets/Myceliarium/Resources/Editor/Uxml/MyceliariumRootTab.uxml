@@ -1,5 +1,6 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" noNamespaceSchemaLocation="../../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="True">
-    <Style src="project://database/Assets/Myceliarium/Resources/Editor/Stylesheets/MyceliariumTabStyle.uss?fileID=7433441132597879392&amp;guid=384d0d6a658154144ae47ed2d33218fd&amp;type=3#MyceliariumTabStyle" />
+    <Style src="project://database/Assets/Myceliarium/Resources/Editor/Stylesheets/_baseTabStyle.uss?fileID=7433441132597879392&amp;guid=e529783e7fb76b44ab24de2f7649c171&amp;type=3#_baseTabStyle" />
+    <Style src="project://database/Assets/Myceliarium/Resources/Editor/Stylesheets/MyceliariumHeadTabStyle.uss?fileID=7433441132597879392&amp;guid=384d0d6a658154144ae47ed2d33218fd&amp;type=3#MyceliariumHeadTabStyle" />
     <ui:VisualElement name="Root" class="tabRoot">
         <ui:Foldout text="Myceliarium" name="MyceliariumTab" class="tabButton" />
         <ui:VisualElement name="IconHolder" class="tabIconHolder">
