@@ -7,8 +7,9 @@
 
 .tabRoot {
     height: 60px;
+    width: 180px;
     flex-direction: row;
-    margin-bottom: 5px;
+    margin: 5px 0px 5px 0px;
 }
 
 .tabButton {
@@ -27,7 +28,7 @@
 }
 
 .tabIcon {
-    background-image: var(--default-icon);
+    background-image: none;
     -unity-background-scale-mode: stretch-to-fill;
     padding-top: 0;
     padding-bottom: 0;
