@@ -169,8 +169,8 @@ namespace AtMycelia.Myceliarium
             SetTitleContent();
             SetWindowSizeBounds();
             RefreshTopLevelEntryCache();
-            // ^Why just the top-level ones? Because we expect the subentries to be
-            // prepped after their parents are done being attached to this Control Panel.
+            // ^Why just the top-level ones? Because after those are done being attached
+            // to this ControlPanel, we expect them to handle attaching their subs
             success = true;
         }
 
@@ -221,26 +221,22 @@ namespace AtMycelia.Myceliarium
         }
 
         /// <summary>
-        /// The type of entries that this control panel is responsible for. This is used to
-        /// help this get only the entries it needs to work with. When overriding, best
-        /// set this to the interface type that your entries implement, rather than any
-        /// one concrete type. 
+        /// The type of entries that this Control Panel is responsible for. This is used to
+        /// help this get only the ones it needs to work with. When overriding, best
+        /// set this to the interface type that your entries implement (rather than any
+        /// one concrete type). 
         /// </summary>
         protected abstract Type EntrySuperType { get; }
 
         /// <summary>
-        /// The type of savers that this control panel is responsible for. This is used to
-        /// make sure this only gathers up the savers that are compatible with the entries
-        /// it is working with. When overriding, best set this to the interface type that
-        /// your savers implement, rather than any one concrete type. 
+        /// The type of savers that this Control Panel is responsible for. Same sort of
+        /// logic as EntrySuperType; take a look at its summary for more details.
         /// </summary>
         protected abstract Type SaverSuperType { get; }
 
         /// <summary>
-        /// The type of loaders that this control panel is responsible for. This is used to
-        /// make sure this only gathers up the loaders that are compatible with the entries
-        /// it is working with. When overriding, best set this to the interface type that
-        /// your loaders implement, rather than any one concrete type.
+        /// The type of loaders that this control panel is responsible for. Same sort of
+        /// logic as EntrySuperType; take a look at its summary for more details.
         /// </summary>
         protected abstract Type LoaderSuperType { get; }
 
@@ -382,9 +378,14 @@ namespace AtMycelia.Myceliarium
 
             Sort(_topLevelEntries);
             _attacher.Attach(_topLevelEntries);
+
+            _selectionController?.Dispose();
+            _selectionController.Init(_attacher.Entries);
         }
 
         private ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
+        private ControlPanelTabSelectionController _selectionController =
+            new ControlPanelTabSelectionController();
 
         /// <summary>
         /// Default implementation sorts the entries by SortingOrder first,
@@ -436,6 +437,22 @@ namespace AtMycelia.Myceliarium
                     _allEntries.Add(entry);
                 }
             }
+
+            AssertNoDuplicateEntryTypes();
+        }
+
+        /// <summary>
+        /// RPG Maker's Database window never has more than one tab for the same
+        /// data category (e.g. only ever one "Actors" tab). Since Myceliarium
+        /// entries are discovered via reflection, it's possible for a user to
+        /// accidentally register the same entry type as a subentry under two
+        /// different top-level parents. This guards against that.
+        /// </summary>
+        protected virtual void AssertNoDuplicateEntryTypes()
+        {
+            var everyEntry = new List<IControlPanelEntry>(_topLevelEntries);
+            everyEntry.AddRange(_allEntries);
+            ControlPanelEntryTypeValidator.AssertNoDuplicateEntryTypes(everyEntry);
         }
 
         /// <summary>
@@ -476,6 +493,8 @@ namespace AtMycelia.Myceliarium
         {
             _attacher?.Dispose();
             _attacher = null;
+            _selectionController?.Dispose();
+            _selectionController = null;
         }
 
         protected virtual void HandleLanguageDropdown()
