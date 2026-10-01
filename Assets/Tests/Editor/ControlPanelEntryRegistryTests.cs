@@ -9,6 +9,12 @@ namespace AtMycelia.Myceliarium.Tests
 {
     public class ControlPanelEntryRegistryTests
     {
+        [SetUp]
+        public void SetUp()
+        {
+            ControlPanelEntryRegistry.InTestMode = true;
+        }
+
         [TearDown]
         public void TearDown()
         {
@@ -239,6 +245,7 @@ namespace AtMycelia.Myceliarium.Tests
         #region Test Doubles
         private abstract class AbstractEntry : IControlPanelEntry
         {
+            public virtual bool IsTestOnly => true;
             public int SortingOrder => 0;
             public string SortingName => string.Empty;
             public IControlPanelTab Tab => null;
@@ -258,6 +265,7 @@ namespace AtMycelia.Myceliarium.Tests
 
         private class ConcreteEntryA : IControlPanelEntry
         {
+            public virtual bool IsTestOnly => true;
             public int SortingOrder => 0;
             public string SortingName => nameof(ConcreteEntryA);
             public IControlPanelTab Tab => null;
@@ -277,6 +285,7 @@ namespace AtMycelia.Myceliarium.Tests
 
         private class ConcreteEntryB : IControlPanelEntry
         {
+            public virtual bool IsTestOnly => true;
             public int SortingOrder => 0;
             public string SortingName => nameof(ConcreteEntryB);
             public IControlPanelTab Tab => null;

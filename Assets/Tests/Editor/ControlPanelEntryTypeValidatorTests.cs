@@ -130,6 +130,7 @@ namespace AtMycelia.Myceliarium.Tests
         #region Test Doubles
         private class EntryA : IControlPanelEntry
         {
+            public virtual bool IsTestOnly => true;
             public int SortingOrder => 0;
             public string SortingName => nameof(EntryA);
             public IControlPanelTab Tab => null;
@@ -149,6 +150,7 @@ namespace AtMycelia.Myceliarium.Tests
 
         private class EntryB : IControlPanelEntry
         {
+            public virtual bool IsTestOnly => true;
             public int SortingOrder => 0;
             public string SortingName => nameof(EntryB);
             public IControlPanelTab Tab => null;
