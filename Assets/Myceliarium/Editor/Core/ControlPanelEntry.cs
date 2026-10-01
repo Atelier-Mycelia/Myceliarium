@@ -13,6 +13,8 @@ namespace AtMycelia.Myceliarium
     /// </summary>
     public abstract class ControlPanelEntry : IControlPanelEntry, IDisposable
     {
+        public virtual bool IsTestOnly => false;
+
         /// <summary>
         /// Affects how this is sorted in the Control Panel's left sidebar.
         /// Lower numbers are sorted higher.
@@ -204,6 +206,8 @@ namespace AtMycelia.Myceliarium
 
     public interface IControlPanelEntry
     {
+        bool IsTestOnly { get; }
+
         /// <summary>
         /// Decides how this entry is sorted in the Control Panel's left sidebar.
         /// Lower numbers are sorted higher. When two entries have the same sorting order,

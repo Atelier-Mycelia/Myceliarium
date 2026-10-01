@@ -226,13 +226,19 @@ namespace AtMycelia.Myceliarium.Tests
         #region Test Double
         private class FakeEntry : IControlPanelEntry
         {
+            public virtual bool IsTestOnly => true;
             private readonly IReadOnlyList<IControlPanelEntry> _subentries;
 
-            public FakeEntry(
-                bool isTopLevel = false,
-                int sortingOrder = 0,
-                string sortingName = "",
-                IReadOnlyList<IControlPanelEntry> subentries = null)
+            public FakeEntry()
+            {
+                IsTopLevel = false;
+                SortingOrder = 0;
+                SortingName = string.Empty;
+                _subentries = Array.Empty<IControlPanelEntry>();
+            }
+
+            public FakeEntry(bool isTopLevel = false, int sortingOrder = 0,
+                string sortingName = "", IReadOnlyList<IControlPanelEntry> subentries = null)
             {
                 IsTopLevel = isTopLevel;
                 SortingOrder = sortingOrder;

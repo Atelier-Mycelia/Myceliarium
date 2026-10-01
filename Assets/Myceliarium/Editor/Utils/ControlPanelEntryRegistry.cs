@@ -1,5 +1,4 @@
 using System;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -72,13 +71,23 @@ namespace AtMycelia.Myceliarium
                     type != null &&
                     _entryType.IsAssignableFrom(type) &&
                     !type.IsAbstract &&
-                    !type.IsInterface)
+                    !type.IsInterface &&
+                    type.GetConstructor(Type.EmptyTypes) != null)
                 .ToArray();
         }
 
         private static readonly Type _entryType = typeof(IControlPanelEntry);
         private static readonly object _registryLock = new object();
         private static Type[] _allEntryTypes = Array.Empty<Type>();
+
+        /// <summary>
+        /// When false (the default), entries whose <see cref="IControlPanelEntry.IsTestOnly"/>
+        /// is true are excluded from <see cref="CreateAllEntries"/>. This keeps test-only
+        /// doubles discovered via Unity's TypeCache (which scans every loaded assembly,
+        /// including test assemblies) from leaking into a real editor session. Tests that
+        /// need to exercise IsTestOnly entries should set this to true first.
+        /// </summary>
+        internal static bool InTestMode { get; set; } = false;
 
         public static IEnumerable<Type> AllEntryTypes
         {
@@ -103,7 +112,7 @@ namespace AtMycelia.Myceliarium
                 try
                 {
                     var instance = instanceFactory(elem);
-                    if (instance != null)
+                    if (instance != null && (!instance.IsTestOnly || InTestMode))
                     {
                         _cachedEntries.Add(instance);
                     }
@@ -133,6 +142,7 @@ namespace AtMycelia.Myceliarium
             {
                 _allEntryTypes = Array.Empty<Type>();
                 _cachedEntries.Clear();
+                InTestMode = false;
             }
         }
 
