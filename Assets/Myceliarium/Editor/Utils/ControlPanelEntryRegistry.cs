@@ -1,8 +1,11 @@
 using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
+using System.Runtime.CompilerServices;
 using UnityEditor;
+
+[assembly: InternalsVisibleTo("AtMycelia.Myceliarium.Editor.Tests")]
 
 namespace AtMycelia.Myceliarium
 {
@@ -30,15 +33,17 @@ namespace AtMycelia.Myceliarium
             };
         }
 
-        public static void RefreshRegistry()
+        /// <summary>
+        /// Rebuilds the cached list of entry types. By default this uses Unity's
+        /// TypeCache (fast, no need to scan every loaded assembly). A custom
+        /// <paramref name="typeProvider"/> can be supplied to make this testable
+        /// outside of a live Unity domain reload (e.g. from edit mode tests), or
+        /// to otherwise override how candidate types are discovered.
+        /// </summary>
+        public static void RefreshRegistry(Func<IEnumerable<Type>> typeProvider = null)
         {
-            var discovered = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(SafeGetTypes)
-                .Where(type =>
-                    _entryType.IsAssignableFrom(type) &&
-                    !type.IsAbstract &&
-                    !type.IsInterface)
-                .ToArray();
+            typeProvider ??= GetTypesFromTypeCache;
+            var discovered = FilterEntryTypes(typeProvider());
 
             lock (_registryLock)
             {
@@ -46,21 +51,34 @@ namespace AtMycelia.Myceliarium
             }
         }
 
+        private static IEnumerable<Type> GetTypesFromTypeCache()
+        {
+            return TypeCache.GetTypesDerivedFrom<IControlPanelEntry>();
+        }
+
+        /// <summary>
+        /// Pure filtering logic, isolated so it can be unit tested without
+        /// touching Unity's TypeCache or AppDomain.
+        /// </summary>
+        public static Type[] FilterEntryTypes(IEnumerable<Type> candidates)
+        {
+            if (candidates == null)
+            {
+                return Array.Empty<Type>();
+            }
+
+            return candidates
+                .Where(type =>
+                    type != null &&
+                    _entryType.IsAssignableFrom(type) &&
+                    !type.IsAbstract &&
+                    !type.IsInterface)
+                .ToArray();
+        }
+
         private static readonly Type _entryType = typeof(IControlPanelEntry);
         private static readonly object _registryLock = new object();
         private static Type[] _allEntryTypes = Array.Empty<Type>();
-
-        private static IEnumerable<Type> SafeGetTypes(Assembly assembly)
-        {
-            try 
-            { 
-                return assembly.GetTypes(); 
-            }
-            catch (ReflectionTypeLoadException ex) 
-            { 
-                return ex.Types.Where(type => type != null); 
-            }
-        }
 
         public static IEnumerable<Type> AllEntryTypes
         {
@@ -73,8 +91,10 @@ namespace AtMycelia.Myceliarium
             }
         }
 
-        private static IEnumerable<IControlPanelEntry> CreateAllEntries()
+        internal static IEnumerable<IControlPanelEntry> CreateAllEntries(
+            Func<Type, IControlPanelEntry> instanceFactory = null)
         {
+            instanceFactory ??= DefaultInstanceFactory;
             var entryTypes = AllEntryTypes;
             _cachedEntries.Clear();
 
@@ -82,7 +102,7 @@ namespace AtMycelia.Myceliarium
             {
                 try
                 {
-                    var instance = Activator.CreateInstance(elem) as IControlPanelEntry;
+                    var instance = instanceFactory(elem);
                     if (instance != null)
                     {
                         _cachedEntries.Add(instance);
@@ -96,6 +116,24 @@ namespace AtMycelia.Myceliarium
             }
 
             return _cachedEntries;
+        }
+
+        private static IControlPanelEntry DefaultInstanceFactory(Type type)
+        {
+            return Activator.CreateInstance(type) as IControlPanelEntry;
+        }
+
+        /// <summary>
+        /// Clears all cached state. Intended for test isolation between test
+        /// cases; not meant to be called during normal editor operation.
+        /// </summary>
+        internal static void ResetForTests()
+        {
+            lock (_registryLock)
+            {
+                _allEntryTypes = Array.Empty<Type>();
+                _cachedEntries.Clear();
+            }
         }
 
         private static readonly IList<IControlPanelEntry> _cachedEntries = 
@@ -129,7 +167,7 @@ namespace AtMycelia.Myceliarium
                 for (int i = 0; i < found.Count; i++)
                 {
                     var elem = found[i];
-                    result.Add((T)found);
+                    result.Add((T)elem);
                 }
                 #endregion
 

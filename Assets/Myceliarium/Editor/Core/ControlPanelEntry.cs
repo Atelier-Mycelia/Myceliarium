@@ -22,7 +22,7 @@ namespace AtMycelia.Myceliarium
         public virtual bool IsTopLevel => false;
         // ^Why false as the default? We expect that most entries will be
         // nested under others.
-        public abstract string MainDisplayName { get; }
+        public abstract string SortingName { get; }
 
         public virtual void Init(bool forceReinit = false)
         {
@@ -207,7 +207,7 @@ namespace AtMycelia.Myceliarium
         /// <summary>
         /// Decides how this entry is sorted in the Control Panel's left sidebar.
         /// Lower numbers are sorted higher. When two entries have the same sorting order,
-        /// they are sorted alphabetically by their MainDisplayName.
+        /// they are sorted alphabetically by their SortingName.
         /// </summary>
         int SortingOrder { get; }
 
@@ -219,10 +219,10 @@ namespace AtMycelia.Myceliarium
         void Init(bool forceReinit = false);
 
         /// <summary>
-        /// The display name of this entry in English. This is used to help keep things
-        /// consistently sorted in the tab sidebar on the left side of the Control Panel.
+        /// When two ControlPanelEntries have the same SortingOrder, they are then sorted
+        /// based on this. Alphabetically.
         /// </summary>
-        string MainDisplayName { get; }
+        string SortingName { get; }
 
         IControlPanelTab Tab { get; }
         IControlPanelSubwindow Subwindow { get; }

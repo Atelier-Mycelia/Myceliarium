@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -188,14 +189,35 @@ namespace AtMycelia.Myceliarium
         {
             _topLevelEntries.Clear();
             var toCheck = ControlPanelEntryRegistry.GetEntriesOfType(EntrySuperType);
+            var topLevelOnes = FilterTopLevelEntries(toCheck);
+            for (int i = 0; i < topLevelOnes.Count; i++)
+            {
+                _topLevelEntries.Add(topLevelOnes[i]);
+            }
+        }
+
+        /// <summary>
+        /// Pure filtering logic, isolated from the registry/cache so it can be
+        /// unit tested without needing a live ControlPanel/EditorWindow.
+        /// </summary>
+        public static IList<IControlPanelEntry> FilterTopLevelEntries(
+            IList<IControlPanelEntry> toCheck)
+        {
+            var result = new List<IControlPanelEntry>();
+            if (toCheck == null)
+            {
+                return result;
+            }
+
             for (int i = 0; i < toCheck.Count; i++)
             {
                 var elem = toCheck[i];
-                if (elem.IsTopLevel)
+                if (elem != null && elem.IsTopLevel)
                 {
-                    _topLevelEntries.Add(elem);
+                    result.Add(elem);
                 }
             }
+            return result;
         }
 
         /// <summary>
@@ -236,25 +258,32 @@ namespace AtMycelia.Myceliarium
 
         private IList<IControlPanelEntry> EntriesCompatibleWith(IControlPanelEntrySaver saver)
         {
-            var compatibleEntries = new List<IControlPanelEntry>();
-            for (int i = 0; i < _allEntries.Count; i++)
-            {
-                var entry = _allEntries[i];
-                if (saver.IsCompatibleWith(entry))
-                {
-                    compatibleEntries.Add(entry);
-                }
-            }
-            return compatibleEntries;
+            return FilterCompatibleEntries(_allEntries, saver.IsCompatibleWith);
         }
 
         private IList<IControlPanelEntry> EntriesCompatibleWith(IControlPanelEntryLoader loader)
         {
+            return FilterCompatibleEntries(_allEntries, loader.IsCompatibleWith);
+        }
+
+        /// <summary>
+        /// Pure filtering logic, isolated so it can be unit tested without
+        /// needing a live ControlPanel/EditorWindow, concrete savers, or loaders.
+        /// </summary>
+        public static IList<IControlPanelEntry> FilterCompatibleEntries(
+            IList<IControlPanelEntry> allEntries,
+            Func<IControlPanelEntry, bool> isCompatible)
+        {
             var compatibleEntries = new List<IControlPanelEntry>();
-            for (int i = 0; i < _allEntries.Count; i++)
+            if (allEntries == null || isCompatible == null)
             {
-                var entry = _allEntries[i];
-                if (loader.IsCompatibleWith(entry))
+                return compatibleEntries;
+            }
+
+            for (int i = 0; i < allEntries.Count; i++)
+            {
+                var entry = allEntries[i];
+                if (isCompatible(entry))
                 {
                     compatibleEntries.Add(entry);
                 }
@@ -380,7 +409,11 @@ namespace AtMycelia.Myceliarium
             }
         }
 
-        private static int CompareEntries(IControlPanelEntry a, IControlPanelEntry b)
+        /// <summary>
+        /// Pure comparison logic, isolated so it can be unit tested directly
+        /// without needing a live ControlPanel/EditorWindow.
+        /// </summary>
+        public static int CompareEntries(IControlPanelEntry a, IControlPanelEntry b)
         {
             int sortingOrderComparison = a.SortingOrder.CompareTo(b.SortingOrder);
             if (sortingOrderComparison != 0)
@@ -388,25 +421,51 @@ namespace AtMycelia.Myceliarium
                 return sortingOrderComparison;
             }
 
-            return string.Compare(a.MainDisplayName, b.MainDisplayName, System.StringComparison.Ordinal);
+            return string.Compare(a.SortingName, b.SortingName, System.StringComparison.Ordinal);
         }
         protected readonly List<IControlPanelEntry> _topLevelEntries = new List<IControlPanelEntry>();
 
         protected virtual void RegisterSubentries()
         {
-            for (int i = 0; i < _topLevelEntries.Count; i++)
+            var collected = CollectAllEntries(_topLevelEntries);
+            for (int i = 0; i < collected.Count; i++)
             {
-                var topLevelElem = _topLevelEntries[i];
+                var entry = collected[i];
+                if (!_allEntries.Contains(entry))
+                {
+                    _allEntries.Add(entry);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Pure logic for gathering every top-level entry's (recursive) subentries
+        /// into a single flat, de-duplicated list. Isolated so it can be unit
+        /// tested without needing a live ControlPanel/EditorWindow.
+        /// </summary>
+        public static IList<IControlPanelEntry> CollectAllEntries(
+            IList<IControlPanelEntry> topLevelEntries)
+        {
+            var result = new List<IControlPanelEntry>();
+            if (topLevelEntries == null)
+            {
+                return result;
+            }
+
+            for (int i = 0; i < topLevelEntries.Count; i++)
+            {
+                var topLevelElem = topLevelEntries[i];
                 var subentries = topLevelElem.GetSubentries(recursive: true);
                 for (int j = 0; j < subentries.Count; j++)
                 {
                     var subentry = subentries[j];
-                    if (!_allEntries.Contains(subentry))
+                    if (!result.Contains(subentry))
                     {
-                        _allEntries.Add(subentry);
+                        result.Add(subentry);
                     }
                 }
             }
+            return result;
         }
 
         

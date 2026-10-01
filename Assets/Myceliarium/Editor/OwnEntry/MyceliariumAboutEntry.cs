@@ -5,7 +5,7 @@ namespace AtMycelia.Myceliarium
         public override int SortingOrder => 0;
         public override bool IsTopLevel => false;
 
-        public override string MainDisplayName => "Myceliarium";
+        public override string SortingName => "Myceliarium";
 
         public override bool IsMeantToHaveSubwindow => true;
 
