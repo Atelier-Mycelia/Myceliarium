@@ -1,7 +1,4 @@
-using System.Collections.Generic;
 using UnityEditor;
-using UnityEngine;
-using UnityDebug = UnityEngine.Debug;
 using Type = System.Type;
 
 namespace AtMycelia.Myceliarium
