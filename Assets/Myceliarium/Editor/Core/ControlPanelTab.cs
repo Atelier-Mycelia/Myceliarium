@@ -6,7 +6,7 @@ using UitkButton = UnityEngine.UIElements.Button;
 
 namespace AtMycelia.Myceliarium
 {
-    public abstract class ControlPanelTab : IControlPanelTab, IDisposable
+    public abstract class ControlPanelTab : VisualElement, IControlPanelTab
     {
         public abstract string DisplayName { get; }
         public abstract string PathToUxml { get; }
@@ -27,9 +27,8 @@ namespace AtMycelia.Myceliarium
                 logMessage = $"Failed to load tab UXML at {PathToUxml} for {GetType().Name}.";
                 throw new InvalidOperationException(logMessage);
             }
-
-            Root = vta.CloneTree();
-            Root.name = $"{GetType().Name}_Root";
+            vta.CloneTree(this);
+            name = $"{GetType().Name}_Root";
         }
 
         public virtual void Register(IControlPanelTab subtab)
@@ -63,7 +62,10 @@ namespace AtMycelia.Myceliarium
             }
         }
 
-        public VisualElement Root { get; protected set; }
+        public VisualElement Root
+        {
+            get => this;
+        }
 
         /// <summary>
         /// By default, this applies right after the subtab is registered.
@@ -167,10 +169,14 @@ namespace AtMycelia.Myceliarium
                 {
                     return uitkBtn.text;
                 }
+                else if (_mainClickable is Foldout foldout)
+                {
+                    return foldout.text;
+                }
                 else
                 {
                     string logMessage = $"Cannot get Text for {GetType().Name} because the " +
-                        $"button is not a UitkButton.";
+                        $"button is not a UitkButton or Foldout.";
                     throw new InvalidOperationException(logMessage);
                 }
             }
@@ -179,6 +185,10 @@ namespace AtMycelia.Myceliarium
                 if (_mainClickable is UitkButton uitkBtn)
                 {
                     uitkBtn.text = value;
+                }
+                else if (_mainClickable is Foldout foldout)
+                {
+                    foldout.text = value;
                 }
                 else
                 {
@@ -233,13 +243,7 @@ namespace AtMycelia.Myceliarium
                 // Control Panel window is closed.
                 ToggleSubs(false);
                 Clicked = delegate { };
-                RemoveFromHierarchy();
             }
-        }
-
-        public virtual void RemoveFromHierarchy()
-        {
-            Root?.RemoveFromHierarchy();
         }
 
         public virtual bool IsSelected
@@ -267,7 +271,7 @@ namespace AtMycelia.Myceliarium
         private readonly List<IControlPanelTab> _subtabs = new List<IControlPanelTab>();
     }
 
-    public interface IControlPanelTab
+    public interface IControlPanelTab : IDisposable
     {
         VisualElement Root { get; }
 
@@ -287,7 +291,6 @@ namespace AtMycelia.Myceliarium
         bool IsSelected { get; set; }
         IReadOnlyList<IControlPanelTab> Subtabs { get; }
         void Register(IControlPanelTab subtab);
-        void RemoveFromHierarchy();
     }
 }
 

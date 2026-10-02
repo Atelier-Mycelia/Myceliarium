@@ -19,6 +19,14 @@ namespace AtMycelia.Myceliarium.Tests
         public void TearDown()
         {
             ControlPanelEntryRegistry.ResetForTests();
+
+            // The registry is static/global, shared with the live editor session.
+            // Since EditMode tests don't necessarily trigger an assembly reload,
+            // leaving it cleared here would make real tabs (e.g. in
+            // AtMyceliaControlPanel) disappear after the test run. Restore it to
+            // reflect the actual project types so the live editor keeps working.
+            ControlPanelEntryRegistry.RefreshRegistry();
+            ControlPanelEntryRegistry.CreateAllEntries();
         }
 
         #region FilterEntryTypes
