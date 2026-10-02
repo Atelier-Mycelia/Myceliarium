@@ -8,10 +8,24 @@ namespace AtMycelia.Myceliarium.Tests
 {
     public class CpEntryLoaderRegTests
     {
+        [SetUp]
+        public void SetUp()
+        {
+            CpEntryLoaderReg.ResetForTests();
+        }
+
         [TearDown]
         public void TearDown()
         {
             CpEntryLoaderReg.ResetForTests();
+
+            // The registry is static/global, shared with the live editor session.
+            // Since EditMode tests don't necessarily trigger an assembly reload,
+            // leaving it cleared here would make real loaders disappear after the
+            // test run. Restore it to reflect the actual project types so the
+            // live editor keeps working.
+            CpEntryLoaderReg.RefreshRegistry();
+            CpEntryLoaderReg.CreateAllLoaders();
         }
 
         #region FilterLoaderTypes
