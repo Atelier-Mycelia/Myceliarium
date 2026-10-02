@@ -367,13 +367,18 @@ namespace AtMycelia.Myceliarium.Tests
 
             public event Action<IControlPanelTab> Clicked;
 
+            public void Dispose()
+            {
+
+            }
+
             public void Init() { }
             public void InvokeClicked() => Clicked?.Invoke(this);
             public void Register(IControlPanelTab subtab) { }
             public void RemoveFromHierarchy() { }
         }
 
-        private class FakeSubwindow : IControlPanelSubwindow
+        private class FakeSubwindow : VisualElement, IControlPanelSubwindow
         {
             public VisualElement Root { get; } = new VisualElement();
             public string PathToUxml => string.Empty;
@@ -385,7 +390,6 @@ namespace AtMycelia.Myceliarium.Tests
             public void Bind() { }
             public void Unbind() { }
             public void Dispose() { }
-            public void RemoveFromHierarchy() { }
 
             public void Show()
             {
@@ -399,8 +403,12 @@ namespace AtMycelia.Myceliarium.Tests
                 Root.style.display = DisplayStyle.None;
             }
 
-            public T Q<T>(string name) where T : VisualElement => null;
             public void Refresh() { }
+
+            public T Q<T>(string name, string className) where T : VisualElement
+            {
+                return null;
+            }
         }
         #endregion
     }
