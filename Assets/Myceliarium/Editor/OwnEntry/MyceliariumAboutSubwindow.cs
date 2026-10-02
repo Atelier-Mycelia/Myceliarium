@@ -13,9 +13,9 @@ namespace AtMycelia.Myceliarium
 
         protected override void RegisterVisualElements()
         {
-            _versionLabel = Root.Q<UitkLabel>("VersionLabel");
-            _copyrightLabel = Root.Q<UitkLabel>("CopyrightLabel");
-            _multiLinksLabel = Root.Q<UitkLabel>("MultiLinksLabel");
+            _versionLabel = Q<UitkLabel>("VersionLabel");
+            _copyrightLabel = Q<UitkLabel>("CopyrightLabel");
+            _multiLinksLabel = Q<UitkLabel>("MultiLinksLabel");
         }
 
         public string VersionText

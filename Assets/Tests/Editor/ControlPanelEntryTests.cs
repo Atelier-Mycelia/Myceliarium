@@ -265,6 +265,11 @@ namespace AtMycelia.Myceliarium.Tests
 
             public event Action<IControlPanelTab> Clicked;
 
+            public void Dispose()
+            {
+
+            }
+
             public void Init() { }
             public void InvokeClicked() => Clicked?.Invoke(this);
             public void Register(IControlPanelTab subtab) { }
@@ -285,8 +290,12 @@ namespace AtMycelia.Myceliarium.Tests
             public void RemoveFromHierarchy() => RemoveFromHierarchyCallCount++;
             public void Show() => Root.style.display = DisplayStyle.Flex;
             public void Hide() => Root.style.display = DisplayStyle.None;
-            public T Q<T>(string name) where T : VisualElement => null;
             public void Refresh() { }
+
+            public T Q<T>(string name, string className) where T : VisualElement
+            {
+                return null;//
+            }
         }
         #endregion
     }

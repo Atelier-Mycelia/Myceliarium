@@ -60,7 +60,7 @@ namespace AtMycelia.Myceliarium
             }
 
             _subentries.Clear();
-            _subwindow?.RemoveFromHierarchy();
+            _subwindow?.Dispose();
             _subwindow = null;
             _isInitted = _isDisposed = false;
         }
@@ -180,14 +180,16 @@ namespace AtMycelia.Myceliarium
             // entry is expected to persist even when the Control Panel window is
             // closed. We'll merely unattach the tabs and subwindows from the
             // hierarchy, and let the Control Panel window handle the rest.
+            _subwindow.Dispose();
+            _tab.Dispose();
             RemoveFromHierarchy();
             _isDisposed = true;
         }
         
         public virtual void RemoveFromHierarchy()
         {
-            _tab?.RemoveFromHierarchy();
-            _subwindow?.RemoveFromHierarchy();
+            _tab?.Root.RemoveFromHierarchy();
+            _subwindow?.Root.RemoveFromHierarchy();
         }
 
         public virtual void OnSelected()

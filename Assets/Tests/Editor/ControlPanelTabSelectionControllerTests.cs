@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using UnityEngine.UIElements;
 
 namespace AtMycelia.Myceliarium.Tests
 {
@@ -239,6 +240,11 @@ namespace AtMycelia.Myceliarium.Tests
 
             public event Action<IControlPanelTab> Clicked;
 
+            public void Dispose()
+            {
+
+            }
+
             public void Init() { }
             public void InvokeClicked() => Clicked?.Invoke(this);
             public void Register(IControlPanelTab subtab) { }
@@ -273,7 +279,10 @@ namespace AtMycelia.Myceliarium.Tests
             }
 
             public void Refresh() { }
-            public T Q<T>(string name) where T : UnityEngine.UIElements.VisualElement => null;
+            public T Q<T>(string name, string className) where T : VisualElement
+            {
+                return null;
+            }
         }
         #endregion
     }

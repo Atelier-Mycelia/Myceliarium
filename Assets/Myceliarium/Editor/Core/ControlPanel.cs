@@ -14,7 +14,7 @@ namespace AtMycelia.Myceliarium
     public abstract class ControlPanel : EditorWindow, IControlPanel
     {
         #region Configurable Properties
-        protected virtual string WindowTitle => "Control Panel";
+        protected abstract string DisplayName { get; }
 
         /// <summary>
         /// The path to the uxml for the control panel's root window. This is relative
@@ -26,6 +26,11 @@ namespace AtMycelia.Myceliarium
         protected virtual Vector2 DefaultWindowSize => new Vector2(1280, 800);
         public virtual Vector2 MaxWindowSize => DefaultWindowSize;
         #endregion
+
+        /// <summary>
+        /// Alias for DisplayName.
+        /// </summary>
+        protected string WindowTitle => DisplayName;
 
         protected virtual void OnEnable()
         {
@@ -149,7 +154,7 @@ namespace AtMycelia.Myceliarium
             PreRootPrep(out bool success);
             if (!success)
             {
-                string logMessage = $"{WindowTitle} failed to initialize. " +
+                string logMessage = $"{DisplayName} failed to initialize. " +
                     $"Aborting GUI creation.";
                 UnityDebug.LogError(logMessage);
                 this.Close();
@@ -176,7 +181,7 @@ namespace AtMycelia.Myceliarium
 
         private void SetTitleContent()
         {
-            titleContent = new GUIContent(WindowTitle);
+            titleContent = new GUIContent(DisplayName);
         }
 
         private void SetWindowSizeBounds()
@@ -304,7 +309,7 @@ namespace AtMycelia.Myceliarium
             TryAddBaseWindow(out bool success);
             if (!success)
             {
-                string logMessage = $"{WindowTitle} failed to initialize. " +
+                string logMessage = $"{DisplayName} failed to initialize. " +
                     $"Aborting GUI creation.";
                 UnityDebug.LogError(logMessage);
                 this.Close();

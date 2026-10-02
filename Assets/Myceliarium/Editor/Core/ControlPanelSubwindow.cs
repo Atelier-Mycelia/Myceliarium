@@ -4,7 +4,7 @@ using UnityEngine.UIElements;
 
 namespace AtMycelia.Myceliarium
 {
-    public abstract class ControlPanelSubwindow : IControlPanelSubwindow, IDisposable
+    public abstract class ControlPanelSubwindow : VisualElement, IControlPanelSubwindow, IDisposable
     {
         public virtual void Init()
         {
@@ -19,28 +19,26 @@ namespace AtMycelia.Myceliarium
             _isDisposed = false;
         }
 
+        public VisualElement Root
+        {
+            get => this;
+        }
+
         protected bool _isInitted;
+
+        public T Q<T>(string name = null, string className = null) where T : VisualElement
+        {
+            return Root.Q<T>(name, className);
+        }
 
         public virtual void Show()
         {
-            if (Root == null)
-            {
-                string logMessage = $"Cannot show subwindow {GetType().Name} because its " +
-                    $"Root VisualElement is null. Ensure Init() has been called.";
-                throw new InvalidOperationException(logMessage);
-            }
-            Root.style.display = DisplayStyle.Flex;
+            style.display = DisplayStyle.Flex;
         }
 
         public virtual void Hide()
         {
-            if (Root == null)
-            {
-                string logMessage = $"Cannot hide subwindow {GetType().Name} because its " +
-                    $"Root VisualElement is null. Ensure Init() has been called.";
-                throw new InvalidOperationException(logMessage);
-            }
-            Root.style.display = DisplayStyle.None;
+            style.display = DisplayStyle.None;
         }
 
         protected virtual void LoadUxml()
@@ -54,11 +52,10 @@ namespace AtMycelia.Myceliarium
                 throw new InvalidOperationException(logMessage);
             }
 
-            Root = vta.CloneTree();
+            vta.CloneTree(this);
         }
 
         public abstract string PathToUxml { get; }
-        public VisualElement Root { get; protected set; }
 
         #region Registration and Binding of Visual Elements
         // These by default do nothing. Subclasses are expected to override
@@ -81,35 +78,6 @@ namespace AtMycelia.Myceliarium
         }
         #endregion
 
-        public virtual void RemoveFromHierarchy()
-        {
-            Root?.RemoveFromHierarchy();
-        }
-
-        public virtual T Q<T>(string name) where T : VisualElement
-        {
-            string logMessage;
-
-            if (Root == null)
-            {
-                logMessage = $"Cannot query for {typeof(T).Name} named '{name}' because " +
-                    $"the Root VisualElement is null. Ensure the subwindow has been " +
-                    $"initialized and the UXML loaded.";
-                throw new InvalidOperationException(logMessage);
-            }
-
-            var element = Root.Q<T>(name);
-
-            if (element == null)
-            {
-                logMessage = $"Failed to find a {typeof(T).Name} named '{name}' " +
-                    $"in the subwindow's hierarchy. Ensure the UXML contains an " +
-                    $"element with this name and type.";
-                throw new InvalidOperationException(logMessage);
-            }
-            return element;
-        }
-
         public virtual void Dispose()
         {
             if (_isDisposed)
@@ -118,17 +86,10 @@ namespace AtMycelia.Myceliarium
             }
 
             Unbind();
-
-            // Let's avoid nulling the root. Subwindows (along with the entries
-            // they are a part of) are expected to persist until Unity
-            // either recompiles scripts or closes. Nulling the root ourselves
-            // is just asking for trouble.
-            Root?.RemoveFromHierarchy();
-
             _isDisposed = true;
         }
 
-        public virtual bool IsVisible => Root != null && Root.style.display == DisplayStyle.Flex;
+        public virtual bool IsVisible => style.display == DisplayStyle.Flex;
 
         /// <summary>
         /// No-op by default. Subclasses can override to implement refreshing logic.
@@ -147,14 +108,13 @@ namespace AtMycelia.Myceliarium
         void Bind();
         void Unbind();
         void Dispose();
-        void RemoveFromHierarchy();
         void Show();
         void Hide();
 
         /// <summary>
         /// Searches for a VisualElement of type T with the given name in the subwindow's hierarchy.
         /// </summary>
-        T Q<T>(string name) where T : VisualElement;
+        T Q<T>(string name, string className) where T : VisualElement;
 
         /// <summary>
         /// Relative to Resources.
