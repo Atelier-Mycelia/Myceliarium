@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine.UIElements;
 using UnityDebug = UnityEngine.Debug;
 
@@ -8,7 +7,8 @@ namespace AtMycelia.Myceliarium
 {
     /// <summary>
     /// Handles attaching IControlPanelEntry instances to the ControlPanel window.
-    /// Initializes entries and adds their UI elements to the appropriate containers.
+    /// Initializes entries and adds their UI elements (tabs and subwindows) to
+    /// the appropriate containers.
     /// </summary>
     public sealed class ControlPanelEntryAttacher : IDisposable
     {
@@ -45,101 +45,12 @@ namespace AtMycelia.Myceliarium
                     throw new InvalidOperationException(errorMessage);
                 }
             }
-
-            ToggleSubs(true);
         }
 
         private bool _isDisposed = false;
         private VisualElement _rootElement;
         private VisualElement _mainTabSet;
         private ScrollView _subwindowDisplay;
-
-        private void ToggleSubs(bool on)
-        {
-            if (on)
-            {
-                ControlPanelSignals.OnEntryTabClicked += OnEntryTabClicked;
-            }
-            else
-            {
-                ControlPanelSignals.OnEntryTabClicked -= OnEntryTabClicked;
-            }
-        }
-
-        private void OnEntryTabClicked(IControlPanelEntry entryForClicked)
-        {
-            bool ignoreIt = _entries == null || 
-                !WeHave(entryForClicked) ||
-                !entryForClicked.IsMeantToHaveSubwindow;
-            if (ignoreIt)
-            {
-                return;
-            }
-
-            bool currentlyShowingEntry = _entryBeingDisplayed != null;
-            bool switchToOtherOne = entryForClicked != _entryBeingDisplayed;
-            bool shouldHideCurrentOneFirst = currentlyShowingEntry && switchToOtherOne;
-            if (shouldHideCurrentOneFirst)
-            {
-                var subwindowShowing = _entryBeingDisplayed.Subwindow;
-                subwindowShowing.Hide();
-            }
-
-            if (switchToOtherOne)
-            {
-                _entryBeingDisplayed = entryForClicked;
-                var subwindow = entryForClicked.Subwindow;
-                subwindow.Show();
-                DeselectAllTabsExceptFor(entryForClicked.Tab);
-            }
-        }
-
-        private bool WeHave(IControlPanelEntry entry)
-        {
-            // Need to do a recursive search because some entries are subentries of other entries.
-            if (_entries == null || _entries.Count == 0)
-            {
-                return false;
-            }
-
-            bool foundIt = false;
-            for (int i = 0; i < _entries.Count; i++)
-            {
-                var elem = _entries[i];
-                if (elem == entry)
-                {
-                    foundIt = true;
-                    break;
-                }
-                var subentries = elem.GetSubentries(recursive: true);
-                if (subentries.Contains(entry))
-                {
-                    foundIt = true;
-                    break;
-                }
-            }
-
-            return foundIt;
-        }
-        private IControlPanelEntry _entryBeingDisplayed;
-
-        private void DeselectAllTabsExceptFor(IControlPanelTab toLeaveAlone)
-        {
-            for (int i = 0; i < _entries.Count; i++)
-            {
-                var elem = _entries[i];
-                var tab = elem.Tab;
-                tab.IsSelected = tab == toLeaveAlone;
-                
-                var subentries = elem.GetSubentries(recursive: true);
-                for (int j = 0; j < subentries.Count; j++)
-                {
-                    var subentry = subentries[j];
-                    var subtab = subentry.Tab;
-                    subtab.IsSelected = subtab == toLeaveAlone;
-                }
-            }
-        }
 
         public void Attach(IList<IControlPanelEntry> toAttach)
         {
@@ -156,10 +67,10 @@ namespace AtMycelia.Myceliarium
             {
                 if (!elem.IsTopLevel)
                 {
-                    // We expect the top level entries to handle their subentries
+                    // We expect the top-level entries to handle attaching their subs
                     continue;
                 }
-                Attach(elem);//
+                Attach(elem);
             }
         }
 
@@ -221,8 +132,6 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
-            ToggleSubs(false);
-            _entryBeingDisplayed = null;
             _entries.Clear();
             _mainTabSet = null;
             _subwindowDisplay = null;
@@ -230,7 +139,7 @@ namespace AtMycelia.Myceliarium
             _isDisposed = true;
         }
 
-        public IReadOnlyList<IControlPanelEntry> Entries => 
+        public IReadOnlyList<IControlPanelEntry> Entries =>
             (IReadOnlyList<IControlPanelEntry>)_entries;
     }
 }

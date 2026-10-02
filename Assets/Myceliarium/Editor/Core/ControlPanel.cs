@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -168,8 +169,8 @@ namespace AtMycelia.Myceliarium
             SetTitleContent();
             SetWindowSizeBounds();
             RefreshTopLevelEntryCache();
-            // ^Why just the top-level ones? Because we expect the subentries to be
-            // prepped after their parents are done being attached to this Control Panel.
+            // ^Why just the top-level ones? Because after those are done being attached
+            // to this ControlPanel, we expect them to handle attaching their subs
             success = true;
         }
 
@@ -188,37 +189,54 @@ namespace AtMycelia.Myceliarium
         {
             _topLevelEntries.Clear();
             var toCheck = ControlPanelEntryRegistry.GetEntriesOfType(EntrySuperType);
-            for (int i = 0; i < toCheck.Count; i++)
+            var topLevelOnes = FilterTopLevelEntries(toCheck);
+            for (int i = 0; i < topLevelOnes.Count; i++)
             {
-                var elem = toCheck[i];
-                if (elem.IsTopLevel)
-                {
-                    _topLevelEntries.Add(elem);
-                }
+                _topLevelEntries.Add(topLevelOnes[i]);
             }
         }
 
         /// <summary>
-        /// The type of entries that this control panel is responsible for. This is used to
-        /// help this get only the entries it needs to work with. When overriding, best
-        /// set this to the interface type that your entries implement, rather than any
-        /// one concrete type. 
+        /// Pure filtering logic, isolated from the registry/cache so it can be
+        /// unit tested without needing a live ControlPanel/EditorWindow.
+        /// </summary>
+        public static IList<IControlPanelEntry> FilterTopLevelEntries(
+            IList<IControlPanelEntry> toCheck)
+        {
+            var result = new List<IControlPanelEntry>();
+            if (toCheck == null)
+            {
+                return result;
+            }
+
+            for (int i = 0; i < toCheck.Count; i++)
+            {
+                var elem = toCheck[i];
+                if (elem != null && elem.IsTopLevel)
+                {
+                    result.Add(elem);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// The type of entries that this Control Panel is responsible for. This is used to
+        /// help this get only the ones it needs to work with. When overriding, best
+        /// set this to the interface type that your entries implement (rather than any
+        /// one concrete type). 
         /// </summary>
         protected abstract Type EntrySuperType { get; }
 
         /// <summary>
-        /// The type of savers that this control panel is responsible for. This is used to
-        /// make sure this only gathers up the savers that are compatible with the entries
-        /// it is working with. When overriding, best set this to the interface type that
-        /// your savers implement, rather than any one concrete type. 
+        /// The type of savers that this Control Panel is responsible for. Same sort of
+        /// logic as EntrySuperType; take a look at its summary for more details.
         /// </summary>
         protected abstract Type SaverSuperType { get; }
 
         /// <summary>
-        /// The type of loaders that this control panel is responsible for. This is used to
-        /// make sure this only gathers up the loaders that are compatible with the entries
-        /// it is working with. When overriding, best set this to the interface type that
-        /// your loaders implement, rather than any one concrete type.
+        /// The type of loaders that this control panel is responsible for. Same sort of
+        /// logic as EntrySuperType; take a look at its summary for more details.
         /// </summary>
         protected abstract Type LoaderSuperType { get; }
 
@@ -236,25 +254,32 @@ namespace AtMycelia.Myceliarium
 
         private IList<IControlPanelEntry> EntriesCompatibleWith(IControlPanelEntrySaver saver)
         {
-            var compatibleEntries = new List<IControlPanelEntry>();
-            for (int i = 0; i < _allEntries.Count; i++)
-            {
-                var entry = _allEntries[i];
-                if (saver.IsCompatibleWith(entry))
-                {
-                    compatibleEntries.Add(entry);
-                }
-            }
-            return compatibleEntries;
+            return FilterCompatibleEntries(_allEntries, saver.IsCompatibleWith);
         }
 
         private IList<IControlPanelEntry> EntriesCompatibleWith(IControlPanelEntryLoader loader)
         {
+            return FilterCompatibleEntries(_allEntries, loader.IsCompatibleWith);
+        }
+
+        /// <summary>
+        /// Pure filtering logic, isolated so it can be unit tested without
+        /// needing a live ControlPanel/EditorWindow, concrete savers, or loaders.
+        /// </summary>
+        public static IList<IControlPanelEntry> FilterCompatibleEntries(
+            IList<IControlPanelEntry> allEntries,
+            Func<IControlPanelEntry, bool> isCompatible)
+        {
             var compatibleEntries = new List<IControlPanelEntry>();
-            for (int i = 0; i < _allEntries.Count; i++)
+            if (allEntries == null || isCompatible == null)
             {
-                var entry = _allEntries[i];
-                if (loader.IsCompatibleWith(entry))
+                return compatibleEntries;
+            }
+
+            for (int i = 0; i < allEntries.Count; i++)
+            {
+                var entry = allEntries[i];
+                if (isCompatible(entry))
                 {
                     compatibleEntries.Add(entry);
                 }
@@ -353,9 +378,14 @@ namespace AtMycelia.Myceliarium
 
             Sort(_topLevelEntries);
             _attacher.Attach(_topLevelEntries);
+
+            _selectionController?.Dispose();
+            _selectionController.Init(_attacher.Entries);
         }
 
         private ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
+        private ControlPanelTabSelectionController _selectionController =
+            new ControlPanelTabSelectionController();
 
         /// <summary>
         /// Default implementation sorts the entries by SortingOrder first,
@@ -380,7 +410,11 @@ namespace AtMycelia.Myceliarium
             }
         }
 
-        private static int CompareEntries(IControlPanelEntry a, IControlPanelEntry b)
+        /// <summary>
+        /// Pure comparison logic, isolated so it can be unit tested directly
+        /// without needing a live ControlPanel/EditorWindow.
+        /// </summary>
+        public static int CompareEntries(IControlPanelEntry a, IControlPanelEntry b)
         {
             int sortingOrderComparison = a.SortingOrder.CompareTo(b.SortingOrder);
             if (sortingOrderComparison != 0)
@@ -388,25 +422,67 @@ namespace AtMycelia.Myceliarium
                 return sortingOrderComparison;
             }
 
-            return string.Compare(a.MainDisplayName, b.MainDisplayName, System.StringComparison.Ordinal);
+            return string.Compare(a.SortingName, b.SortingName, System.StringComparison.Ordinal);
         }
         protected readonly List<IControlPanelEntry> _topLevelEntries = new List<IControlPanelEntry>();
 
         protected virtual void RegisterSubentries()
         {
-            for (int i = 0; i < _topLevelEntries.Count; i++)
+            var collected = CollectAllEntries(_topLevelEntries);
+            for (int i = 0; i < collected.Count; i++)
             {
-                var topLevelElem = _topLevelEntries[i];
+                var entry = collected[i];
+                if (!_allEntries.Contains(entry))
+                {
+                    _allEntries.Add(entry);
+                }
+            }
+
+            AssertNoDuplicateEntryTypes();
+        }
+
+        /// <summary>
+        /// RPG Maker's Database window never has more than one tab for the same
+        /// data category (e.g. only ever one "Actors" tab). Since Myceliarium
+        /// entries are discovered via reflection, it's possible for a user to
+        /// accidentally register the same entry type as a subentry under two
+        /// different top-level parents. This guards against that.
+        /// </summary>
+        protected virtual void AssertNoDuplicateEntryTypes()
+        {
+            var everyEntry = new List<IControlPanelEntry>(_topLevelEntries);
+            everyEntry.AddRange(_allEntries);
+            ControlPanelEntryTypeValidator.AssertNoDuplicateEntryTypes(everyEntry);
+        }
+
+        /// <summary>
+        /// Pure logic for gathering every top-level entry's (recursive) subentries
+        /// into a single flat, de-duplicated list. Isolated so it can be unit
+        /// tested without needing a live ControlPanel/EditorWindow.
+        /// </summary>
+        public static IList<IControlPanelEntry> CollectAllEntries(
+            IList<IControlPanelEntry> topLevelEntries)
+        {
+            var result = new List<IControlPanelEntry>();
+            if (topLevelEntries == null)
+            {
+                return result;
+            }
+
+            for (int i = 0; i < topLevelEntries.Count; i++)
+            {
+                var topLevelElem = topLevelEntries[i];
                 var subentries = topLevelElem.GetSubentries(recursive: true);
                 for (int j = 0; j < subentries.Count; j++)
                 {
                     var subentry = subentries[j];
-                    if (!_allEntries.Contains(subentry))
+                    if (!result.Contains(subentry))
                     {
-                        _allEntries.Add(subentry);
+                        result.Add(subentry);
                     }
                 }
             }
+            return result;
         }
 
         
@@ -417,6 +493,8 @@ namespace AtMycelia.Myceliarium
         {
             _attacher?.Dispose();
             _attacher = null;
+            _selectionController?.Dispose();
+            _selectionController = null;
         }
 
         protected virtual void HandleLanguageDropdown()
