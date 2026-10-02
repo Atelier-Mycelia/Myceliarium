@@ -291,7 +291,6 @@ namespace AtMycelia.Myceliarium
         bool IsSelected { get; set; }
         IReadOnlyList<IControlPanelTab> Subtabs { get; }
         void Register(IControlPanelTab subtab);
-        void RemoveFromHierarchy();
     }
 }
 

@@ -180,8 +180,8 @@ namespace AtMycelia.Myceliarium
             // entry is expected to persist even when the Control Panel window is
             // closed. We'll merely unattach the tabs and subwindows from the
             // hierarchy, and let the Control Panel window handle the rest.
-            _subwindow.Dispose();
-            _tab.Dispose();
+            _subwindow?.Dispose();
+            _tab?.Dispose();
             RemoveFromHierarchy();
             _isDisposed = true;
         }

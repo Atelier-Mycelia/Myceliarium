@@ -131,7 +131,7 @@ namespace AtMycelia.Myceliarium.Tests
 
         #region ResetState (via forceReinit)
         [Test]
-        public void Init_ForceReinit_ClearsSubentriesAndRemovesSubwindowFromHierarchy()
+        public void Init_ForceReinit_DisposesThePreviousSubwindow()
         {
             var entry = new TestEntry(meantToHaveSubwindow: true, assignSubwindow: true);
             entry.Init();
@@ -139,36 +139,50 @@ namespace AtMycelia.Myceliarium.Tests
 
             entry.Init(forceReinit: true);
 
-            Assert.That(originalSubwindow.RemoveFromHierarchyCallCount, Is.EqualTo(1));
+            Assert.That(originalSubwindow.DisposeCallCount, Is.EqualTo(1));
         }
         #endregion
 
         #region Dispose
         [Test]
-        public void Dispose_RemovesTabAndSubwindowFromHierarchy()
+        public void Dispose_DisposesTabAndSubwindowAndRemovesTheirRootsFromHierarchy()
         {
+            var root = new VisualElement();
             var entry = new TestEntry(meantToHaveSubwindow: true, assignSubwindow: true);
             entry.Init();
             var tab = (FakeTab)entry.Tab;
             var subwindow = (FakeSubwindow)entry.Subwindow;
+            root.Add(tab.Root);
+            root.Add(subwindow.Root);
 
             entry.Dispose();
 
-            Assert.That(tab.RemoveFromHierarchyCallCount, Is.EqualTo(1));
-            Assert.That(subwindow.RemoveFromHierarchyCallCount, Is.EqualTo(1));
+            Assert.That(tab.DisposeCallCount, Is.EqualTo(1));
+            Assert.That(subwindow.DisposeCallCount, Is.EqualTo(1));
+            Assert.That(root.Contains(tab.Root), Is.False);
+            Assert.That(root.Contains(subwindow.Root), Is.False);
+        }
+
+        [Test]
+        public void Dispose_EntryWithoutSubwindow_DoesNotThrow()
+        {
+            var entry = new TestEntry(meantToHaveSubwindow: false, assignSubwindow: false);
+            entry.Init();
+
+            Assert.DoesNotThrow(() => entry.Dispose());
         }
 
         [Test]
         public void Dispose_CalledTwice_SecondCallIsNoOp()
         {
-            var entry = new TestEntry();
+            var entry = new TestEntry(meantToHaveSubwindow: true, assignSubwindow: true);
             entry.Init();
             var tab = (FakeTab)entry.Tab;
 
             entry.Dispose();
             entry.Dispose();
 
-            Assert.That(tab.RemoveFromHierarchyCallCount, Is.EqualTo(1));
+            Assert.That(tab.DisposeCallCount, Is.EqualTo(1));
         }
         #endregion
 
@@ -261,19 +275,16 @@ namespace AtMycelia.Myceliarium.Tests
             public string Text { get; set; }
             public bool IsSelected { get; set; }
             public IReadOnlyList<IControlPanelTab> Subtabs => Array.Empty<IControlPanelTab>();
-            public int RemoveFromHierarchyCallCount { get; private set; }
+            public int DisposeCallCount { get; private set; }
 
             public event Action<IControlPanelTab> Clicked;
 
-            public void Dispose()
-            {
-
-            }
+            public void Dispose() => DisposeCallCount++;
 
             public void Init() { }
             public void InvokeClicked() => Clicked?.Invoke(this);
             public void Register(IControlPanelTab subtab) { }
-            public void RemoveFromHierarchy() => RemoveFromHierarchyCallCount++;
+            public void RemoveFromHierarchy() => Root.RemoveFromHierarchy();
         }
 
         private class FakeSubwindow : IControlPanelSubwindow
@@ -281,13 +292,12 @@ namespace AtMycelia.Myceliarium.Tests
             public VisualElement Root { get; } = new VisualElement();
             public string PathToUxml => string.Empty;
             public bool IsVisible => Root.style.display == DisplayStyle.Flex;
-            public int RemoveFromHierarchyCallCount { get; private set; }
+            public int DisposeCallCount { get; private set; }
 
             public void Init() { }
             public void Bind() { }
             public void Unbind() { }
-            public void Dispose() { }
-            public void RemoveFromHierarchy() => RemoveFromHierarchyCallCount++;
+            public void Dispose() => DisposeCallCount++;
             public void Show() => Root.style.display = DisplayStyle.Flex;
             public void Hide() => Root.style.display = DisplayStyle.None;
             public void Refresh() { }

@@ -26,11 +26,6 @@ namespace AtMycelia.Myceliarium
 
         protected bool _isInitted;
 
-        public T Q<T>(string name = null, string className = null) where T : VisualElement
-        {
-            return Root.Q<T>(name, className);
-        }
-
         public virtual void Show()
         {
             style.display = DisplayStyle.Flex;
@@ -110,11 +105,6 @@ namespace AtMycelia.Myceliarium
         void Dispose();
         void Show();
         void Hide();
-
-        /// <summary>
-        /// Searches for a VisualElement of type T with the given name in the subwindow's hierarchy.
-        /// </summary>
-        T Q<T>(string name, string className) where T : VisualElement;
 
         /// <summary>
         /// Relative to Resources.
