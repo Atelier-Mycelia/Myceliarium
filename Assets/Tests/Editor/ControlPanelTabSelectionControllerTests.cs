@@ -225,8 +225,28 @@ namespace AtMycelia.Myceliarium.Tests
             }
 
             public void RemoveFromHierarchy() { }
-            public void Select() { }
-            public void Deselect() { }
+
+            public void Select()
+            {
+                if (Tab.IsSelected)
+                {
+                    return;
+                }
+
+                Subwindow?.Show();
+                Tab.IsSelected = true;
+            }
+
+            public void Deselect()
+            {
+                if (!Tab.IsSelected)
+                {
+                    return;
+                }
+
+                Subwindow?.Hide();
+                Tab.IsSelected = false;
+            }
         }
 
         private class FakeTab : IControlPanelTab
