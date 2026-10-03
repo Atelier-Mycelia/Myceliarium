@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using Type = System.Type;
 using UnityDebug = UnityEngine.Debug;
+using AtMycelia.EditorExt;
 
 namespace AtMycelia.Myceliarium
 {
@@ -34,11 +35,11 @@ namespace AtMycelia.Myceliarium
 
         protected virtual void OnEnable()
         {
-            ToggleGlobalSubs(true);
+            SetGlobalSubs(true);
             _cancelButton?.SetEnabled(true);
         }
 
-        protected virtual void ToggleGlobalSubs(bool on)
+        protected virtual void SetGlobalSubs(bool on)
         {
             if (on)
             {
@@ -113,7 +114,7 @@ namespace AtMycelia.Myceliarium
         /// <summary>
         /// Local to the VisualElements registered under this ControlPanel.
         /// </summary>
-        protected virtual void ToggleLocalSubs(bool on)
+        protected virtual void SetLocalSubs(bool on)
         {
             if (on)
             {
@@ -319,10 +320,11 @@ namespace AtMycelia.Myceliarium
             }
 
             RegisterVisualElements();
-            ToggleLocalSubs(false);
-            ToggleLocalSubs(true);
+            SetLocalSubs(false);
+            SetLocalSubs(true);
             DoEntryPreps();
             HandleLanguageDropdown();
+            PrepReinitButtonController();
         }
 
         #region Registering base window
@@ -361,13 +363,33 @@ namespace AtMycelia.Myceliarium
         {
             _saveButton = Root.Q<Button>("SaveButton");
             _cancelButton = Root.Q<Button>("CancelButton");
+            _reinitButton = Root.Q<Button>("ReinitButton");
             _bottomBar = Root.Q<VisualElement>("BottomBar");
             _langDropdown = Root.Q<DropdownField>("LanguageDropdown");
         }
 
         protected Button _saveButton;
+        protected Button _reinitButton;
         protected VisualElement _bottomBar;
         protected DropdownField _langDropdown;
+
+        private void PrepReinitButtonController()
+        {
+            _reinitButtonController?.Dispose();
+            if (_reinitButton != null)
+            {
+                DisplayDialogArgs dialogArgs;
+                dialogArgs.title = "Reinit All Entries";
+                dialogArgs.message = "This will reset every entry in this Control Panel back to its " +
+                                     "startup state, discarding any unsaved runtime changes. Continue?";
+                dialogArgs.okText = "Reinit";
+                dialogArgs.cancelText = "Cancel";
+                _reinitButtonController.Init(_reinitButton, OnReinitConfirmed, dialogArgs);
+            }
+        }
+
+        private readonly DisplayDialogButton _reinitButtonController =
+            new DisplayDialogButton();
 
         #region Entry Preps
         private void DoEntryPreps()
@@ -502,6 +524,7 @@ namespace AtMycelia.Myceliarium
             _attacher = null;
             _selectionController?.Dispose();
             _selectionController = null;
+            _reinitButtonController?.Dispose();
         }
 
         protected virtual void HandleLanguageDropdown()
@@ -513,9 +536,26 @@ namespace AtMycelia.Myceliarium
 
         protected virtual void OnDisable()
         {
-            ToggleGlobalSubs(false);
-            ToggleLocalSubs(false);
+            SetGlobalSubs(false);
+            SetLocalSubs(false);
         }
+
+        public void OnReinitConfirmed()
+        {
+            foreach (var entry in _attacher.Entries)
+            {
+                if (!entry.IsTopLevel)
+                {
+                    continue;
+                }
+
+                entry.RemoveFromHierarchy();
+                entry.Init(forceReinit: true);
+            }
+
+            _selectionController.OnAllEntriesReinitted();
+        }
+
     }
 
     public interface IControlPanel

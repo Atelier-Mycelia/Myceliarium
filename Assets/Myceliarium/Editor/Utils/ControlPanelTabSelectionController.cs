@@ -57,7 +57,15 @@ namespace AtMycelia.Myceliarium
                 _entryBeingDisplayed = entryForClicked;
                 DeselectAllEntries();
                 _entryBeingDisplayed.Select();
+                LastSelected = _entryBeingDisplayed;
             }
+        }
+
+        private IControlPanelEntry LastSelected { get; set; }
+
+        public void OnAllEntriesReinitted()
+        {
+            LastSelected?.Select();
         }
 
         private bool WeHave(IControlPanelEntry entry)
