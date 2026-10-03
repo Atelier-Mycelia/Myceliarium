@@ -277,18 +277,6 @@ namespace AtMycelia.Myceliarium
             return compatibleEntries;
         }
 
-        protected virtual void RefreshLoaderCache()
-        {
-            _loaders.Clear();
-            var found = CpEntryLoaderReg.GetLoadersOfType(LoaderSuperType);
-            for (int i = 0; i < found.Count; i++)
-            {
-                var elem = found[i];
-                var compatibleEntries = EntriesCompatibleWith(elem);
-                _loaders.Add(elem, compatibleEntries);
-            }
-        }
-
         protected virtual void RootPrep()
         {
             TryAddBaseWindow(out bool success);
@@ -380,7 +368,6 @@ namespace AtMycelia.Myceliarium
             RegisterSubentries();
             PrepSelectionController();
             RefreshSaverCache();
-            RefreshLoaderCache();
         }
 
         private void PrepAttacher()
