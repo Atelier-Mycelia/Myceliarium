@@ -53,14 +53,18 @@ namespace AtMycelia.Myceliarium
 
         private void ResetState()
         {
-            if (_tab != null)
-            {
-                SetSubs(false);
-                _tab = null;
-            }
+            SetSubs(false);
+            RemoveFromHierarchy();
 
+            for (int i = 0; i < _subentries.Count; i++)
+            {
+                _subentries[i].RemoveFromHierarchy();
+            }
             _subentries.Clear();
+
+            _tab.Dispose();
             _subwindow?.Dispose();
+            _tab = null;
             _subwindow = null;
             _isInitted = false;
         }
@@ -119,11 +123,17 @@ namespace AtMycelia.Myceliarium
         {
             if (on)
             {
-                _tab.Clicked += OnTabClicked;
+                if (_tab != null)
+                {
+                    _tab.Clicked += OnTabClicked;
+                }
             }
             else
             {
-                _tab.Clicked -= OnTabClicked;
+                if (_tab != null)
+                {
+                    _tab.Clicked -= OnTabClicked;
+                }
             }
         }
 

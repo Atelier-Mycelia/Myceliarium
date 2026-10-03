@@ -139,9 +139,15 @@ namespace AtMycelia.Myceliarium
             {
                 return;
             }
-            _icon.schedule.Execute(HideIconIfNoBgImage).StartingIn(1);
-            void HideIconIfNoBgImage()
+
+            // resolvedStyle is only reliable once the element has actually been
+            // attached to a panel and gone through at least one layout pass, so we
+            // hook into GeometryChangedEvent (which only fires once that's happened)
+            // instead of blindly guessing at a delay via schedule.Execute.
+            _icon.RegisterCallback<GeometryChangedEvent>(OnIconGeometryChanged);
+            void OnIconGeometryChanged(GeometryChangedEvent evt)
             {
+                _icon.UnregisterCallback<GeometryChangedEvent>(OnIconGeometryChanged);
                 var bgImage = _icon.resolvedStyle.backgroundImage;
                 if (bgImage == null)
                 {
@@ -149,6 +155,7 @@ namespace AtMycelia.Myceliarium
                     _iconHolder.style.height = 0;
                     _iconHolder.style.flexShrink = 1;
                     _iconHolder.visible = false;
+
                     OnIconHidden();
                 }
             }
@@ -157,7 +164,7 @@ namespace AtMycelia.Myceliarium
         protected virtual void OnIconHidden()
         {
             // Since in the default uxml, we have a lot of left padding applied
-            // to make room for the icon//
+            // to make room for the icon
             _mainClickable.style.paddingLeft = 5;
         }
 
