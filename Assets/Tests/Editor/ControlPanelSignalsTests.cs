@@ -16,7 +16,6 @@ namespace AtMycelia.Myceliarium.Tests
             ControlPanelSignals.OnControlPanelClosed = delegate { };
             ControlPanelSignals.OnEntryTabClicked = delegate { };
             ControlPanelSignals.SaveRequested = delegate { };
-            ControlPanelSignals.LoadRequested = delegate { };
             ControlPanelSignals.SaveCompleted = delegate { };
             ControlPanelSignals.LoadCompleted = delegate { };
             ControlPanelSignals.SaveFailed = delegate { };
@@ -93,7 +92,7 @@ namespace AtMycelia.Myceliarium.Tests
         }
         #endregion
 
-        #region SaveRequested / LoadRequested / CloseRequested
+        #region SaveRequested / CloseRequested
         [Test]
         public void SaveRequested_Invoked_NotifiesSubscriberWithCorrectPanel()
         {
@@ -102,18 +101,6 @@ namespace AtMycelia.Myceliarium.Tests
             ControlPanelSignals.SaveRequested += p => received = p;
 
             ControlPanelSignals.SaveRequested(panel);
-
-            Assert.That(received, Is.SameAs(panel));
-        }
-
-        [Test]
-        public void LoadRequested_Invoked_NotifiesSubscriberWithCorrectPanel()
-        {
-            var panel = new FakeControlPanel();
-            IControlPanel received = null;
-            ControlPanelSignals.LoadRequested += p => received = p;
-
-            ControlPanelSignals.LoadRequested(panel);
 
             Assert.That(received, Is.SameAs(panel));
         }
@@ -194,27 +181,12 @@ namespace AtMycelia.Myceliarium.Tests
                 ControlPanelSignals.OnControlPanelClosed(panel);
                 ControlPanelSignals.OnEntryTabClicked(entry);
                 ControlPanelSignals.SaveRequested(panel);
-                ControlPanelSignals.LoadRequested(panel);
                 ControlPanelSignals.SaveCompleted(entry);
                 ControlPanelSignals.LoadCompleted(entry);
                 ControlPanelSignals.SaveFailed(entry);
                 ControlPanelSignals.LoadFailed(entry);
                 ControlPanelSignals.CloseRequested(panel);
             });
-        }
-        #endregion
-
-        #region Decoupling between different signals
-        [Test]
-        public void SaveRequested_DoesNotTriggerLoadRequestedSubscribers()
-        {
-            var panel = new FakeControlPanel();
-            bool loadRequestedCalled = false;
-            ControlPanelSignals.LoadRequested += _ => loadRequestedCalled = true;
-
-            ControlPanelSignals.SaveRequested(panel);
-
-            Assert.That(loadRequestedCalled, Is.False);
         }
         #endregion
 

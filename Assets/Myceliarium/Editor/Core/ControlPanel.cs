@@ -6,6 +6,7 @@ using UnityEngine.UIElements;
 using Type = System.Type;
 using UnityDebug = UnityEngine.Debug;
 using AtMycelia.EditorExt;
+using UnityEditor.Experimental.GraphView;
 
 namespace AtMycelia.Myceliarium
 {
@@ -44,13 +45,11 @@ namespace AtMycelia.Myceliarium
             if (on)
             {
                 ControlPanelSignals.SaveRequested += OnSaveRequested;
-                ControlPanelSignals.LoadRequested += OnLoadRequested;
                 ControlPanelSignals.CloseRequested += OnCloseRequested;
             }
             else
             {
                 ControlPanelSignals.SaveRequested -= OnSaveRequested;
-                ControlPanelSignals.LoadRequested -= OnLoadRequested;
                 ControlPanelSignals.CloseRequested -= OnCloseRequested;
             }
         }
@@ -76,23 +75,6 @@ namespace AtMycelia.Myceliarium
         protected readonly IDictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>> _savers =
             new Dictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>>();
 
-        protected virtual void OnLoadRequested(IControlPanel cPanel)
-        {
-            if (!ReferenceEquals(cPanel, this))
-            {
-                return;
-            }
-
-            foreach (var kvp in _loaders)
-            {
-                var loader = kvp.Key;
-                var compatibleEntries = kvp.Value;
-                foreach (var entry in compatibleEntries)
-                {
-                    loader.Load(entry);
-                }
-            }
-        }
 
         protected readonly IDictionary<IControlPanelEntryLoader, IList<IControlPanelEntry>> _loaders =
             new Dictionary<IControlPanelEntryLoader, IList<IControlPanelEntry>>();
@@ -396,6 +378,7 @@ namespace AtMycelia.Myceliarium
         {
             PrepAttacher();
             RegisterSubentries();
+            PrepSelectionController();
             RefreshSaverCache();
             RefreshLoaderCache();
         }
@@ -407,9 +390,12 @@ namespace AtMycelia.Myceliarium
 
             Sort(_topLevelEntries);
             _attacher.Attach(_topLevelEntries);
+        }
 
+        private void PrepSelectionController()
+        {
             _selectionController?.Dispose();
-            _selectionController.Init(_attacher.Entries);
+            _selectionController.Init(_allEntries);
         }
 
         private ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
@@ -542,7 +528,7 @@ namespace AtMycelia.Myceliarium
 
         public void OnReinitConfirmed()
         {
-            foreach (var entry in _attacher.Entries)
+            foreach (var entry in _allEntries)
             {
                 if (!entry.IsTopLevel)
                 {
@@ -553,6 +539,7 @@ namespace AtMycelia.Myceliarium
                 entry.Init(forceReinit: true);
             }
 
+            _attacher.Attach(_allEntries);
             _selectionController.OnAllEntriesReinitted();
         }
 

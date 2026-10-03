@@ -1,4 +1,5 @@
 using System;
+using System;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
@@ -11,7 +12,7 @@ namespace AtMycelia.Myceliarium.Tests
         [SetUp]
         public void SetUp()
         {
-            CpEntryLoaderReg.ResetForTests();
+            CpEntryLoaderReg.ResetForTests();//
         }
 
         [TearDown]
@@ -257,25 +258,34 @@ namespace AtMycelia.Myceliarium.Tests
         #region Test Doubles
         private abstract class AbstractLoader : IControlPanelEntryLoader
         {
-            public abstract void Load(IControlPanelEntry toLoadFor, Action onComplete = null);
+            public abstract void Load(IControlPanelEntry toLoadFor, ref object loadResult, Action onComplete = null);
             public abstract bool IsCompatibleWith(IControlPanelEntry toLoadFor);
         }
 
         private class FakeLoaderA : IControlPanelEntryLoader
         {
-            public void Load(IControlPanelEntry toLoadFor, Action onComplete = null) { }
+            public void Load(IControlPanelEntry toLoadFor, ref object loadResult, Action onComplete = null)
+            {
+                onComplete?.Invoke();
+            }
             public bool IsCompatibleWith(IControlPanelEntry toLoadFor) => true;
         }
 
         private class FakeLoaderB : IControlPanelEntryLoader
         {
-            public void Load(IControlPanelEntry toLoadFor, Action onComplete = null) { }
+            public void Load(IControlPanelEntry toLoadFor, ref object loadResult, Action onComplete = null)
+            {
+                onComplete?.Invoke();
+            }
             public bool IsCompatibleWith(IControlPanelEntry toLoadFor) => true;
         }
 
         private class FakeAtMyceliaLoader : IAtMyceliaControlPanelEntryLoader
         {
-            public void Load(IControlPanelEntry toLoadFor, Action onComplete = null) { }
+            public void Load(IControlPanelEntry toLoadFor, ref object loadResult, Action onComplete = null)
+            {
+                onComplete?.Invoke();
+            }
             public bool IsCompatibleWith(IControlPanelEntry toLoadFor) => true;
         }
         #endregion

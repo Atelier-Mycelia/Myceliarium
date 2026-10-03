@@ -19,7 +19,6 @@ namespace AtMycelia.Myceliarium
         /// for the given Control Panel.
         /// </summary>
         public static Action<IControlPanel> SaveRequested = delegate { };
-        public static Action<IControlPanel> LoadRequested = delegate { };
 
         public static Action<IControlPanelEntry> SaveCompleted = delegate { };
         public static Action<IControlPanelEntry> LoadCompleted = delegate { };
