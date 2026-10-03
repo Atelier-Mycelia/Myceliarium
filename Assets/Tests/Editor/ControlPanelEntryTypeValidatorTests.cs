@@ -144,8 +144,8 @@ namespace AtMycelia.Myceliarium.Tests
             public IReadOnlyList<IControlPanelEntry> GetSubentries(bool recursive = false) =>
                 Array.Empty<IControlPanelEntry>();
             public void RemoveFromHierarchy() { }
-            public void OnSelected() { }
-            public void OnDeselected() { }
+            public void Select() { }
+            public void Deselect() { }
         }
 
         private class EntryB : IControlPanelEntry
@@ -164,8 +164,8 @@ namespace AtMycelia.Myceliarium.Tests
             public IReadOnlyList<IControlPanelEntry> GetSubentries(bool recursive = false) =>
                 Array.Empty<IControlPanelEntry>();
             public void RemoveFromHierarchy() { }
-            public void OnSelected() { }
-            public void OnDeselected() { }
+            public void Select() { }
+            public void Deselect() { }
         }
         #endregion
     }

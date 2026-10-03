@@ -1,5 +1,8 @@
 :root {
-    --default-tab-selected-color: rgb(0, 255, 255);
+    --tab-selected-color: rgb(44, 93, 135);
+    --tab-selected-text-color: rgb(222, 222, 222);
+    --tab-normal-text-color: rgb(222, 222, 222);
+    --tab-normal-bg-color: rgb(60, 60, 60);
     --default-icon: resource('Editor/Icons/defaultTabIcon');
     --default-icon-left-offset: 10px;
     --default-icon-width: 60px;
@@ -23,8 +26,8 @@
     margin: 0;
     font-size: 32px;
     padding-left: 60px;
-    background-color: rgb(60, 60, 60);
-    color: rgb(222, 222, 222);
+    color: var(--tab-normal-text-color);
+    background-color: var(--tab-normal-bg-color);
 }
 
 .tabIcon {
@@ -50,6 +53,7 @@
     padding-left: 5px;
 }
 
-.tab-selected {
-    background-color: var(--default-tab-selected-color);
+.selected {
+    background-color: var(--tab-selected-color);
+    color: var(--tab-selected-text-color);
 }

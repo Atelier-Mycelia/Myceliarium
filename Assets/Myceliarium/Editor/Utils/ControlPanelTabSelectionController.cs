@@ -51,19 +51,12 @@ namespace AtMycelia.Myceliarium
 
             bool currentlyShowingEntry = _entryBeingDisplayed != null;
             bool switchToOtherOne = entryForClicked != _entryBeingDisplayed;
-            bool shouldHideCurrentOneFirst = currentlyShowingEntry && switchToOtherOne;
-            if (shouldHideCurrentOneFirst)
-            {
-                var subwindowShowing = _entryBeingDisplayed.Subwindow;
-                subwindowShowing.Hide();
-            }
 
             if (switchToOtherOne)
             {
                 _entryBeingDisplayed = entryForClicked;
-                var subwindow = entryForClicked.Subwindow;
-                subwindow.Show();
-                DeselectAllTabsExceptFor(entryForClicked.Tab);
+                DeselectAllEntries();
+                _entryBeingDisplayed.Select();
             }
         }
 
@@ -92,21 +85,12 @@ namespace AtMycelia.Myceliarium
             return false;
         }
 
-        private void DeselectAllTabsExceptFor(IControlPanelTab toLeaveAlone)
+        private void DeselectAllEntries()
         {
             for (int i = 0; i < _entries.Count; i++)
             {
                 var elem = _entries[i];
-                var tab = elem.Tab;
-                tab.IsSelected = tab == toLeaveAlone;
-
-                var subentries = elem.GetSubentries(recursive: true);
-                for (int j = 0; j < subentries.Count; j++)
-                {
-                    var subentry = subentries[j];
-                    var subtab = subentry.Tab;
-                    subtab.IsSelected = subtab == toLeaveAlone;
-                }
+                elem.Deselect();
             }
         }
 

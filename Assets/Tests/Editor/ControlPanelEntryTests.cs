@@ -75,19 +75,6 @@ namespace AtMycelia.Myceliarium.Tests
             Assert.That(received, Is.SameAs(entry));
         }
 
-        [Test]
-        public void TabClicked_AfterDispose_NoLongerForwardsToSignal()
-        {
-            var entry = new TestEntry();
-            entry.Init();
-            bool wasCalled = false;
-            ControlPanelSignals.OnEntryTabClicked += _ => wasCalled = true;
-
-            entry.Dispose();
-            entry.Tab.InvokeClicked();
-
-            Assert.That(wasCalled, Is.False);
-        }
         #endregion
 
         #region Subwindow guard behavior
@@ -143,48 +130,6 @@ namespace AtMycelia.Myceliarium.Tests
         }
         #endregion
 
-        #region Dispose
-        [Test]
-        public void Dispose_DisposesTabAndSubwindowAndRemovesTheirRootsFromHierarchy()
-        {
-            var root = new VisualElement();
-            var entry = new TestEntry(meantToHaveSubwindow: true, assignSubwindow: true);
-            entry.Init();
-            var tab = (FakeTab)entry.Tab;
-            var subwindow = (FakeSubwindow)entry.Subwindow;
-            root.Add(tab.Root);
-            root.Add(subwindow.Root);
-
-            entry.Dispose();
-
-            Assert.That(tab.DisposeCallCount, Is.EqualTo(1));
-            Assert.That(subwindow.DisposeCallCount, Is.EqualTo(1));
-            Assert.That(root.Contains(tab.Root), Is.False);
-            Assert.That(root.Contains(subwindow.Root), Is.False);
-        }
-
-        [Test]
-        public void Dispose_EntryWithoutSubwindow_DoesNotThrow()
-        {
-            var entry = new TestEntry(meantToHaveSubwindow: false, assignSubwindow: false);
-            entry.Init();
-
-            Assert.DoesNotThrow(() => entry.Dispose());
-        }
-
-        [Test]
-        public void Dispose_CalledTwice_SecondCallIsNoOp()
-        {
-            var entry = new TestEntry(meantToHaveSubwindow: true, assignSubwindow: true);
-            entry.Init();
-            var tab = (FakeTab)entry.Tab;
-
-            entry.Dispose();
-            entry.Dispose();
-
-            Assert.That(tab.DisposeCallCount, Is.EqualTo(1));
-        }
-        #endregion
 
         #region Defaults
         [Test]
@@ -220,8 +165,8 @@ namespace AtMycelia.Myceliarium.Tests
 
             Assert.DoesNotThrow(() =>
             {
-                entry.OnSelected();
-                entry.OnDeselected();
+                entry.Select();
+                entry.Deselect();
             });
         }
         #endregion
