@@ -1,6 +1,6 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Data;
 
 namespace AtMycelia.Myceliarium
 {
@@ -27,6 +27,8 @@ namespace AtMycelia.Myceliarium
         // nested under others.
         public abstract string SortingName { get; }
 
+        public virtual bool ShouldPreloadOnInit => false; // opt-in, default false
+
         public virtual void Init(bool forceReinit = false)
         {
             if (forceReinit)
@@ -39,7 +41,13 @@ namespace AtMycelia.Myceliarium
                 PrepareLeftSidebarTab();
                 PrepareSubentries();
                 PrepareSubwindow();
+                PrepareLoader();
                 SetSubs(true);
+                _subwindow?.Hide();
+                if (ShouldPreloadOnInit)
+                {
+                    HandleLoading();
+                }
                 _isInitted = true;
             }
         }
@@ -113,6 +121,18 @@ namespace AtMycelia.Myceliarium
         protected readonly List<IControlPanelEntry> _subentries = new List<IControlPanelEntry>();
 
         protected virtual void PrepareSubwindow() { }
+
+        /// <summary>
+        /// Initializes the loader for the control panel entry. The base implementation goes
+        /// with the default loader, which does nothing but trigger the callback. Subclasses
+        /// can override this to provide a custom loader if needed.
+        /// </summary>
+        protected virtual void PrepareLoader()
+        {
+            Loader = new DefaultControlPanelEntryLoader();
+        }
+
+        protected IControlPanelEntryLoader Loader { get; set; }
 
         public virtual bool IsMeantToHaveSubwindow => true; 
         // ^Most tabs are expected to have subwindows, so...
@@ -191,20 +211,49 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
-            _subwindow?.Refresh();
-            _subwindow?.Show();
-
-            _tab.IsSelected = true;
             if (this.IsMeantToHaveSubwindow)
             {
-                // This should keep the subentries' windows from getting in the
-                // way of this one's.
+                #region Deselect Subentries
+                // So their subwindows don't get in the way of ours
                 for (int i = 0; i < _subentries.Count; i++)
                 {
                     var subentry = _subentries[i];
                     subentry.Deselect();
                 }
+                #endregion
             }
+
+            _tab.IsSelected = true;
+            HandleLoading();
+        }
+
+        /// <summary>
+        /// Meant to be overridden by subclasses that need to do some loading 
+        /// before their subwindow is shown. When overriding ControlPanelEntry's
+        /// directly, best NOT call the base implementation.
+        /// </summary>
+        protected virtual void HandleLoading()
+        {
+            if (Loader != null)
+            {
+                Loader.Load(this, ref _lastLoadResult, OnLoadingDone);
+            }
+            else
+            {
+                OnLoadingDone();
+            }
+        }
+
+        protected object _lastLoadResult;
+
+        /// <summary>
+        /// If your entry cares about the load result, this is where it's expected to start
+        /// working with it.
+        /// </summary>
+        protected virtual void OnLoadingDone()
+        {
+            _subwindow?.Refresh();
+            _subwindow?.Show();
         }
 
         public virtual void Deselect()
