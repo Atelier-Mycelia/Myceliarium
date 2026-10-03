@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace AtMycelia.Myceliarium
@@ -11,7 +12,7 @@ namespace AtMycelia.Myceliarium
     /// These should be automatically found through reflection and added to the 
     /// CP when appropriate.
     /// </summary>
-    public abstract class ControlPanelEntry : IControlPanelEntry, IDisposable
+    public abstract class ControlPanelEntry : IControlPanelEntry
     {
         public virtual bool IsTestOnly => false;
 
@@ -26,6 +27,8 @@ namespace AtMycelia.Myceliarium
         // nested under others.
         public abstract string SortingName { get; }
 
+        public virtual bool ShouldPreloadOnInit => false; // opt-in, default false
+
         public virtual void Init(bool forceReinit = false)
         {
             if (forceReinit)
@@ -35,11 +38,16 @@ namespace AtMycelia.Myceliarium
 
             if (forceReinit || !_isInitted)
             {
-                _isDisposed = false;
                 PrepareLeftSidebarTab();
                 PrepareSubentries();
                 PrepareSubwindow();
-                ToggleSubs(true);
+                PrepareLoader();
+                SetSubs(true);
+                _subwindow?.Hide();
+                if (ShouldPreloadOnInit)
+                {
+                    HandleLoading();
+                }
                 _isInitted = true;
             }
         }
@@ -49,20 +57,24 @@ namespace AtMycelia.Myceliarium
             get => _isInitted;
             protected set => _isInitted = value;
         }
-        private bool _isInitted, _isDisposed;
+        private bool _isInitted;
 
         private void ResetState()
         {
-            if (_tab != null)
-            {
-                ToggleSubs(false);
-                _tab = null;
-            }
+            SetSubs(false);
+            RemoveFromHierarchy();
 
+            for (int i = 0; i < _subentries.Count; i++)
+            {
+                _subentries[i].RemoveFromHierarchy();
+            }
             _subentries.Clear();
+
+            _tab.Dispose();
             _subwindow?.Dispose();
+            _tab = null;
             _subwindow = null;
-            _isInitted = _isDisposed = false;
+            _isInitted = false;
         }
 
         protected abstract void PrepareLeftSidebarTab();
@@ -110,24 +122,42 @@ namespace AtMycelia.Myceliarium
 
         protected virtual void PrepareSubwindow() { }
 
+        /// <summary>
+        /// Initializes the loader for the control panel entry. The base implementation goes
+        /// with the default loader, which does nothing but trigger the callback. Subclasses
+        /// can override this to provide a custom loader if needed.
+        /// </summary>
+        protected virtual void PrepareLoader()
+        {
+            Loader = new DefaultControlPanelEntryLoader();
+        }
+
+        protected IControlPanelEntryLoader Loader { get; set; }
+
         public virtual bool IsMeantToHaveSubwindow => true; 
         // ^Most tabs are expected to have subwindows, so...
 
         protected IControlPanelSubwindow _subwindow;
 
-        protected virtual void ToggleSubs(bool on)
+        protected virtual void SetSubs(bool on)
         {
             if (on)
             {
-                _tab.Clicked += OnTabClicked;
+                if (_tab != null)
+                {
+                    _tab.Clicked += OnTabClicked;
+                }
             }
             else
             {
-                _tab.Clicked -= OnTabClicked;
+                if (_tab != null)
+                {
+                    _tab.Clicked -= OnTabClicked;
+                }
             }
         }
 
-        protected virtual void OnTabClicked(IControlPanelTab tabClicked)
+        protected void OnTabClicked(IControlPanelTab tabClicked)
         {
             ControlPanelSignals.OnEntryTabClicked(this);
         }
@@ -168,38 +198,73 @@ namespace AtMycelia.Myceliarium
             }
         }
 
-        public virtual void Dispose()
-        {
-            if (_isDisposed)
-            {
-                return;
-            }
-            ToggleSubs(false);
-
-            // We don't want to null out the VisualElements here, given how each
-            // entry is expected to persist even when the Control Panel window is
-            // closed. We'll merely unattach the tabs and subwindows from the
-            // hierarchy, and let the Control Panel window handle the rest.
-            _subwindow?.Dispose();
-            _tab?.Dispose();
-            RemoveFromHierarchy();
-            _isDisposed = true;
-        }
-        
         public virtual void RemoveFromHierarchy()
         {
             _tab?.Root.RemoveFromHierarchy();
             _subwindow?.Root.RemoveFromHierarchy();
         }
 
-        public virtual void OnSelected()
+        public virtual void Select()
         {
-            // Default = no-op
+            if (_tab == null || _tab.IsSelected)
+            {
+                return;
+            }
+
+            if (this.IsMeantToHaveSubwindow)
+            {
+                #region Deselect Subentries
+                // So their subwindows don't get in the way of ours
+                for (int i = 0; i < _subentries.Count; i++)
+                {
+                    var subentry = _subentries[i];
+                    subentry.Deselect();
+                }
+                #endregion
+            }
+
+            _tab.IsSelected = true;
+            HandleLoading();
         }
 
-        public virtual void OnDeselected()
+        /// <summary>
+        /// Meant to be overridden by subclasses that need to do some loading 
+        /// before their subwindow is shown. When overriding ControlPanelEntry's
+        /// directly, best NOT call the base implementation.
+        /// </summary>
+        protected virtual void HandleLoading()
         {
-            // Default = no-op
+            if (Loader != null)
+            {
+                Loader.Load(this, ref _lastLoadResult, OnLoadingDone);
+            }
+            else
+            {
+                OnLoadingDone();
+            }
+        }
+
+        protected object _lastLoadResult;
+
+        /// <summary>
+        /// If your entry cares about the load result, this is where it's expected to start
+        /// working with it.
+        /// </summary>
+        protected virtual void OnLoadingDone()
+        {
+            _subwindow?.Refresh();
+            _subwindow?.Show();
+        }
+
+        public virtual void Deselect()
+        {
+            if (_tab == null || !_tab.IsSelected)
+            {
+                return;
+            }
+
+            _subwindow?.Hide();
+            _tab.IsSelected = false;
         }
 
         public virtual bool HasSubentries => _subentries.Count > 0;
@@ -208,7 +273,13 @@ namespace AtMycelia.Myceliarium
 
     public interface IControlPanelEntry
     {
-        bool IsTestOnly { get; }
+        /// <summary>
+        /// Functions as the constructor for this entry. Should be called once when the 
+        /// entry is first created, and can be called again if the entry needs to 
+        /// be reinitialized.
+        /// </summary>
+        void Init(bool forceReinit = false);
+        bool IsInitted { get; }
 
         /// <summary>
         /// Decides how this entry is sorted in the Control Panel's left sidebar.
@@ -216,14 +287,6 @@ namespace AtMycelia.Myceliarium
         /// they are sorted alphabetically by their SortingName.
         /// </summary>
         int SortingOrder { get; }
-
-        /// <summary>
-        /// Functions as the constructor for this entry. Should be called once when the 
-        /// entry is first created, and can be called again if the entry needs to 
-        /// be reinitialized.
-        /// </summary>
-        void Init(bool forceReinit = false);
-
         /// <summary>
         /// When two ControlPanelEntries have the same SortingOrder, they are then sorted
         /// based on this. Alphabetically.
@@ -231,27 +294,21 @@ namespace AtMycelia.Myceliarium
         string SortingName { get; }
 
         IControlPanelTab Tab { get; }
+
+        bool IsMeantToHaveSubwindow { get; }
         IControlPanelSubwindow Subwindow { get; }
 
         bool IsTopLevel { get; }
 
+        bool HasSubentries { get; }
         IReadOnlyList<IControlPanelEntry> GetSubentries(bool recursive = false);
-        bool IsMeantToHaveSubwindow { get; }
-        bool IsInitted { get; }
+
         void RemoveFromHierarchy();
 
-        /// <summary>
-        /// Should execute when this entry is selected in the Control Panel (usually through
-        /// its tab on the left sidebar).
-        /// </summary>
-        void OnSelected();
+        void Select();
+        void Deselect();
 
-        /// <summary>
-        /// Should execute when another entry is switched to in the Control Panel.
-        /// </summary>
-        void OnDeselected();
-        bool HasSubentries { get; }
-
+        bool IsTestOnly { get; }
     }
 
     public interface IAtMyceliaControlPanelEntry : IControlPanelEntry

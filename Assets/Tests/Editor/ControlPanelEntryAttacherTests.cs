@@ -96,7 +96,7 @@ namespace AtMycelia.Myceliarium.Tests
         }
 
         [Test]
-        public void Attach_NonTopLevelEntry_IsTrackedButNotAttachedToMainTabSet()
+        public void Attach_NonTopLevelEntry_IsNotAttachedToMainTabSet()
         {
             var root = CreateValidRoot(out var mainTabSet, out _);
             _attacher.Init(root);
@@ -104,36 +104,37 @@ namespace AtMycelia.Myceliarium.Tests
 
             _attacher.Attach(new List<IControlPanelEntry> { entry });
 
-            Assert.That(_attacher.Entries.Contains(entry), Is.True);
             Assert.That(mainTabSet.Contains(entry.Tab.Root), Is.False);
         }
 
         [Test]
-        public void Attach_SameEntryTwice_DoesNotDuplicateInEntries()
+        public void Attach_SameEntryTwice_AttachesTabRootBothTimesWithoutError()
         {
-            var root = CreateValidRoot(out _, out _);
+            var root = CreateValidRoot(out var mainTabSet, out _);
             _attacher.Init(root);
             var entry = new FakeEntry();
 
-            _attacher.Attach(new List<IControlPanelEntry> { entry });
-            _attacher.Attach(new List<IControlPanelEntry> { entry });
+            Assert.DoesNotThrow(() =>
+            {
+                _attacher.Attach(new List<IControlPanelEntry> { entry });
+                _attacher.Attach(new List<IControlPanelEntry> { entry });
+            });
 
-            Assert.That(_attacher.Entries.Count, Is.EqualTo(1));
+            Assert.That(mainTabSet.Contains(entry.Tab.Root), Is.True);
         }
 
         [Test]
-        public void Attach_MultipleEntries_AllTrackedInEntries()
+        public void Attach_MultipleEntries_AllAttachedToMainTabSet()
         {
-            var root = CreateValidRoot(out _, out _);
+            var root = CreateValidRoot(out var mainTabSet, out _);
             _attacher.Init(root);
             var entryA = new FakeEntry();
             var entryB = new FakeEntry();
 
             _attacher.Attach(new List<IControlPanelEntry> { entryA, entryB });
 
-            Assert.That(_attacher.Entries.Count, Is.EqualTo(2));
-            Assert.That(_attacher.Entries, Does.Contain(entryA));
-            Assert.That(_attacher.Entries, Does.Contain(entryB));
+            Assert.That(mainTabSet.Contains(entryA.Tab.Root), Is.True);
+            Assert.That(mainTabSet.Contains(entryB.Tab.Root), Is.True);
         }
         #endregion
 
@@ -180,7 +181,7 @@ namespace AtMycelia.Myceliarium.Tests
 
         #region Attach - subwindow registration
         [Test]
-        public void Attach_EntryWithSubwindow_HidesItAndAddsToSubwindowDisplay()
+        public void Attach_EntryWithSubwindow_AddsToSubwindowDisplay()
         {
             var root = CreateValidRoot(out _, out var subwindowDisplay);
             _attacher.Init(root);
@@ -189,7 +190,6 @@ namespace AtMycelia.Myceliarium.Tests
             _attacher.Attach(new List<IControlPanelEntry> { entry });
 
             var subwindow = (FakeSubwindow)entry.Subwindow;
-            Assert.That(subwindow.HideCallCount, Is.EqualTo(1));
             Assert.That(subwindowDisplay.Contains(subwindow.Root), Is.True);
         }
 
@@ -243,19 +243,6 @@ namespace AtMycelia.Myceliarium.Tests
         #endregion
 
         #region Dispose
-        [Test]
-        public void Dispose_ClearsEntries()
-        {
-            var root = CreateValidRoot(out _, out _);
-            _attacher.Init(root);
-            var entry = new FakeEntry();
-            _attacher.Attach(new List<IControlPanelEntry> { entry });
-
-            _attacher.Dispose();
-
-            Assert.That(_attacher.Entries.Count, Is.EqualTo(0));
-        }
-
         [Test]
         public void Dispose_CalledTwice_SecondCallIsNoOp()
         {
@@ -352,8 +339,8 @@ namespace AtMycelia.Myceliarium.Tests
             }
 
             public void RemoveFromHierarchy() { }
-            public void OnSelected() { }
-            public void OnDeselected() { }
+            public void Select() { }
+            public void Deselect() { }
         }
 
         private class FakeTab : IControlPanelTab

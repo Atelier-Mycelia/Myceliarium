@@ -54,16 +54,7 @@ namespace AtMycelia.Myceliarium
 
         public void Attach(IList<IControlPanelEntry> toAttach)
         {
-            for (int i = 0; i < toAttach.Count; i++)
-            {
-                var entry = toAttach[i];
-                if (!_entries.Contains(entry))
-                {
-                    _entries.Add(entry);
-                }
-            }
-
-            foreach (var elem in _entries)
+            foreach (var elem in toAttach)
             {
                 if (!elem.IsTopLevel)
                 {
@@ -73,8 +64,6 @@ namespace AtMycelia.Myceliarium
                 Attach(elem);
             }
         }
-
-        private readonly IList<IControlPanelEntry> _entries = new List<IControlPanelEntry>();
 
         private void Attach(IControlPanelEntry entry)
         {
@@ -102,13 +91,9 @@ namespace AtMycelia.Myceliarium
 
         private void RegisterSubwindowsOf(IControlPanelEntry entry)
         {
-            // We want the subwindows parented to the holder, but until
-            // the user clicks on the tab, we don't want them to be visible.
             var subwindow = entry.Subwindow;
-            if (subwindow != null) // But as not all tabs are meant to have
-                                   // subwindows tied to them...
+            if (subwindow != null && !_subwindowDisplay.Contains(subwindow.Root))
             {
-                subwindow.Hide();
                 _subwindowDisplay.Add(subwindow.Root);
             }
 
@@ -119,7 +104,6 @@ namespace AtMycelia.Myceliarium
                 subwindow = subentry.Subwindow;
                 if (subwindow != null)
                 {
-                    subwindow.Hide();
                     _subwindowDisplay.Add(subwindow.Root);
                 }
             }
@@ -132,14 +116,11 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
-            _entries.Clear();
             _mainTabSet = null;
             _subwindowDisplay = null;
             _rootElement = null;
             _isDisposed = true;
         }
 
-        public IReadOnlyList<IControlPanelEntry> Entries =>
-            (IReadOnlyList<IControlPanelEntry>)_entries;
     }
 }
