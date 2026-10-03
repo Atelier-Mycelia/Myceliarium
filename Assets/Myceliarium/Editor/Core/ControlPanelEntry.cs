@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 
 namespace AtMycelia.Myceliarium
 {
@@ -11,7 +12,7 @@ namespace AtMycelia.Myceliarium
     /// These should be automatically found through reflection and added to the 
     /// CP when appropriate.
     /// </summary>
-    public abstract class ControlPanelEntry : IControlPanelEntry, IDisposable
+    public abstract class ControlPanelEntry : IControlPanelEntry
     {
         public virtual bool IsTestOnly => false;
 
@@ -35,11 +36,10 @@ namespace AtMycelia.Myceliarium
 
             if (forceReinit || !_isInitted)
             {
-                _isDisposed = false;
                 PrepareLeftSidebarTab();
                 PrepareSubentries();
                 PrepareSubwindow();
-                ToggleSubs(true);
+                SetSubs(true);
                 _isInitted = true;
             }
         }
@@ -49,20 +49,20 @@ namespace AtMycelia.Myceliarium
             get => _isInitted;
             protected set => _isInitted = value;
         }
-        private bool _isInitted, _isDisposed;
+        private bool _isInitted;
 
         private void ResetState()
         {
             if (_tab != null)
             {
-                ToggleSubs(false);
+                SetSubs(false);
                 _tab = null;
             }
 
             _subentries.Clear();
             _subwindow?.Dispose();
             _subwindow = null;
-            _isInitted = _isDisposed = false;
+            _isInitted = false;
         }
 
         protected abstract void PrepareLeftSidebarTab();
@@ -115,7 +115,7 @@ namespace AtMycelia.Myceliarium
 
         protected IControlPanelSubwindow _subwindow;
 
-        protected virtual void ToggleSubs(bool on)
+        protected virtual void SetSubs(bool on)
         {
             if (on)
             {
@@ -127,7 +127,7 @@ namespace AtMycelia.Myceliarium
             }
         }
 
-        protected virtual void OnTabClicked(IControlPanelTab tabClicked)
+        protected void OnTabClicked(IControlPanelTab tabClicked)
         {
             ControlPanelSignals.OnEntryTabClicked(this);
         }
@@ -168,38 +168,44 @@ namespace AtMycelia.Myceliarium
             }
         }
 
-        public virtual void Dispose()
-        {
-            if (_isDisposed)
-            {
-                return;
-            }
-            ToggleSubs(false);
-
-            // We don't want to null out the VisualElements here, given how each
-            // entry is expected to persist even when the Control Panel window is
-            // closed. We'll merely unattach the tabs and subwindows from the
-            // hierarchy, and let the Control Panel window handle the rest.
-            _subwindow?.Dispose();
-            _tab?.Dispose();
-            RemoveFromHierarchy();
-            _isDisposed = true;
-        }
-        
         public virtual void RemoveFromHierarchy()
         {
             _tab?.Root.RemoveFromHierarchy();
             _subwindow?.Root.RemoveFromHierarchy();
         }
 
-        public virtual void OnSelected()
+        public virtual void Select()
         {
-            // Default = no-op
+            if (_tab == null || _tab.IsSelected)
+            {
+                return;
+            }
+
+            _subwindow?.Refresh();
+            _subwindow?.Show();
+
+            _tab.IsSelected = true;
+            if (this.IsMeantToHaveSubwindow)
+            {
+                // This should keep the subentries' windows from getting in the
+                // way of this one's.
+                for (int i = 0; i < _subentries.Count; i++)
+                {
+                    var subentry = _subentries[i];
+                    subentry.Deselect();
+                }
+            }
         }
 
-        public virtual void OnDeselected()
+        public virtual void Deselect()
         {
-            // Default = no-op
+            if (_tab == null || !_tab.IsSelected)
+            {
+                return;
+            }
+
+            _subwindow?.Hide();
+            _tab.IsSelected = false;
         }
 
         public virtual bool HasSubentries => _subentries.Count > 0;
@@ -208,7 +214,13 @@ namespace AtMycelia.Myceliarium
 
     public interface IControlPanelEntry
     {
-        bool IsTestOnly { get; }
+        /// <summary>
+        /// Functions as the constructor for this entry. Should be called once when the 
+        /// entry is first created, and can be called again if the entry needs to 
+        /// be reinitialized.
+        /// </summary>
+        void Init(bool forceReinit = false);
+        bool IsInitted { get; }
 
         /// <summary>
         /// Decides how this entry is sorted in the Control Panel's left sidebar.
@@ -216,14 +228,6 @@ namespace AtMycelia.Myceliarium
         /// they are sorted alphabetically by their SortingName.
         /// </summary>
         int SortingOrder { get; }
-
-        /// <summary>
-        /// Functions as the constructor for this entry. Should be called once when the 
-        /// entry is first created, and can be called again if the entry needs to 
-        /// be reinitialized.
-        /// </summary>
-        void Init(bool forceReinit = false);
-
         /// <summary>
         /// When two ControlPanelEntries have the same SortingOrder, they are then sorted
         /// based on this. Alphabetically.
@@ -231,27 +235,21 @@ namespace AtMycelia.Myceliarium
         string SortingName { get; }
 
         IControlPanelTab Tab { get; }
+
+        bool IsMeantToHaveSubwindow { get; }
         IControlPanelSubwindow Subwindow { get; }
 
         bool IsTopLevel { get; }
 
+        bool HasSubentries { get; }
         IReadOnlyList<IControlPanelEntry> GetSubentries(bool recursive = false);
-        bool IsMeantToHaveSubwindow { get; }
-        bool IsInitted { get; }
+
         void RemoveFromHierarchy();
 
-        /// <summary>
-        /// Should execute when this entry is selected in the Control Panel (usually through
-        /// its tab on the left sidebar).
-        /// </summary>
-        void OnSelected();
+        void Select();
+        void Deselect();
 
-        /// <summary>
-        /// Should execute when another entry is switched to in the Control Panel.
-        /// </summary>
-        void OnDeselected();
-        bool HasSubentries { get; }
-
+        bool IsTestOnly { get; }
     }
 
     public interface IAtMyceliaControlPanelEntry : IControlPanelEntry

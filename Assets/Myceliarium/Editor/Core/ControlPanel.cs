@@ -35,6 +35,7 @@ namespace AtMycelia.Myceliarium
         protected virtual void OnEnable()
         {
             ToggleGlobalSubs(true);
+            _cancelButton?.SetEnabled(true);
         }
 
         protected virtual void ToggleGlobalSubs(bool on)
@@ -103,6 +104,7 @@ namespace AtMycelia.Myceliarium
             }
 
             _cancelButton.SetEnabled(false);
+            
             this.Close();
         }
 

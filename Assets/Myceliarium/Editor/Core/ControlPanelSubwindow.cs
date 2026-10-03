@@ -105,7 +105,6 @@ namespace AtMycelia.Myceliarium
         void Dispose();
         void Show();
         void Hide();
-
         /// <summary>
         /// Relative to Resources.
         /// </summary>

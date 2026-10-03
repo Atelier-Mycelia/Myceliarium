@@ -259,8 +259,8 @@ namespace AtMycelia.Myceliarium.Tests
             public IReadOnlyList<IControlPanelEntry> GetSubentries(bool recursive = false) =>
                 _subentries;
             public void RemoveFromHierarchy() { }
-            public void OnSelected() { }
-            public void OnDeselected() { }
+            public void Select() { }
+            public void Deselect() { }
         }
         #endregion
     }
