@@ -73,6 +73,9 @@ namespace AtMycelia.Myceliarium
         }
         #endregion
 
+        protected virtual void SetSubs(bool wantsSubsActive) { } // No-op by default.
+        // Subclasses can override to implement logic for activating/deactivating sub-elements.
+
         public virtual void Dispose()
         {
             if (_isDisposed)
