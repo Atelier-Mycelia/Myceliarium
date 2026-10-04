@@ -247,11 +247,6 @@ namespace AtMycelia.Myceliarium
             return FilterCompatibleEntries(_allEntries, saver.IsCompatibleWith);
         }
 
-        private IList<IControlPanelEntry> EntriesCompatibleWith(IControlPanelEntryLoader loader)
-        {
-            return FilterCompatibleEntries(_allEntries, loader.IsCompatibleWith);
-        }
-
         /// <summary>
         /// Pure filtering logic, isolated so it can be unit tested without
         /// needing a live ControlPanel/EditorWindow, concrete savers, or loaders.
