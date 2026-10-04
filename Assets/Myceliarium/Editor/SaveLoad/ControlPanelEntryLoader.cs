@@ -17,7 +17,7 @@ namespace AtMycelia.Myceliarium
             EditorCoroutineUtility.StartCoroutine(coroutine, this);
         }
 
-        private object _loadResult; // Since iterators can't have ref parameters,
+        protected object _loadResult; // Since iterators can't have ref parameters,
                                     // we store this in a field.
 
         public abstract bool IsCompatibleWith(IControlPanelEntry toLoadFor);
