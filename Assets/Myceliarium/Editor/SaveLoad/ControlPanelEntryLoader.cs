@@ -22,7 +22,8 @@ namespace AtMycelia.Myceliarium
 
         public abstract bool IsCompatibleWith(IControlPanelEntry toLoadFor);
 
-        protected IEnumerator LoadProcess(IControlPanelEntry toLoadFor, Action onComplete = null)
+        protected virtual IEnumerator LoadProcess(IControlPanelEntry toLoadFor, 
+            Action onComplete = null)
         {
             // Default implementation does nothing, just invokes the onComplete callback.
             onComplete?.Invoke();
