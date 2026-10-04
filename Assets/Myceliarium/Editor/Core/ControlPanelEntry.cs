@@ -236,7 +236,7 @@ namespace AtMycelia.Myceliarium
         {
             if (Loader != null)
             {
-                Loader.Load(this, ref _lastLoadResult, OnLoadingDone);
+                Loader.Load(this, OnLoadingDone);
             }
             else
             {
