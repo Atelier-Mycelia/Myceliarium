@@ -182,7 +182,8 @@ namespace AtMycelia.Myceliarium
             var topLevelOnes = FilterTopLevelEntries(toCheck);
             for (int i = 0; i < topLevelOnes.Count; i++)
             {
-                _topLevelEntries.Add(topLevelOnes[i]);
+                var toAdd = topLevelOnes[i];
+                _topLevelEntries.Add(toAdd);
             }
         }
 
@@ -244,7 +245,7 @@ namespace AtMycelia.Myceliarium
 
         private IList<IControlPanelEntry> EntriesCompatibleWith(IControlPanelEntrySaver saver)
         {
-            return FilterCompatibleEntries(_allEntries, saver.IsCompatibleWith);
+            return FilterCompatibleEntries(_allEntriesWithSubwindows, saver.IsCompatibleWith);
         }
 
         /// <summary>
@@ -377,7 +378,7 @@ namespace AtMycelia.Myceliarium
         private void PrepSelectionController()
         {
             _selectionController?.Dispose();
-            _selectionController.Init(_allEntries);
+            _selectionController.Init(_allEntriesWithSubwindows);
         }
 
         private ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
@@ -425,13 +426,13 @@ namespace AtMycelia.Myceliarium
 
         protected virtual void RegisterSubentries()
         {
-            var collected = CollectAllEntries(_topLevelEntries);
+            var collected = CollectAllEntriesWithSubwindows(_topLevelEntries);
             for (int i = 0; i < collected.Count; i++)
             {
                 var entry = collected[i];
-                if (!_allEntries.Contains(entry))
+                if (!_allEntriesWithSubwindows.Contains(entry))
                 {
-                    _allEntries.Add(entry);
+                    _allEntriesWithSubwindows.Add(entry);
                 }
             }
 
@@ -448,7 +449,7 @@ namespace AtMycelia.Myceliarium
         protected virtual void AssertNoDuplicateEntryTypes()
         {
             var everyEntry = new List<IControlPanelEntry>(_topLevelEntries);
-            everyEntry.AddRange(_allEntries);
+            everyEntry.AddRange(_allEntriesWithSubwindows);
             ControlPanelEntryTypeValidator.AssertNoDuplicateEntryTypes(everyEntry);
         }
 
@@ -457,7 +458,7 @@ namespace AtMycelia.Myceliarium
         /// into a single flat, de-duplicated list. Isolated so it can be unit
         /// tested without needing a live ControlPanel/EditorWindow.
         /// </summary>
-        public static IList<IControlPanelEntry> CollectAllEntries(
+        public static IList<IControlPanelEntry> CollectAllEntriesWithSubwindows(
             IList<IControlPanelEntry> topLevelEntries)
         {
             var result = new List<IControlPanelEntry>();
@@ -469,11 +470,16 @@ namespace AtMycelia.Myceliarium
             for (int i = 0; i < topLevelEntries.Count; i++)
             {
                 var topLevelElem = topLevelEntries[i];
+                if (topLevelElem.IsMeantToHaveSubwindow && !result.Contains(topLevelElem))
+                {
+                    result.Add(topLevelElem);
+                }
+
                 var subentries = topLevelElem.GetSubentries(recursive: true);
-                for (int j = 0; j < subentries.Count; j++)
+                for (int j = 0; j < subentries.Count; j++)//
                 {
                     var subentry = subentries[j];
-                    if (!result.Contains(subentry))
+                    if (!result.Contains(subentry) && subentry.IsMeantToHaveSubwindow)
                     {
                         result.Add(subentry);
                     }
@@ -483,7 +489,7 @@ namespace AtMycelia.Myceliarium
         }
 
         
-        protected readonly List<IControlPanelEntry> _allEntries = new List<IControlPanelEntry>();
+        protected readonly List<IControlPanelEntry> _allEntriesWithSubwindows = new List<IControlPanelEntry>();
         #endregion
 
         protected virtual void OnDestroy()
@@ -510,7 +516,7 @@ namespace AtMycelia.Myceliarium
 
         public void OnReinitConfirmed()
         {
-            foreach (var entry in _allEntries)
+            foreach (var entry in _allEntriesWithSubwindows)
             {
                 if (!entry.IsTopLevel)
                 {
@@ -521,7 +527,7 @@ namespace AtMycelia.Myceliarium
                 entry.Init(forceReinit: true);
             }
 
-            _attacher.Attach(_allEntries);
+            _attacher.Attach(_allEntriesWithSubwindows);
             _selectionController.OnAllEntriesReinitted();
         }
 
