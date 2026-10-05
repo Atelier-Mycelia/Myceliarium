@@ -175,8 +175,8 @@ namespace AtMycelia.Myceliarium.Tests
         [Test]
         public void CollectAllEntries_CollectsRecursiveSubentriesFromEachTopLevelEntry()
         {
-            var subA = new FakeEntry(sortingName: "SubA");
-            var subB = new FakeEntry(sortingName: "SubB");
+            var subA = new FakeEntry(sortingName: "SubA", isMeantToHaveSubwindow: true);
+            var subB = new FakeEntry(sortingName: "SubB", isMeantToHaveSubwindow: true);
             var topA = new FakeEntry(sortingName: "TopA", subentries: new List<IControlPanelEntry> { subA });
             var topB = new FakeEntry(sortingName: "TopB", subentries: new List<IControlPanelEntry> { subB });
 
@@ -191,7 +191,7 @@ namespace AtMycelia.Myceliarium.Tests
         [Test]
         public void CollectAllEntries_DeduplicatesSubentriesSharedAcrossTopLevelEntries()
         {
-            var sharedSub = new FakeEntry(sortingName: "Shared");
+            var sharedSub = new FakeEntry(sortingName: "Shared", isMeantToHaveSubwindow: true);
             var topA = new FakeEntry(subentries: new List<IControlPanelEntry> { sharedSub });
             var topB = new FakeEntry(subentries: new List<IControlPanelEntry> { sharedSub });
 
@@ -235,15 +235,18 @@ namespace AtMycelia.Myceliarium.Tests
                 SortingOrder = 0;
                 SortingName = string.Empty;
                 _subentries = Array.Empty<IControlPanelEntry>();
+                IsMeantToHaveSubwindow = false;
             }
 
             public FakeEntry(bool isTopLevel = false, int sortingOrder = 0,
-                string sortingName = "", IReadOnlyList<IControlPanelEntry> subentries = null)
+                string sortingName = "", IReadOnlyList<IControlPanelEntry> subentries = null,
+                bool isMeantToHaveSubwindow = false)
             {
                 IsTopLevel = isTopLevel;
                 SortingOrder = sortingOrder;
                 SortingName = sortingName;
                 _subentries = subentries ?? Array.Empty<IControlPanelEntry>();
+                IsMeantToHaveSubwindow = isMeantToHaveSubwindow;
             }
 
             public int SortingOrder { get; }
@@ -251,7 +254,7 @@ namespace AtMycelia.Myceliarium.Tests
             public IControlPanelTab Tab => null;
             public IControlPanelSubwindow Subwindow => null;
             public bool IsTopLevel { get; }
-            public bool IsMeantToHaveSubwindow => false;
+            public bool IsMeantToHaveSubwindow { get; }
             public bool IsInitted => false;
             public bool HasSubentries => _subentries.Count > 0;
 
