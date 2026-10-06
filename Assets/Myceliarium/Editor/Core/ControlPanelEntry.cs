@@ -42,6 +42,7 @@ namespace AtMycelia.Myceliarium
                 PrepareSubentries();
                 PrepareSubwindow();
                 PrepareLoader();
+                SetSubs(false); // Taking reinitting into account
                 SetSubs(true);
                 _subwindow?.Hide();
                 if (ShouldPreloadOnInit)

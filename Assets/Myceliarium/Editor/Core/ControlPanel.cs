@@ -87,7 +87,7 @@ namespace AtMycelia.Myceliarium
             }
 
             _cancelButton.SetEnabled(false);
-            
+
             this.Close();
         }
 
@@ -448,9 +448,23 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         protected virtual void AssertNoDuplicateEntryTypes()
         {
-            var everyEntry = new List<IControlPanelEntry>(_topLevelEntries);
-            everyEntry.AddRange(_allEntriesWithSubwindows);
-            ControlPanelEntryTypeValidator.AssertNoDuplicateEntryTypes(everyEntry);
+            var allEntries = GetAllEntries();
+            ControlPanelEntryTypeValidator.AssertNoDuplicateEntryTypes(allEntries);
+        }
+
+        private IList<IControlPanelEntry> GetAllEntries()
+        {
+            var allEntries = new List<IControlPanelEntry>(_topLevelEntries);
+            for (int i = 0; i < _allEntriesWithSubwindows.Count; i++)
+            {
+                var sub = _allEntriesWithSubwindows[i];
+                if (allEntries.Contains(sub))
+                {
+                    continue;
+                }
+                allEntries.Add(sub);
+            }
+            return allEntries;
         }
 
         /// <summary>
@@ -488,7 +502,7 @@ namespace AtMycelia.Myceliarium
             return result;
         }
 
-        
+
         protected readonly List<IControlPanelEntry> _allEntriesWithSubwindows = new List<IControlPanelEntry>();
         #endregion
 

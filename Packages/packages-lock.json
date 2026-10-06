@@ -1,13 +1,13 @@
 {
   "dependencies": {
     "com.ateliermycelia.commonlib": {
-      "version": "https://github.com/Atelier-Mycelia/CommonLib.git?path=Assets/AtMyceliaCommonLib",
+      "version": "https://github.com/Atelier-Mycelia/CommonLib.git?path=Assets/AtMyceliaCommonLib#develop_bak",
       "depth": 0,
       "source": "git",
       "dependencies": {
         "com.unity.textmeshpro": "3.0.6"
       },
-      "hash": "b83654d6c07e7d7c2413358c24d5eaa1d09428f5"
+      "hash": "05c776d721105e969e76e35821c03103d18c4bcd"
     },
     "com.unity.burst": {
       "version": "1.8.21",
