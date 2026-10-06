@@ -15,6 +15,8 @@ namespace AtMycelia.Myceliarium
 
             LoadUxml();
             RegisterVisualElements();
+            SetSubs(false); 
+            SetSubs(true);
             _isInitted = true;
             _isDisposed = false;
         }

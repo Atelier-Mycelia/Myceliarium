@@ -15,6 +15,9 @@ namespace AtMycelia.Myceliarium
         {
             PrepRoot();
             RegisterVisualElements();
+            ToggleSubs(false); 
+            // ^Since this can end up reinitted, we need to make sure we don't have
+            // any lingering callbacks from a previous Init.
             ToggleSubs(true);
         }
 
