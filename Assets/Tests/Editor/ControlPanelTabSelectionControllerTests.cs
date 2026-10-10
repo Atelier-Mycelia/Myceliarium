@@ -194,7 +194,7 @@ namespace AtMycelia.Myceliarium.Tests
                 // bus, which is what ControlPanelTabSelectionController actually
                 // listens to. Without this bridge, invoking the fake tab's
                 // Clicked event would never reach the controller under test.
-                Tab.Clicked += _ => ControlPanelSignals.OnEntryTabClicked(this);
+                Tab.Clicked += _ => ControlPanelSignals.EntryTabClicked(this);
             }
 
             public int SortingOrder => 0;
@@ -206,6 +206,9 @@ namespace AtMycelia.Myceliarium.Tests
             public bool IsInitted => true;
             public bool IsTestOnly => true;
             public bool HasSubentries => _subentries.Count > 0;
+            public bool HasUnsavedChanges => false;
+
+            public void Dispose() { }
 
             public void Init(bool forceReinit = false) { }
 

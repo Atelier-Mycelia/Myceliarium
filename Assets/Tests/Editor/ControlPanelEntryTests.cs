@@ -10,7 +10,7 @@ namespace AtMycelia.Myceliarium.Tests
         [TearDown]
         public void TearDown()
         {
-            ControlPanelSignals.OnEntryTabClicked = delegate { };
+            ControlPanelSignals.EntryTabClicked = delegate { };
         }
 
         #region Init
@@ -68,7 +68,7 @@ namespace AtMycelia.Myceliarium.Tests
             var entry = new TestEntry();
             entry.Init();
             IControlPanelEntry received = null;
-            ControlPanelSignals.OnEntryTabClicked += e => received = e;
+            ControlPanelSignals.EntryTabClicked += e => received = e;
 
             entry.Tab.InvokeClicked();
 

@@ -152,18 +152,6 @@ namespace AtMycelia.Myceliarium.Tests
         }
 
         [Test]
-        public void Attach_EntryAlreadyInitted_DoesNotCallInitAgain()
-        {
-            var root = CreateValidRoot(out _, out _);
-            _attacher.Init(root);
-            var entry = new FakeEntry(isInitted: true);
-
-            _attacher.Attach(new List<IControlPanelEntry> { entry });
-
-            Assert.That(entry.InitCallCount, Is.EqualTo(0));
-        }
-
-        [Test]
         public void Attach_EntryInitThrows_LogsErrorAndStillAttachesTab()
         {
             var root = CreateValidRoot(out var mainTabSet, out _);
@@ -312,6 +300,9 @@ namespace AtMycelia.Myceliarium.Tests
             public bool IsMeantToHaveSubwindow => Subwindow != null;
             public bool IsInitted { get; }
             public bool HasSubentries => _subentries.Count > 0;
+            public bool HasUnsavedChanges => false;
+
+            public void Dispose() { }
             public int InitCallCount { get; private set; }
 
             public void Init(bool forceReinit = false)

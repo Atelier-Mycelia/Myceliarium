@@ -12,9 +12,9 @@ namespace AtMycelia.Myceliarium.Tests
             // These are static, shared event buses. Resetting them to their
             // default no-op delegates after each test prevents leftover
             // subscriptions from one test leaking into (and breaking) another.
-            ControlPanelSignals.OnControlPanelOpened = delegate { };
-            ControlPanelSignals.OnControlPanelClosed = delegate { };
-            ControlPanelSignals.OnEntryTabClicked = delegate { };
+            ControlPanelSignals.ControlPanelOpened = delegate { };
+            ControlPanelSignals.PreControlPanelClosed = delegate { };
+            ControlPanelSignals.EntryTabClicked = delegate { };
             ControlPanelSignals.SaveRequested = delegate { };
             ControlPanelSignals.SaveCompleted = delegate { };
             ControlPanelSignals.LoadCompleted = delegate { };
@@ -29,9 +29,9 @@ namespace AtMycelia.Myceliarium.Tests
         {
             var panel = new FakeControlPanel();
             IControlPanel received = null;
-            ControlPanelSignals.OnControlPanelOpened += p => received = p;
+            ControlPanelSignals.ControlPanelOpened += p => received = p;
 
-            ControlPanelSignals.OnControlPanelOpened(panel);
+            ControlPanelSignals.ControlPanelOpened(panel);
 
             Assert.That(received, Is.SameAs(panel));
         }
@@ -41,9 +41,9 @@ namespace AtMycelia.Myceliarium.Tests
         {
             var panel = new FakeControlPanel();
             IControlPanel received = null;
-            ControlPanelSignals.OnControlPanelClosed += p => received = p;
+            ControlPanelSignals.PreControlPanelClosed += p => received = p;
 
-            ControlPanelSignals.OnControlPanelClosed(panel);
+            ControlPanelSignals.PreControlPanelClosed(panel);
 
             Assert.That(received, Is.SameAs(panel));
         }
@@ -55,9 +55,9 @@ namespace AtMycelia.Myceliarium.Tests
         {
             var entry = new FakeEntry();
             IControlPanelEntry received = null;
-            ControlPanelSignals.OnEntryTabClicked += e => received = e;
+            ControlPanelSignals.EntryTabClicked += e => received = e;
 
-            ControlPanelSignals.OnEntryTabClicked(entry);
+            ControlPanelSignals.EntryTabClicked(entry);
 
             Assert.That(received, Is.SameAs(entry));
         }
@@ -68,10 +68,10 @@ namespace AtMycelia.Myceliarium.Tests
             var entry = new FakeEntry();
             int callCountA = 0;
             int callCountB = 0;
-            ControlPanelSignals.OnEntryTabClicked += _ => callCountA++;
-            ControlPanelSignals.OnEntryTabClicked += _ => callCountB++;
+            ControlPanelSignals.EntryTabClicked += _ => callCountA++;
+            ControlPanelSignals.EntryTabClicked += _ => callCountB++;
 
-            ControlPanelSignals.OnEntryTabClicked(entry);
+            ControlPanelSignals.EntryTabClicked(entry);
 
             Assert.That(callCountA, Is.EqualTo(1));
             Assert.That(callCountB, Is.EqualTo(1));
@@ -84,9 +84,9 @@ namespace AtMycelia.Myceliarium.Tests
             int callCount = 0;
             void Handler(IControlPanelEntry e) => callCount++;
 
-            ControlPanelSignals.OnEntryTabClicked += Handler;
-            ControlPanelSignals.OnEntryTabClicked -= Handler;
-            ControlPanelSignals.OnEntryTabClicked(entry);
+            ControlPanelSignals.EntryTabClicked += Handler;
+            ControlPanelSignals.EntryTabClicked -= Handler;
+            ControlPanelSignals.EntryTabClicked(entry);
 
             Assert.That(callCount, Is.EqualTo(0));
         }
@@ -177,9 +177,9 @@ namespace AtMycelia.Myceliarium.Tests
 
             Assert.DoesNotThrow(() =>
             {
-                ControlPanelSignals.OnControlPanelOpened(panel);
-                ControlPanelSignals.OnControlPanelClosed(panel);
-                ControlPanelSignals.OnEntryTabClicked(entry);
+                ControlPanelSignals.ControlPanelOpened(panel);
+                ControlPanelSignals.PreControlPanelClosed(panel);
+                ControlPanelSignals.EntryTabClicked(entry);
                 ControlPanelSignals.SaveRequested(panel);
                 ControlPanelSignals.SaveCompleted(entry);
                 ControlPanelSignals.LoadCompleted(entry);
@@ -196,6 +196,16 @@ namespace AtMycelia.Myceliarium.Tests
             public VisualElement Root { get; } = new VisualElement();
             public IReadOnlyList<IControlPanelEntry> TopLevelEntries { get; } =
                 new List<IControlPanelEntry>();
+
+            public bool Contains(IControlPanelEntry entry)
+            {
+                if (entry == null) return false;
+                foreach (var e in TopLevelEntries)
+                {
+                    if (ReferenceEquals(e, entry)) return true;
+                }
+                return false;
+            }
         }
 
         private class FakeEntry : IControlPanelEntry
@@ -209,6 +219,9 @@ namespace AtMycelia.Myceliarium.Tests
             public bool IsMeantToHaveSubwindow => false;
             public bool IsInitted => false;
             public bool HasSubentries => false;
+            public bool HasUnsavedChanges => false;
+
+            public void Dispose() { }
 
             public void Init(bool forceReinit = false) { }
             public IReadOnlyList<IControlPanelEntry> GetSubentries(bool recursive = false) =>

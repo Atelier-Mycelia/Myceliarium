@@ -71,18 +71,21 @@ namespace AtMycelia.Myceliarium
             // They're also not supposed to have their state wiped until either
             // assemblies reload or Unity closes. Thus, it's possible that the entry
             // passed here already has its VisualElements prepped.
-            if (!entry.IsInitted)
+            bool alreadyAttached = _mainTabSet.Contains(entry.Tab.Root);
+            if (alreadyAttached)
             {
-                try
-                {
-                    entry.Init();
-                }
-                catch (Exception ex)
-                {
-                    string logMessage = $"Failed to attach {entry.GetType().Name} " +
-                        $"to ControlPanel: {ex.Message}";
-                    UnityDebug.LogError(logMessage);
-                }
+                return;
+            }
+
+            try
+            {
+                entry.Init();
+            }
+            catch (Exception ex)
+            {
+                string logMessage = $"Failed to attach entry of type {entry.GetType().Name} " + 
+                $"to ControlPanel. Message: {ex.Message}";
+                UnityDebug.LogError(logMessage);
             }
 
             _mainTabSet.Add(entry.Tab.Root);
@@ -92,21 +95,37 @@ namespace AtMycelia.Myceliarium
         private void RegisterSubwindowsOf(IControlPanelEntry entry)
         {
             var subwindow = entry.Subwindow;
-            if (subwindow != null && !_subwindowDisplay.Contains(subwindow.Root))
+            if (ShouldRegister(subwindow))
             {
                 _subwindowDisplay.Add(subwindow.Root);
             }
-
+            
             var subentries = entry.GetSubentries(recursive: true);
             for (int i = 0; i < subentries.Count; i++)
             {
                 var subentry = subentries[i];
                 subwindow = subentry.Subwindow;
-                if (subwindow != null)
+                if (ShouldRegister(subwindow))
                 {
                     _subwindowDisplay.Add(subwindow.Root);
                 }
             }
+        }
+
+        private bool ShouldRegister(IControlPanelSubwindow subwindow)
+        {
+            if (subwindow == null)
+            {
+                return false;
+            }
+
+            bool alreadyRegistered = _subwindowDisplay.Contains(subwindow.Root);
+            if (alreadyRegistered)
+            {
+                return false;
+            }
+            
+            return true;
         }
 
         public void Dispose()
@@ -115,7 +134,7 @@ namespace AtMycelia.Myceliarium
             {
                 return;
             }
-
+            
             _mainTabSet = null;
             _subwindowDisplay = null;
             _rootElement = null;

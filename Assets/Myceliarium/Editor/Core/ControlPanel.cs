@@ -37,7 +37,9 @@ namespace AtMycelia.Myceliarium
         protected virtual void OnEnable()
         {
             SetGlobalSubs(true);
+            saveChangesMessage = $"{DisplayName} has unsaved changes. Save them before closing?";
             _cancelButton?.SetEnabled(true);
+            ControlPanelSignals.ControlPanelOpened.Invoke(this);
         }
 
         protected virtual void SetGlobalSubs(bool on)
@@ -88,7 +90,28 @@ namespace AtMycelia.Myceliarium
 
             _cancelButton.SetEnabled(false);
 
-            this.Close();
+            this.Close(); // Leads to OnDestroy, hence why we don't invoke ControlPanelClosed here.
+        }
+
+        /// <summary>
+        /// Called by Unity when the user picks "Save" in the prompt shown for closing
+        /// the window (e.g. via its X button) while hasUnsavedChanges is true.
+        /// </summary>
+        public override void SaveChanges()
+        {
+            OnSaveRequested(this);
+            base.SaveChanges();
+        }
+
+        /// <summary>
+        /// Called by Unity when the user picks "Discard" in that same prompt. Mirrors
+        /// what the Cancel button does after its confirmation; Unity closes the window
+        /// afterwards.
+        /// </summary>
+        public override void DiscardChanges()
+        {
+            OnReinitConfirmed();
+            base.DiscardChanges();
         }
 
         protected Button _cancelButton;
@@ -131,7 +154,48 @@ namespace AtMycelia.Myceliarium
 
         protected virtual void OnCancelButtonClicked()
         {
+            // While there are unsaved changes, _cancelButtonController owns the click
+            // (dialog, then OnCancelConfirmed).
+            SyncCancelButtonController();
+            if (_cancelControllerActive)
+            {
+                return;
+            }
+
             ControlPanelSignals.CloseRequested(this);
+        }
+
+        private void OnCancelConfirmed()
+        {
+            OnReinitConfirmed();
+            ControlPanelSignals.CloseRequested(this);
+        }
+
+        /// <summary>
+        /// Checks the given entries and all their descendants.
+        /// </summary>
+        public static bool AnyEntryHasUnsavedChanges(IEnumerable<IControlPanelEntry> entries)
+        {
+            if (entries == null)
+            {
+                return false;
+            }
+
+            foreach (var entry in entries)
+            {
+                if (entry == null)
+                {
+                    continue;
+                }
+
+                if (entry.HasUnsavedChanges ||
+                    AnyEntryHasUnsavedChanges(entry.GetSubentries()))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public virtual void CreateGUI()
@@ -291,6 +355,7 @@ namespace AtMycelia.Myceliarium
             DoEntryPreps();
             HandleLanguageDropdown();
             PrepReinitButtonController();
+            PrepCancelButtonController();
         }
 
         #region Registering base window
@@ -356,6 +421,67 @@ namespace AtMycelia.Myceliarium
 
         private readonly DisplayDialogButton _reinitButtonController =
             new DisplayDialogButton();
+
+        private void PrepCancelButtonController()
+        {
+            _cancelButtonSync?.Pause();
+            DisposeCancelButtonController();
+            if (_cancelButton == null)
+            {
+                return;
+            }
+
+            // DisplayDialogButton always shows its dialog on click, so it is only wired
+            // up while some entry has unsaved changes.
+            SyncCancelButtonController();
+            _cancelButtonSync = _cancelButton.schedule.Execute(SyncCancelButtonController).Every(100);
+        }
+
+        private void DisposeCancelButtonController()
+        {
+            _cancelButtonController.Dispose();
+            _cancelControllerActive = false;
+        }
+
+        private bool _cancelControllerActive;
+
+        private void SyncCancelButtonController()
+        {
+            bool dirty = AnyEntryHasUnsavedChanges(_topLevelEntries);
+            if (hasUnsavedChanges != dirty)
+            {
+                // Makes Unity prompt (Save/Discard/Cancel) when the user closes the
+                // window through its own X button.
+                hasUnsavedChanges = dirty;
+            }
+
+            bool needed = _cancelButton != null && dirty;
+            if (needed == _cancelControllerActive)
+            {
+                return;
+            }
+
+            if (needed)
+            {
+                DisplayDialogArgs dialogArgs;
+                dialogArgs.title = "Discard Unsaved Changes";
+                dialogArgs.message = "Some entries have unsaved changes. Closing now will " +
+                                     "discard them. Are you sure?";
+                dialogArgs.okText = "Discard and Close";
+                dialogArgs.cancelText = "Keep Editing";
+                _cancelButtonController.Init(_cancelButton, OnCancelConfirmed, dialogArgs);
+                _cancelControllerActive = true;
+            }
+            else
+            {
+                DisposeCancelButtonController();
+            }
+        }
+
+        private readonly DisplayDialogButton _cancelButtonController =
+            new DisplayDialogButton();
+        private IVisualElementScheduledItem _cancelButtonSync;
+        
 
         #region Entry Preps
         private void DoEntryPreps()
@@ -508,11 +634,14 @@ namespace AtMycelia.Myceliarium
 
         protected virtual void OnDestroy()
         {
+            ControlPanelSignals.PreControlPanelClosed(this);
             _attacher?.Dispose();
             _attacher = null;
             _selectionController?.Dispose();
             _selectionController = null;
             _reinitButtonController?.Dispose();
+            _cancelButtonSync?.Pause();
+            DisposeCancelButtonController();
         }
 
         protected virtual void HandleLanguageDropdown()
@@ -530,19 +659,27 @@ namespace AtMycelia.Myceliarium
 
         public void OnReinitConfirmed()
         {
-            foreach (var entry in _allEntriesWithSubwindows)
+            foreach (var entry in _topLevelEntries)
             {
-                if (!entry.IsTopLevel)
-                {
-                    continue;
-                }
-
-                entry.RemoveFromHierarchy();
+                entry.Dispose();
                 entry.Init(forceReinit: true);
             }
 
             _attacher.Attach(_allEntriesWithSubwindows);
             _selectionController.OnAllEntriesReinitted();
+        }
+
+        public bool Contains(IControlPanelEntry entry)
+        {
+            if (entry == null)
+            {
+                return false;
+            }
+            if (_topLevelEntries.Contains(entry))
+            {
+                return true;
+            }
+            return _allEntriesWithSubwindows.Contains(entry);
         }
 
     }
@@ -551,6 +688,7 @@ namespace AtMycelia.Myceliarium
     {
         VisualElement Root { get; }
         IReadOnlyList<IControlPanelEntry> TopLevelEntries { get; }
+        bool Contains(IControlPanelEntry entry);
     }
 
 }

@@ -15,6 +15,7 @@ namespace AtMycelia.Myceliarium
 
             LoadUxml();
             RegisterVisualElements();
+            ConfigureVisualElements();
             SetSubs(false); 
             SetSubs(true);
             _isInitted = true;
@@ -62,6 +63,16 @@ namespace AtMycelia.Myceliarium
             // Default: nothing. Subclasses override.
         }
 
+        /// <summary>
+        /// For when you want to change the visual elements' properties right after
+        /// registration (for example: setting the objectType of an ObjectField).
+        /// This is NOT for setting or removing callbacks. That's SetSubs's job.
+        /// </summary>
+        protected virtual void ConfigureVisualElements()
+        {
+            // Also nothing by default.   
+        }
+
         protected bool _isDisposed;
 
         public virtual void Bind()
@@ -73,10 +84,16 @@ namespace AtMycelia.Myceliarium
         {
             // Default: nothing. Subclasses override.
         }
-        #endregion
 
-        protected virtual void SetSubs(bool wantsSubsActive) { } // No-op by default.
-        // Subclasses can override to implement logic for activating/deactivating sub-elements.
+        /// <summary>
+        /// For when you want to add or remove callbacks (usually related
+        /// to this subwindow's registered VisualElements).
+        /// </summary>
+        protected virtual void SetSubs(bool wantsSubsActive)
+        {
+            // Say it with me: default: nothing! Subclasses override!
+        } 
+        #endregion
 
         public virtual void Dispose()
         {
@@ -86,6 +103,7 @@ namespace AtMycelia.Myceliarium
             }
 
             Unbind();
+            RemoveFromHierarchy();
             _isDisposed = true;
         }
 
