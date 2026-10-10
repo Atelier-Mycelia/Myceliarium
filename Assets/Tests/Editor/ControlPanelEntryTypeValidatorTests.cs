@@ -139,6 +139,9 @@ namespace AtMycelia.Myceliarium.Tests
             public bool IsMeantToHaveSubwindow => false;
             public bool IsInitted => false;
             public bool HasSubentries => false;
+            public bool HasUnsavedChanges => false;
+
+            public void Dispose() { }
 
             public void Init(bool forceReinit = false) { }
             public IReadOnlyList<IControlPanelEntry> GetSubentries(bool recursive = false) =>
@@ -159,6 +162,9 @@ namespace AtMycelia.Myceliarium.Tests
             public bool IsMeantToHaveSubwindow => false;
             public bool IsInitted => false;
             public bool HasSubentries => false;
+            public bool HasUnsavedChanges => false;
+
+            public void Dispose() { }
 
             public void Init(bool forceReinit = false) { }
             public IReadOnlyList<IControlPanelEntry> GetSubentries(bool recursive = false) =>

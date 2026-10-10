@@ -252,6 +252,7 @@ namespace AtMycelia.Myceliarium
                 // Control Panel window is closed.
                 ToggleSubs(false);
                 Clicked = delegate { };
+                RemoveFromHierarchy();
             }
         }
 

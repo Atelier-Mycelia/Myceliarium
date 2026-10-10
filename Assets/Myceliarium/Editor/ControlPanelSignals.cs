@@ -8,10 +8,16 @@ namespace AtMycelia.Myceliarium
     /// </summary>
     public static class ControlPanelSignals
     {
-        public static Action<IControlPanel> OnControlPanelOpened = delegate { };
-        public static Action<IControlPanel> OnControlPanelClosed = delegate { };
+        public static Action<IControlPanel> ControlPanelOpened = delegate { };
 
-        public static Action<IControlPanelEntry> OnEntryTabClicked = delegate { };
+        /// <summary>
+        /// Delegate invoked immediately before an IControlPanel is closed.
+        /// </summary>
+        /// <remarks>Invoked synchronously on the closing path; handlers should avoid long-running work.
+        /// Defaults to an empty delegate so callers can invoke it without null checks.</remarks>
+        public static Action<IControlPanel> PreControlPanelClosed = delegate { };
+
+        public static Action<IControlPanelEntry> EntryTabClicked = delegate { };
 
         /// <summary>
         /// Occurs when a Control Panel (passed as the arg) requests to save its data. 
@@ -27,5 +33,7 @@ namespace AtMycelia.Myceliarium
         public static Action<IControlPanelEntry> LoadFailed = delegate { };
 
         public static Action<IControlPanel> CloseRequested = delegate { };
+
+
     }
 }

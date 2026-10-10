@@ -6,7 +6,7 @@ namespace AtMycelia.Myceliarium
 {
     /// <summary>
     /// Owns the tab-selection state machine for a ControlPanel: listens for
-    /// <see cref="ControlPanelSignals.OnEntryTabClicked"/>, shows/hides the
+    /// <see cref="ControlPanelSignals.EntryTabClicked"/>, shows/hides the
     /// appropriate subwindow, and keeps tab selection state (IsSelected) in
     /// sync across the whole entry tree.
     ///
@@ -20,22 +20,22 @@ namespace AtMycelia.Myceliarium
             _isDisposed = false;
             _entries = entries ?? Array.Empty<IControlPanelEntry>();
             _entryBeingDisplayed = null;
-            ToggleSubs(true);
+            SetSubs(true);
         }
 
         private bool _isDisposed = true;
         private IReadOnlyList<IControlPanelEntry> _entries = Array.Empty<IControlPanelEntry>();
         private IControlPanelEntry _entryBeingDisplayed;
 
-        private void ToggleSubs(bool on)
+        private void SetSubs(bool on)
         {
             if (on)
             {
-                ControlPanelSignals.OnEntryTabClicked += OnEntryTabClicked;
+                ControlPanelSignals.EntryTabClicked += OnEntryTabClicked;
             }
             else
             {
-                ControlPanelSignals.OnEntryTabClicked -= OnEntryTabClicked;
+                ControlPanelSignals.EntryTabClicked -= OnEntryTabClicked;
             }
         }
 
@@ -109,7 +109,7 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
-            ToggleSubs(false);
+            SetSubs(false);
             _entryBeingDisplayed = null;
             _entries = Array.Empty<IControlPanelEntry>();
             _isDisposed = true;

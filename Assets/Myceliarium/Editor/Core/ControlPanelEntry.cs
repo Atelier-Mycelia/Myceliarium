@@ -12,7 +12,7 @@ namespace AtMycelia.Myceliarium
     /// These should be automatically found through reflection and added to the 
     /// CP when appropriate.
     /// </summary>
-    public abstract class ControlPanelEntry : IControlPanelEntry
+    public abstract class ControlPanelEntry : IControlPanelEntry, IDisposable
     {
         public virtual bool IsTestOnly => false;
 
@@ -35,6 +35,10 @@ namespace AtMycelia.Myceliarium
             {
                 ResetState();
             }
+            else if (_isDisposed)
+            {
+                return;
+            }
 
             if (forceReinit || !_isInitted)
             {
@@ -49,9 +53,12 @@ namespace AtMycelia.Myceliarium
                 {
                     HandleLoading();
                 }
+                SetCurrentStateAsInit();
                 _isInitted = true;
             }
         }
+
+        private bool _isDisposed;
 
         public virtual bool IsInitted
         {
@@ -62,20 +69,37 @@ namespace AtMycelia.Myceliarium
 
         private void ResetState()
         {
-            SetSubs(false);
-            RemoveFromHierarchy();
+            Dispose();
+            _isDisposed = false;
+            _isInitted = false;
+        }
 
-            for (int i = 0; i < _subentries.Count; i++)
+        public virtual void Dispose()
+        {
+            if (_isDisposed)
             {
-                _subentries[i].RemoveFromHierarchy();
+                return;
             }
-            _subentries.Clear();
+
+            SetSubs(false);
+
+            DisposeSubentries();
+            void DisposeSubentries()
+            {
+                for (int i = 0; i < _subentries.Count; i++)
+                {
+                    _subentries[i].Dispose();
+                }
+                _subentries.Clear();
+            }
 
             _tab.Dispose();
             _subwindow?.Dispose();
             _tab = null;
             _subwindow = null;
-            _isInitted = false;
+
+            RemoveFromHierarchy();
+            _isDisposed = true;
         }
 
         protected abstract void PrepareLeftSidebarTab();
@@ -135,6 +159,16 @@ namespace AtMycelia.Myceliarium
 
         protected IControlPanelEntryLoader Loader { get; set; }
 
+        /// <summary>
+        /// For entries that have state that the user is meant to be able to edit. 
+        /// This is to help decide when to show a "Save" button, and when to warn
+        /// the user about unsaved changes.
+        /// </summary>
+        protected virtual void SetCurrentStateAsInit()
+        {
+            HasUnsavedChanges = false;
+        }
+
         public virtual bool IsMeantToHaveSubwindow => true; 
         // ^Most tabs are expected to have subwindows, so...
 
@@ -144,6 +178,7 @@ namespace AtMycelia.Myceliarium
         {
             if (on)
             {
+                ControlPanelSignals.ControlPanelOpened += OnControlPanelOpened;
                 if (_tab != null)
                 {
                     _tab.Clicked += OnTabClicked;
@@ -151,6 +186,7 @@ namespace AtMycelia.Myceliarium
             }
             else
             {
+                ControlPanelSignals.ControlPanelOpened -= OnControlPanelOpened;
                 if (_tab != null)
                 {
                     _tab.Clicked -= OnTabClicked;
@@ -158,9 +194,16 @@ namespace AtMycelia.Myceliarium
             }
         }
 
+        protected virtual void OnControlPanelOpened(IControlPanel panel)
+        {
+            // Default implementation does nothing. Subclasses can override this if they need to respond to
+            // the Control Panel being opened.
+        }
+
+
         protected void OnTabClicked(IControlPanelTab tabClicked)
         {
-            ControlPanelSignals.OnEntryTabClicked(this);
+            ControlPanelSignals.EntryTabClicked(this);
         }
 
         // Clients shouldn't even try to access the Subwindow or tab before
@@ -255,6 +298,7 @@ namespace AtMycelia.Myceliarium
         {
             _subwindow?.Refresh();
             _subwindow?.Show();
+            SetCurrentStateAsInit();
         }
 
         public virtual void Deselect()
@@ -269,18 +313,19 @@ namespace AtMycelia.Myceliarium
         }
 
         public virtual bool HasSubentries => _subentries.Count > 0;
+        public virtual bool HasUnsavedChanges { get; protected set; }
 
     }
 
-    public interface IControlPanelEntry
+    public interface IControlPanelEntry : IDisposable
     {
         /// <summary>
         /// Functions as the constructor for this entry. Should be called once when the 
         /// entry is first created, and can be called again if the entry needs to 
-        /// be reinitialized.
+        /// be reinitialized (say, after being Disposed).
         /// </summary>
         void Init(bool forceReinit = false);
-        bool IsInitted { get; }
+        bool HasUnsavedChanges { get; }
 
         /// <summary>
         /// Decides how this entry is sorted in the Control Panel's left sidebar.
