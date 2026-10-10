@@ -127,11 +127,6 @@ namespace AtMycelia.Myceliarium
                 {
                     _saveButton.clicked += OnSaveButtonClicked;
                 }
-
-                if (_cancelButton != null)
-                {
-                    _cancelButton.clicked += OnCancelButtonClicked;
-                }
             }
             else
             {
@@ -139,36 +134,12 @@ namespace AtMycelia.Myceliarium
                 {
                     _saveButton.clicked -= OnSaveButtonClicked;
                 }
-
-                if (_cancelButton != null)
-                {
-                    _cancelButton.clicked -= OnCancelButtonClicked;
-                }
             }
         }
 
         protected virtual void OnSaveButtonClicked()
         {
             ControlPanelSignals.SaveRequested(this);
-        }
-
-        protected virtual void OnCancelButtonClicked()
-        {
-            // While there are unsaved changes, _cancelButtonController owns the click
-            // (dialog, then OnCancelConfirmed).
-            SyncCancelButtonController();
-            if (_cancelControllerActive)
-            {
-                return;
-            }
-
-            ControlPanelSignals.CloseRequested(this);
-        }
-
-        private void OnCancelConfirmed()
-        {
-            OnReinitConfirmed();
-            ControlPanelSignals.CloseRequested(this);
         }
 
         /// <summary>
@@ -356,6 +327,7 @@ namespace AtMycelia.Myceliarium
             HandleLanguageDropdown();
             PrepReinitButtonController();
             PrepCancelButtonController();
+            PrepUnsavedChangesSync();
         }
 
         #region Registering base window
@@ -413,75 +385,76 @@ namespace AtMycelia.Myceliarium
                 dialogArgs.title = "Reinit All Entries";
                 dialogArgs.message = "This will reset every entry in this Control Panel back to its " +
                                      "startup state, discarding any unsaved runtime changes. Continue?";
-                dialogArgs.okText = "Reinit";
-                dialogArgs.cancelText = "Cancel";
-                _reinitButtonController.Init(_reinitButton, OnReinitConfirmed, dialogArgs);
+                dialogArgs.acceptanceText = "Reinit";
+                dialogArgs.denialText = "Cancel";
+                _reinitButtonController.Init(_reinitButton, dialogArgs);
+                _reinitButtonController.PromptConfirmed += OnReinitConfirmed;
             }
         }
 
         private readonly DisplayDialogButton _reinitButtonController =
             new DisplayDialogButton();
 
+        /// <summary>
+        /// With unsaved changes, Cancel asks for confirmation before closing. Without any,
+        /// the dialog is skipped and the window just closes.
+        /// </summary>
         private void PrepCancelButtonController()
         {
-            _cancelButtonSync?.Pause();
-            DisposeCancelButtonController();
+            _cancelButtonController.Dispose();
             if (_cancelButton == null)
             {
                 return;
             }
 
-            // DisplayDialogButton always shows its dialog on click, so it is only wired
-            // up while some entry has unsaved changes.
-            SyncCancelButtonController();
-            _cancelButtonSync = _cancelButton.schedule.Execute(SyncCancelButtonController).Every(100);
+            DisplayDialogArgs dialogArgs;
+            dialogArgs.title = "Discard Unsaved Changes";
+            dialogArgs.message = "Some entries have unsaved changes. Closing now will " +
+                                 "discard them. Are you sure?";
+            dialogArgs.acceptanceText = "Discard and Close";
+            dialogArgs.denialText = "Keep Editing";
+            _cancelButtonController.Init(_cancelButton, dialogArgs,
+                () => AnyEntryHasUnsavedChanges(_topLevelEntries));
+            _cancelButtonController.PromptConfirmed += OnCancelConfirmed;
+            _cancelButtonController.BringUpDenied += OnCancelWithoutChanges;
         }
 
-        private void DisposeCancelButtonController()
+        private void OnCancelConfirmed()
         {
-            _cancelButtonController.Dispose();
-            _cancelControllerActive = false;
+            OnReinitConfirmed();
+            ControlPanelSignals.CloseRequested(this);
         }
 
-        private bool _cancelControllerActive;
-
-        private void SyncCancelButtonController()
+        private void OnCancelWithoutChanges()
         {
-            bool dirty = AnyEntryHasUnsavedChanges(_topLevelEntries);
-            if (hasUnsavedChanges != dirty)
-            {
-                // Makes Unity prompt (Save/Discard/Cancel) when the user closes the
-                // window through its own X button.
-                hasUnsavedChanges = dirty;
-            }
-
-            bool needed = _cancelButton != null && dirty;
-            if (needed == _cancelControllerActive)
-            {
-                return;
-            }
-
-            if (needed)
-            {
-                DisplayDialogArgs dialogArgs;
-                dialogArgs.title = "Discard Unsaved Changes";
-                dialogArgs.message = "Some entries have unsaved changes. Closing now will " +
-                                     "discard them. Are you sure?";
-                dialogArgs.okText = "Discard and Close";
-                dialogArgs.cancelText = "Keep Editing";
-                _cancelButtonController.Init(_cancelButton, OnCancelConfirmed, dialogArgs);
-                _cancelControllerActive = true;
-            }
-            else
-            {
-                DisposeCancelButtonController();
-            }
+            ControlPanelSignals.CloseRequested(this);
         }
 
         private readonly DisplayDialogButton _cancelButtonController =
             new DisplayDialogButton();
-        private IVisualElementScheduledItem _cancelButtonSync;
-        
+
+        private void PrepUnsavedChangesSync()
+        {
+            _unsavedChangesSync?.Pause();
+            SyncHasUnsavedChanges();
+            _unsavedChangesSync = rootVisualElement.schedule.Execute(SyncHasUnsavedChanges).Every(100);
+        }
+
+        /// <summary>
+        /// Unity reads hasUnsavedChanges when the window is closed through its own X button
+        /// (prompting Save/Discard/Cancel), so it has to be current before that happens.
+        /// </summary>
+        private void SyncHasUnsavedChanges()
+        {
+            bool dirty = AnyEntryHasUnsavedChanges(_topLevelEntries);
+            if (hasUnsavedChanges != dirty)
+            {
+                hasUnsavedChanges = dirty;
+            }
+        }
+
+        private IVisualElementScheduledItem _unsavedChangesSync;
+
 
         #region Entry Preps
         private void DoEntryPreps()
@@ -640,8 +613,8 @@ namespace AtMycelia.Myceliarium
             _selectionController?.Dispose();
             _selectionController = null;
             _reinitButtonController?.Dispose();
-            _cancelButtonSync?.Pause();
-            DisposeCancelButtonController();
+            _cancelButtonController.Dispose();
+            _unsavedChangesSync?.Pause();
         }
 
         protected virtual void HandleLanguageDropdown()

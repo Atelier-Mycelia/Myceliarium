@@ -7,7 +7,7 @@
       "dependencies": {
         "com.unity.textmeshpro": "3.0.6"
       },
-      "hash": "05c776d721105e969e76e35821c03103d18c4bcd"
+      "hash": "2a1b380bb6e47f2d9a460789c35dbacde906e6df"
     },
     "com.coplaydev.unity-mcp": {
       "version": "https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity#main",
