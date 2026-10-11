@@ -71,7 +71,9 @@ namespace AtMycelia.Myceliarium
             // They're also not supposed to have their state wiped until either
             // assemblies reload or Unity closes. Thus, it's possible that the entry
             // passed here already has its VisualElements prepped.
-            bool alreadyAttached = _mainTabSet.Contains(entry.Tab.Root);
+            bool alreadyAttached = entry.Tab != null && _mainTabSet.Contains(entry.Tab.Root);
+            // ^The tab being null means that the entry was either never initialized or was disposed.
+            // In either case, we should attempt to initialize it again.
             if (alreadyAttached)
             {
                 return;
