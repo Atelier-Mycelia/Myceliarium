@@ -179,6 +179,7 @@ namespace AtMycelia.Myceliarium
             if (on)
             {
                 ControlPanelSignals.ControlPanelOpened += OnControlPanelOpened;
+                ControlPanelSignals.SaveCompleted += OnSaveCompleted;
                 if (_tab != null)
                 {
                     _tab.Clicked += OnTabClicked;
@@ -187,6 +188,7 @@ namespace AtMycelia.Myceliarium
             else
             {
                 ControlPanelSignals.ControlPanelOpened -= OnControlPanelOpened;
+                ControlPanelSignals.SaveCompleted -= OnSaveCompleted;
                 if (_tab != null)
                 {
                     _tab.Clicked -= OnTabClicked;
@@ -200,6 +202,13 @@ namespace AtMycelia.Myceliarium
             // the Control Panel being opened.
         }
 
+        protected virtual void OnSaveCompleted(IControlPanelEntry entry)
+        {
+            if (entry == this)
+            {
+                HasUnsavedChanges = false;
+            }
+        }
 
         protected void OnTabClicked(IControlPanelTab tabClicked)
         {
