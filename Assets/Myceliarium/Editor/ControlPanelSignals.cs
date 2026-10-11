@@ -34,6 +34,17 @@ namespace AtMycelia.Myceliarium
 
         public static Action<IControlPanel> CloseRequested = delegate { };
 
+        /// <summary>
+        /// Occurs when a Control Panel's footer asks for all its entries to be reset
+        /// to their startup state.
+        /// </summary>
+        public static Action<IControlPanel> ReinitRequested = delegate { };
+
+        /// <summary>
+        /// Occurs when the language is changed in a Control Panel's footer. The string
+        /// is the newly selected language.
+        /// </summary>
+        public static Action<IControlPanel, string> LanguageChanged = delegate { };
 
     }
 }

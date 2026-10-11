@@ -53,7 +53,7 @@ namespace AtMycelia.Myceliarium
                 {
                     HandleLoading();
                 }
-                SetCurrentStateAsInit();
+                SetCurrentStateAsBase();
                 _isInitted = true;
             }
         }
@@ -164,7 +164,7 @@ namespace AtMycelia.Myceliarium
         /// This is to help decide when to show a "Save" button, and when to warn
         /// the user about unsaved changes.
         /// </summary>
-        protected virtual void SetCurrentStateAsInit()
+        protected virtual void SetCurrentStateAsBase()
         {
             HasUnsavedChanges = false;
         }
@@ -179,6 +179,7 @@ namespace AtMycelia.Myceliarium
             if (on)
             {
                 ControlPanelSignals.ControlPanelOpened += OnControlPanelOpened;
+                ControlPanelSignals.SaveCompleted += OnSaveCompleted;
                 if (_tab != null)
                 {
                     _tab.Clicked += OnTabClicked;
@@ -187,6 +188,7 @@ namespace AtMycelia.Myceliarium
             else
             {
                 ControlPanelSignals.ControlPanelOpened -= OnControlPanelOpened;
+                ControlPanelSignals.SaveCompleted -= OnSaveCompleted;
                 if (_tab != null)
                 {
                     _tab.Clicked -= OnTabClicked;
@@ -200,6 +202,14 @@ namespace AtMycelia.Myceliarium
             // the Control Panel being opened.
         }
 
+        protected virtual void OnSaveCompleted(IControlPanelEntry entry)
+        {
+            if (entry == this)
+            {
+                SetCurrentStateAsBase();
+                HasUnsavedChanges = false;
+            }
+        }
 
         protected void OnTabClicked(IControlPanelTab tabClicked)
         {
@@ -298,7 +308,7 @@ namespace AtMycelia.Myceliarium
         {
             _subwindow?.Refresh();
             _subwindow?.Show();
-            SetCurrentStateAsInit();
+            SetCurrentStateAsBase();
         }
 
         public virtual void Deselect()
