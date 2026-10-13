@@ -53,7 +53,7 @@ namespace AtMycelia.Myceliarium
                 {
                     HandleLoading();
                 }
-                SetCurrentStateAsInit();
+                SetCurrentStateAsBase();
                 _isInitted = true;
             }
         }
@@ -164,7 +164,7 @@ namespace AtMycelia.Myceliarium
         /// This is to help decide when to show a "Save" button, and when to warn
         /// the user about unsaved changes.
         /// </summary>
-        protected virtual void SetCurrentStateAsInit()
+        protected virtual void SetCurrentStateAsBase()
         {
             HasUnsavedChanges = false;
         }
@@ -206,6 +206,7 @@ namespace AtMycelia.Myceliarium
         {
             if (entry == this)
             {
+                SetCurrentStateAsBase();
                 HasUnsavedChanges = false;
             }
         }
@@ -307,7 +308,7 @@ namespace AtMycelia.Myceliarium
         {
             _subwindow?.Refresh();
             _subwindow?.Show();
-            SetCurrentStateAsInit();
+            SetCurrentStateAsBase();
         }
 
         public virtual void Deselect()
