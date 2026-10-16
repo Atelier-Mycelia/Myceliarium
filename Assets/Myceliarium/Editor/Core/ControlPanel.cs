@@ -100,7 +100,11 @@ namespace AtMycelia.Myceliarium
                 entry.Init(forceReinit: true);
             }
 
-            _attacher.Attach(_entries.AllWithSubwindows);
+            // Reinitting makes the entries recreate their subentries, so everything
+            // derived from the old instances has to be refreshed.
+            RegisterSubentries();
+            _attacher.Attach(_entries.TopLevel);
+            RefreshSaverCache();
             _selectionController.OnAllEntriesReinitted();
         }
 
