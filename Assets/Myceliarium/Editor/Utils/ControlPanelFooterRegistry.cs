@@ -1,14 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 
 namespace AtMycelia.Myceliarium
 {
     /// <summary>
     /// Discovers all the concrete IControlPanelFooter types in the project. Unlike savers,
-    /// footers are bound to one panel's UI, so this hands out a new instance per request
-    /// rather than shared ones.
+    /// footers are bound to one panel's UI, so this hands out a new footer instance per
+    /// request (one per panel) rather than a shared one.
     /// </summary>
     public static class ControlPanelFooterRegistry
     {
@@ -50,13 +49,17 @@ namespace AtMycelia.Myceliarium
                 return Array.Empty<Type>();
             }
 
-            return candidates
-                .Where(type =>
-                    type != null &&
+            var result = new List<Type>();
+            foreach (var type in candidates)
+            {
+                if (type != null &&
                     _footerType.IsAssignableFrom(type) &&
-                    !type.IsAbstract &&
-                    !type.IsInterface)
-                .ToArray();
+                    type.IsConcrete())
+                {
+                    result.Add(type);
+                }
+            }
+            return result.ToArray();
         }
 
         private static readonly Type _footerType = typeof(IControlPanelFooter);
@@ -74,25 +77,28 @@ namespace AtMycelia.Myceliarium
                     {
                         RefreshRegistry();
                     }
-                    return _allFooterTypes.ToArray();
+                    return (Type[])_allFooterTypes.Clone();
                 }
             }
         }
 
-        public static IList<IControlPanelFooter> CreateFootersOfType<T>()
+        public static IControlPanelFooter CreateFooterOfType<T>()
             where T : IControlPanelFooter
         {
-            return CreateFootersOfType(typeof(T));
+            return CreateFooterOfType(typeof(T));
         }
 
         /// <summary>
-        /// Creates a new instance of every footer type assignable to the given one.
+        /// Creates a new instance of the first footer type assignable to the given one.
+        /// Panels only have one footer, so if several types match, the extras are
+        /// ignored with a warning. Returns null if none match or creation fails.
         /// </summary>
-        public static IList<IControlPanelFooter> CreateFootersOfType(Type footerSuperType,
+        public static IControlPanelFooter CreateFooterOfType(Type footerSuperType,
             Func<Type, IControlPanelFooter> instanceFactory = null)
         {
             instanceFactory ??= DefaultInstanceFactory;
-            var result = new List<IControlPanelFooter>();
+            Type chosen = null;
+            int matchCount = 0;
             foreach (var type in AllFooterTypes)
             {
                 if (!footerSuperType.IsAssignableFrom(type))
@@ -100,21 +106,31 @@ namespace AtMycelia.Myceliarium
                     continue;
                 }
 
-                try
-                {
-                    var instance = instanceFactory(type);
-                    if (instance != null)
-                    {
-                        result.Add(instance);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    UnityEngine.Debug.LogError($"Failed to create instance of " +
-                        $"{type.Name}: {ex.Message}");
-                }
+                chosen ??= type;
+                matchCount++;
             }
-            return result;
+
+            if (chosen == null)
+            {
+                return null;
+            }
+
+            if (matchCount > 1)
+            {
+                UnityEngine.Debug.LogWarning($"Multiple footer types match " +
+                    $"{footerSuperType.Name}; using {chosen.Name}.");
+            }
+
+            try
+            {
+                return instanceFactory(chosen);
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.LogError($"Failed to create instance of " +
+                    $"{chosen.Name}: {ex.Message}");
+                return null;
+            }
         }
 
         private static IControlPanelFooter DefaultInstanceFactory(Type type)

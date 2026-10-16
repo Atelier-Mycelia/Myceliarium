@@ -14,7 +14,7 @@ namespace AtMycelia.Myceliarium.Tests
             var nested = new FakeEntry(isTopLevel: false);
             var toCheck = new List<IControlPanelEntry> { topLevel, nested };
 
-            var result = ControlPanel.FilterTopLevelEntries(toCheck);
+            var result = EntryCollection.FilterTopLevelEntries(toCheck);
 
             Assert.That(result.Count, Is.EqualTo(1));
             Assert.That(result[0], Is.SameAs(topLevel));
@@ -26,7 +26,7 @@ namespace AtMycelia.Myceliarium.Tests
             var topLevel = new FakeEntry(isTopLevel: true);
             var toCheck = new List<IControlPanelEntry> { null, topLevel };
 
-            var result = ControlPanel.FilterTopLevelEntries(toCheck);
+            var result = EntryCollection.FilterTopLevelEntries(toCheck);
 
             Assert.That(result.Count, Is.EqualTo(1));
             Assert.That(result[0], Is.SameAs(topLevel));
@@ -35,7 +35,7 @@ namespace AtMycelia.Myceliarium.Tests
         [Test]
         public void FilterTopLevelEntries_NullInput_ReturnsEmptyList()
         {
-            var result = ControlPanel.FilterTopLevelEntries(null);
+            var result = EntryCollection.FilterTopLevelEntries(null);
 
             Assert.That(result, Is.Not.Null);
             Assert.That(result, Is.Empty);
@@ -44,7 +44,7 @@ namespace AtMycelia.Myceliarium.Tests
         [Test]
         public void FilterTopLevelEntries_EmptyInput_ReturnsEmptyList()
         {
-            var result = ControlPanel.FilterTopLevelEntries(new List<IControlPanelEntry>());
+            var result = EntryCollection.FilterTopLevelEntries(new List<IControlPanelEntry>());
 
             Assert.That(result, Is.Empty);
         }
@@ -58,7 +58,7 @@ namespace AtMycelia.Myceliarium.Tests
                 new FakeEntry(isTopLevel: false)
             };
 
-            var result = ControlPanel.FilterTopLevelEntries(toCheck);
+            var result = EntryCollection.FilterTopLevelEntries(toCheck);
 
             Assert.That(result, Is.Empty);
         }
@@ -72,7 +72,7 @@ namespace AtMycelia.Myceliarium.Tests
             var incompatible = new FakeEntry(sortingName: "Incompatible");
             var allEntries = new List<IControlPanelEntry> { compatible, incompatible };
 
-            var result = ControlPanel.FilterCompatibleEntries(
+            var result = SaveCoordinator.FilterCompatibleEntries(
                 allEntries, entry => entry == compatible);
 
             Assert.That(result.Count, Is.EqualTo(1));
@@ -82,7 +82,7 @@ namespace AtMycelia.Myceliarium.Tests
         [Test]
         public void FilterCompatibleEntries_NullAllEntries_ReturnsEmptyList()
         {
-            var result = ControlPanel.FilterCompatibleEntries(null, entry => true);
+            var result = SaveCoordinator.FilterCompatibleEntries(null, entry => true);
 
             Assert.That(result, Is.Not.Null);
             Assert.That(result, Is.Empty);
@@ -93,7 +93,7 @@ namespace AtMycelia.Myceliarium.Tests
         {
             var allEntries = new List<IControlPanelEntry> { new FakeEntry() };
 
-            var result = ControlPanel.FilterCompatibleEntries(allEntries, null);
+            var result = SaveCoordinator.FilterCompatibleEntries(allEntries, null);
 
             Assert.That(result, Is.Empty);
         }
@@ -103,7 +103,7 @@ namespace AtMycelia.Myceliarium.Tests
         {
             var allEntries = new List<IControlPanelEntry> { new FakeEntry() };
 
-            var result = ControlPanel.FilterCompatibleEntries(allEntries, entry => false);
+            var result = SaveCoordinator.FilterCompatibleEntries(allEntries, entry => false);
 
             Assert.That(result, Is.Empty);
         }
@@ -115,7 +115,7 @@ namespace AtMycelia.Myceliarium.Tests
             var second = new FakeEntry(sortingName: "Second");
             var allEntries = new List<IControlPanelEntry> { first, second };
 
-            var result = ControlPanel.FilterCompatibleEntries(allEntries, entry => true);
+            var result = SaveCoordinator.FilterCompatibleEntries(allEntries, entry => true);
 
             Assert.That(result.Count, Is.EqualTo(2));
             Assert.That(result[0], Is.SameAs(first));
@@ -130,8 +130,8 @@ namespace AtMycelia.Myceliarium.Tests
             var lower = new FakeEntry(sortingOrder: 1);
             var higher = new FakeEntry(sortingOrder: 2);
 
-            Assert.That(ControlPanel.CompareEntries(lower, higher), Is.LessThan(0));
-            Assert.That(ControlPanel.CompareEntries(higher, lower), Is.GreaterThan(0));
+            Assert.That(EntryCollection.CompareEntries(lower, higher), Is.LessThan(0));
+            Assert.That(EntryCollection.CompareEntries(higher, lower), Is.GreaterThan(0));
         }
 
         [Test]
@@ -140,8 +140,8 @@ namespace AtMycelia.Myceliarium.Tests
             var a = new FakeEntry(sortingOrder: 5, sortingName: "Alpha");
             var b = new FakeEntry(sortingOrder: 5, sortingName: "Beta");
 
-            Assert.That(ControlPanel.CompareEntries(a, b), Is.LessThan(0));
-            Assert.That(ControlPanel.CompareEntries(b, a), Is.GreaterThan(0));
+            Assert.That(EntryCollection.CompareEntries(a, b), Is.LessThan(0));
+            Assert.That(EntryCollection.CompareEntries(b, a), Is.GreaterThan(0));
         }
 
         [Test]
@@ -150,7 +150,7 @@ namespace AtMycelia.Myceliarium.Tests
             var a = new FakeEntry(sortingOrder: 5, sortingName: "Same");
             var b = new FakeEntry(sortingOrder: 5, sortingName: "Same");
 
-            Assert.That(ControlPanel.CompareEntries(a, b), Is.EqualTo(0));
+            Assert.That(EntryCollection.CompareEntries(a, b), Is.EqualTo(0));
         }
 
         [Test]
@@ -163,7 +163,7 @@ namespace AtMycelia.Myceliarium.Tests
                 new FakeEntry(sortingOrder: 1, sortingName: "A"),
             };
 
-            entries.Sort(ControlPanel.CompareEntries);
+            entries.Sort(EntryCollection.CompareEntries);
 
             Assert.That(entries[0].SortingName, Is.EqualTo("A"));
             Assert.That(entries[1].SortingName, Is.EqualTo("Z"));
@@ -180,7 +180,7 @@ namespace AtMycelia.Myceliarium.Tests
             var topA = new FakeEntry(sortingName: "TopA", subentries: new List<IControlPanelEntry> { subA });
             var topB = new FakeEntry(sortingName: "TopB", subentries: new List<IControlPanelEntry> { subB });
 
-            var result = ControlPanel.CollectAllEntriesWithSubwindows(
+            var result = EntryCollection.CollectAllEntriesWithSubwindows(
                 new List<IControlPanelEntry> { topA, topB });
 
             Assert.That(result.Count, Is.EqualTo(2));
@@ -195,7 +195,7 @@ namespace AtMycelia.Myceliarium.Tests
             var topA = new FakeEntry(subentries: new List<IControlPanelEntry> { sharedSub });
             var topB = new FakeEntry(subentries: new List<IControlPanelEntry> { sharedSub });
 
-            var result = ControlPanel.CollectAllEntriesWithSubwindows(
+            var result = EntryCollection.CollectAllEntriesWithSubwindows(
                 new List<IControlPanelEntry> { topA, topB });
 
             Assert.That(result.Count, Is.EqualTo(1));
@@ -205,7 +205,7 @@ namespace AtMycelia.Myceliarium.Tests
         [Test]
         public void CollectAllEntries_NullInput_ReturnsEmptyList()
         {
-            var result = ControlPanel.CollectAllEntriesWithSubwindows(null);
+            var result = EntryCollection.CollectAllEntriesWithSubwindows(null);
 
             Assert.That(result, Is.Not.Null);
             Assert.That(result, Is.Empty);
@@ -216,7 +216,7 @@ namespace AtMycelia.Myceliarium.Tests
         {
             var top = new FakeEntry(subentries: new List<IControlPanelEntry>());
 
-            var result = ControlPanel.CollectAllEntriesWithSubwindows(
+            var result = EntryCollection.CollectAllEntriesWithSubwindows(
                 new List<IControlPanelEntry> { top });
 
             Assert.That(result, Is.Empty);
