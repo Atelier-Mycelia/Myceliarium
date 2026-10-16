@@ -245,6 +245,44 @@ namespace AtMycelia.Myceliarium.Tests
             Assert.That(subwindowDisplay.Contains(parentSubwindow.Root), Is.True);
             Assert.That(subwindowDisplay.childCount, Is.EqualTo(1));
         }
+
+        [Test]
+        public void Attach_EntrySubwindowThrows_LogsErrorAndStillAttachesTabAndOthers()
+        {
+            var root = CreateValidRoot(out var mainTabSet, out var subwindowDisplay);
+            _attacher.Init(root);
+            var broken = new FakeEntry(subwindowThrows: true);
+            var healthy = new FakeEntry();
+
+            LogAssert.Expect(LogType.Error,
+                new System.Text.RegularExpressions.Regex(".*Failed to get the subwindow.*"));
+
+            Assert.DoesNotThrow(() =>
+                _attacher.Attach(new List<IControlPanelEntry> { broken, healthy }));
+            Assert.That(mainTabSet.Contains(broken.Tab.Root), Is.True);
+            Assert.That(mainTabSet.Contains(healthy.Tab.Root), Is.True);
+            Assert.That(subwindowDisplay.Contains(((FakeSubwindow)healthy.Subwindow).Root),
+                Is.True);
+        }
+
+        [Test]
+        public void Attach_SubentrySubwindowThrows_StillRegistersTheSiblingsSubwindow()
+        {
+            var root = CreateValidRoot(out _, out var subwindowDisplay);
+            _attacher.Init(root);
+            var broken = new FakeEntry(subwindowThrows: true);
+            var healthy = new FakeEntry();
+            var parent = new FakeEntry(
+                subentries: new List<IControlPanelEntry> { broken, healthy });
+
+            LogAssert.Expect(LogType.Error,
+                new System.Text.RegularExpressions.Regex(".*Failed to get the subwindow.*"));
+
+            Assert.DoesNotThrow(() =>
+                _attacher.Attach(new List<IControlPanelEntry> { parent }));
+            Assert.That(subwindowDisplay.Contains(((FakeSubwindow)healthy.Subwindow).Root),
+                Is.True);
+        }
         #endregion
 
         #region Dispose
@@ -283,6 +321,8 @@ namespace AtMycelia.Myceliarium.Tests
         {
             private readonly IReadOnlyList<IControlPanelEntry> _subentries;
             private readonly bool _initThrows;
+            private readonly bool _subwindowThrows;
+            private readonly IControlPanelSubwindow _subwindow;
 
             public FakeEntry(
                 bool isTopLevel = true,
@@ -291,31 +331,28 @@ namespace AtMycelia.Myceliarium.Tests
                 bool hasSubwindow = true,
                 IControlPanelSubwindow subwindow = null,
                 IReadOnlyList<IControlPanelEntry> subentries = null,
-                bool hasTab = true)
+                bool hasTab = true,
+                bool subwindowThrows = false)
             {
+                _subwindowThrows = subwindowThrows;
                 IsTopLevel = isTopLevel;
                 IsInitted = isInitted;
                 _initThrows = initThrows;
                 _subentries = subentries ?? Array.Empty<IControlPanelEntry>();
                 Tab = hasTab ? new FakeTab() : null;
 
-                if (!hasSubwindow)
-                {
-                    Subwindow = null;
-                }
-                else
-                {
-                    Subwindow = subwindow ?? new FakeSubwindow();
-                }
+                _subwindow = hasSubwindow ? subwindow ?? new FakeSubwindow() : null;
             }
 
             public bool IsTestOnly => true;
             public int SortingOrder => 0;
             public string SortingName => string.Empty;
             public IControlPanelTab Tab { get; }
-            public IControlPanelSubwindow Subwindow { get; }
+            public IControlPanelSubwindow Subwindow => _subwindowThrows
+                ? throw new InvalidOperationException("Simulated missing subwindow")
+                : _subwindow;
             public bool IsTopLevel { get; }
-            public bool IsMeantToHaveSubwindow => Subwindow != null;
+            public bool IsMeantToHaveSubwindow => _subwindow != null || _subwindowThrows;
             public bool IsInitted { get; }
             public bool HasSubentries => _subentries.Count > 0;
             public bool HasUnsavedChanges => false;

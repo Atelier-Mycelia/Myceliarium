@@ -105,21 +105,46 @@ namespace AtMycelia.Myceliarium
 
         private void RegisterSubwindowsOf(IControlPanelEntry entry)
         {
-            var subwindow = entry.Subwindow;
+            // An entry that failed to initialize properly can throw when asked for its
+            // subwindow (or subentries). That shouldn't keep the others from attaching.
+            RegisterSubwindow(entry);
+
+            IReadOnlyList<IControlPanelEntry> subentries;
+            try
+            {
+                subentries = entry.GetSubentries(recursive: true);
+            }
+            catch (Exception ex)
+            {
+                UnityDebug.LogError($"Failed to get the subentries of " +
+                    $"{entry.GetType().Name} while attaching its subwindows. " +
+                    $"Message: {ex.Message}");
+                return;
+            }
+
+            for (int i = 0; i < subentries.Count; i++)
+            {
+                RegisterSubwindow(subentries[i]);
+            }
+        }
+
+        private void RegisterSubwindow(IControlPanelEntry entry)
+        {
+            IControlPanelSubwindow subwindow;
+            try
+            {
+                subwindow = entry.Subwindow;
+            }
+            catch (Exception ex)
+            {
+                UnityDebug.LogError($"Failed to get the subwindow of " +
+                    $"{entry.GetType().Name} while attaching it. Message: {ex.Message}");
+                return;
+            }
+
             if (ShouldRegister(subwindow))
             {
                 _subwindowDisplay.Add(subwindow.Root);
-            }
-            
-            var subentries = entry.GetSubentries(recursive: true);
-            for (int i = 0; i < subentries.Count; i++)
-            {
-                var subentry = subentries[i];
-                subwindow = subentry.Subwindow;
-                if (ShouldRegister(subwindow))
-                {
-                    _subwindowDisplay.Add(subwindow.Root);
-                }
             }
         }
 

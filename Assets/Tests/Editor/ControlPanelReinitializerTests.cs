@@ -41,7 +41,7 @@ namespace AtMycelia.Myceliarium.Tests
             _entries.SetTopLevel(new List<IControlPanelEntry> { _root });
             _attacher.Attach(_entries.TopLevel);
             RebuildFlattened();
-            _selection.Init(_entries.AllWithSubwindows);
+            _selection.Init(_entries);
             RefreshSavers();
         }
 

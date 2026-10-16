@@ -333,7 +333,7 @@ namespace AtMycelia.Myceliarium
         private void PrepSelectionController()
         {
             _selectionController.Dispose();
-            _selectionController.Init(_entries.AllWithSubwindows);
+            _selectionController.Init(_entries);
         }
 
         private readonly ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
