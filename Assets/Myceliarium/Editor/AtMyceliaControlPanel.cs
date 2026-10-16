@@ -14,6 +14,7 @@ namespace AtMycelia.Myceliarium
         protected override Type EntrySuperType => typeof(IAtMyceliaControlPanelEntry);
         protected override Type LoaderSuperType => typeof(IAtMyceliaControlPanelEntryLoader);
         protected override Type SaverSuperType => typeof(IAtMyceliaControlPanelEntrySaver);
+        protected override Type FooterSuperType => typeof(IAtMyceliaControlPanelFooter);
 
         #endregion
 
@@ -30,9 +31,6 @@ namespace AtMycelia.Myceliarium
         }
 
         public static AtMyceliaControlPanel S { get; private set; }
-
-        
-
     }
 
 }

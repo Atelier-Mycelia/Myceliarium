@@ -5,8 +5,6 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using Type = System.Type;
 using UnityDebug = UnityEngine.Debug;
-using AtMycelia.EditorExt;
-using UnityEditor.Experimental.GraphView;
 
 namespace AtMycelia.Myceliarium
 {
@@ -38,7 +36,6 @@ namespace AtMycelia.Myceliarium
         {
             SetGlobalSubs(true);
             saveChangesMessage = $"{DisplayName} has unsaved changes. Save them before closing?";
-            _cancelButton?.SetEnabled(true);
             ControlPanelSignals.ControlPanelOpened.Invoke(this);
         }
 
@@ -48,11 +45,15 @@ namespace AtMycelia.Myceliarium
             {
                 ControlPanelSignals.SaveRequested += OnSaveRequested;
                 ControlPanelSignals.CloseRequested += OnCloseRequested;
+                ControlPanelSignals.ReinitRequested += OnReinitRequested;
+                ControlPanelSignals.LanguageChanged += OnLanguageChanged;
             }
             else
             {
                 ControlPanelSignals.SaveRequested -= OnSaveRequested;
                 ControlPanelSignals.CloseRequested -= OnCloseRequested;
+                ControlPanelSignals.ReinitRequested -= OnReinitRequested;
+                ControlPanelSignals.LanguageChanged -= OnLanguageChanged;
             }
         }
 
@@ -77,10 +78,6 @@ namespace AtMycelia.Myceliarium
         protected readonly IDictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>> _savers =
             new Dictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>>();
 
-
-        protected readonly IDictionary<IControlPanelEntryLoader, IList<IControlPanelEntry>> _loaders =
-            new Dictionary<IControlPanelEntryLoader, IList<IControlPanelEntry>>();
-
         protected virtual void OnCloseRequested(IControlPanel cPanel)
         {
             if (!ReferenceEquals(cPanel, this))
@@ -88,9 +85,37 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
-            _cancelButton.SetEnabled(false);
-
             this.Close(); // Leads to OnDestroy, hence why we don't invoke ControlPanelClosed here.
+        }
+
+        protected virtual void OnReinitRequested(IControlPanel cPanel)
+        {
+            if (!ReferenceEquals(cPanel, this))
+            {
+                return;
+            }
+
+            OnReinitConfirmed();
+        }
+
+        public void OnReinitConfirmed()
+        {
+            foreach (var entry in _topLevelEntries)
+            {
+                entry.Dispose();
+                entry.Init(forceReinit: true);
+            }
+
+            _attacher.Attach(_allEntriesWithSubwindows);
+            _selectionController.OnAllEntriesReinitted();
+        }
+
+        /// <summary>
+        /// Called when this panel's footer reports a language change. Does nothing by
+        /// default; override to react to it.
+        /// </summary>
+        protected virtual void OnLanguageChanged(IControlPanel cPanel, string language)
+        {
         }
 
         /// <summary>
@@ -114,32 +139,12 @@ namespace AtMycelia.Myceliarium
             base.DiscardChanges();
         }
 
-        protected Button _cancelButton;
-
         /// <summary>
-        /// Local to the VisualElements registered under this ControlPanel.
+        /// Local to the VisualElements registered under this ControlPanel. The footers'
+        /// elements are handled by the footers themselves.
         /// </summary>
         protected virtual void SetLocalSubs(bool on)
         {
-            if (on)
-            {
-                if (_saveButton != null)
-                {
-                    _saveButton.clicked += OnSaveButtonClicked;
-                }
-            }
-            else
-            {
-                if (_saveButton != null)
-                {
-                    _saveButton.clicked -= OnSaveButtonClicked;
-                }
-            }
-        }
-
-        protected virtual void OnSaveButtonClicked()
-        {
-            ControlPanelSignals.SaveRequested(this);
         }
 
         /// <summary>
@@ -226,8 +231,7 @@ namespace AtMycelia.Myceliarium
         /// Pure filtering logic, isolated from the registry/cache so it can be
         /// unit tested without needing a live ControlPanel/EditorWindow.
         /// </summary>
-        public static IList<IControlPanelEntry> FilterTopLevelEntries(
-            IList<IControlPanelEntry> toCheck)
+        public static IList<IControlPanelEntry> FilterTopLevelEntries(IList<IControlPanelEntry> toCheck)
         {
             var result = new List<IControlPanelEntry>();
             if (toCheck == null)
@@ -265,6 +269,36 @@ namespace AtMycelia.Myceliarium
         /// logic as EntrySuperType; take a look at its summary for more details.
         /// </summary>
         protected abstract Type LoaderSuperType { get; }
+
+        /// <summary>
+        /// The type of footer that this Control Panel is responsible for. Same sort of
+        /// logic as EntrySuperType; take a look at its summary for more details. Defaults
+        /// to the base footer; feel free to override it to go for a different one.
+        /// </summary>
+        protected virtual Type FooterSuperType => typeof(IControlPanelFooter);
+
+        protected virtual void RefreshFooterCache()
+        {
+            DisposeFooters();
+            var created = ControlPanelFooterRegistry.CreateFootersOfType(FooterSuperType);
+            for (int i = 0; i < created.Count; i++)
+            {
+                var footer = created[i];
+                footer.Init(this);
+                _footers.Add(footer);
+            }
+        }
+
+        private void DisposeFooters()
+        {
+            for (int i = 0; i < _footers.Count; i++)
+            {
+                _footers[i].Dispose();
+            }
+            _footers.Clear();
+        }
+
+        protected readonly List<IControlPanelFooter> _footers = new List<IControlPanelFooter>();
 
         protected virtual void RefreshSaverCache()
         {
@@ -324,9 +358,7 @@ namespace AtMycelia.Myceliarium
             SetLocalSubs(false);
             SetLocalSubs(true);
             DoEntryPreps();
-            HandleLanguageDropdown();
-            PrepReinitButtonController();
-            PrepCancelButtonController();
+            RefreshFooterCache();
             PrepUnsavedChangesSync();
         }
 
@@ -364,74 +396,10 @@ namespace AtMycelia.Myceliarium
         public IReadOnlyList<IControlPanelEntry> TopLevelEntries => _topLevelEntries;
         protected virtual void RegisterVisualElements()
         {
-            _saveButton = Root.Q<Button>("SaveButton");
-            _cancelButton = Root.Q<Button>("CancelButton");
-            _reinitButton = Root.Q<Button>("ReinitButton");
             _bottomBar = Root.Q<VisualElement>("BottomBar");
-            _langDropdown = Root.Q<DropdownField>("LanguageDropdown");
         }
 
-        protected Button _saveButton;
-        protected Button _reinitButton;
         protected VisualElement _bottomBar;
-        protected DropdownField _langDropdown;
-
-        private void PrepReinitButtonController()
-        {
-            _reinitButtonController?.Dispose();
-            if (_reinitButton != null)
-            {
-                DisplayDialogArgs dialogArgs;
-                dialogArgs.title = "Reinit All Entries";
-                dialogArgs.message = "This will reset every entry in this Control Panel back to its " +
-                                     "startup state, discarding any unsaved runtime changes. Continue?";
-                dialogArgs.acceptanceText = "Reinit";
-                dialogArgs.denialText = "Cancel";
-                _reinitButtonController.Init(_reinitButton, dialogArgs);
-                _reinitButtonController.PromptConfirmed += OnReinitConfirmed;
-            }
-        }
-
-        private readonly DisplayDialogButton _reinitButtonController =
-            new DisplayDialogButton();
-
-        /// <summary>
-        /// With unsaved changes, Cancel asks for confirmation before closing. Without any,
-        /// the dialog is skipped and the window just closes.
-        /// </summary>
-        private void PrepCancelButtonController()
-        {
-            _cancelButtonController.Dispose();
-            if (_cancelButton == null)
-            {
-                return;
-            }
-
-            DisplayDialogArgs dialogArgs;
-            dialogArgs.title = "Discard Unsaved Changes";
-            dialogArgs.message = "Some entries have unsaved changes. Closing now will " +
-                                 "discard them. Are you sure?";
-            dialogArgs.acceptanceText = "Discard and Close";
-            dialogArgs.denialText = "Keep Editing";
-            _cancelButtonController.Init(_cancelButton, dialogArgs,
-                () => AnyEntryHasUnsavedChanges(_topLevelEntries));
-            _cancelButtonController.PromptConfirmed += OnCancelConfirmed;
-            _cancelButtonController.BringUpDenied += OnCancelWithoutChanges;
-        }
-
-        private void OnCancelConfirmed()
-        {
-            OnReinitConfirmed();
-            ControlPanelSignals.CloseRequested(this);
-        }
-
-        private void OnCancelWithoutChanges()
-        {
-            ControlPanelSignals.CloseRequested(this);
-        }
-
-        private readonly DisplayDialogButton _cancelButtonController =
-            new DisplayDialogButton();
 
         private void PrepUnsavedChangesSync()
         {
@@ -612,16 +580,8 @@ namespace AtMycelia.Myceliarium
             _attacher = null;
             _selectionController?.Dispose();
             _selectionController = null;
-            _reinitButtonController?.Dispose();
-            _cancelButtonController.Dispose();
+            DisposeFooters();
             _unsavedChangesSync?.Pause();
-        }
-
-        protected virtual void HandleLanguageDropdown()
-        {
-            _langDropdown.choices.Clear();
-            _langDropdown.choices.Add("English");
-            _langDropdown.value = "English";
         }
 
         protected virtual void OnDisable()
@@ -630,17 +590,7 @@ namespace AtMycelia.Myceliarium
             SetLocalSubs(false);
         }
 
-        public void OnReinitConfirmed()
-        {
-            foreach (var entry in _topLevelEntries)
-            {
-                entry.Dispose();
-                entry.Init(forceReinit: true);
-            }
-
-            _attacher.Attach(_allEntriesWithSubwindows);
-            _selectionController.OnAllEntriesReinitted();
-        }
+        
 
         public bool Contains(IControlPanelEntry entry)
         {
