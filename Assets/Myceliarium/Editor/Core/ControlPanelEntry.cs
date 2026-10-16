@@ -325,7 +325,31 @@ namespace AtMycelia.Myceliarium
         }
 
         public virtual bool HasSubentries => _subentries.Count > 0;
-        public virtual bool HasUnsavedChanges { get; protected set; }
+        /// <summary>
+        /// Setting this raises ControlPanelSignals.UnsavedChangesChanged when the value
+        /// actually changes. Subclasses that override this to compute their own value
+        /// should call NotifyUnsavedChangesChanged whenever it may have changed.
+        /// </summary>
+        public virtual bool HasUnsavedChanges
+        {
+            get => _hasUnsavedChanges;
+            protected set
+            {
+                if (_hasUnsavedChanges == value)
+                {
+                    return;
+                }
+
+                _hasUnsavedChanges = value;
+                NotifyUnsavedChangesChanged();
+            }
+        }
+        private bool _hasUnsavedChanges;
+
+        protected void NotifyUnsavedChangesChanged()
+        {
+            ControlPanelSignals.UnsavedChangesChanged(this);
+        }
 
     }
 

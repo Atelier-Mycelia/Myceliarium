@@ -96,6 +96,8 @@ namespace AtMycelia.Myceliarium
         {
             ControlPanelReinitializer.Reinit(_entries, _attacher, _selectionController,
                 RegisterSubentries, RefreshSaverCache);
+            // Fresh entries start out clean without signalling anything, so check again
+            _unsavedChangesTracker?.Refresh();
         }
 
         /// <summary>
@@ -289,27 +291,20 @@ namespace AtMycelia.Myceliarium
 
         protected VisualElement _bottomBar;
 
-        private void PrepUnsavedChangesSync()
-        {
-            _unsavedChangesSync?.Pause();
-            SyncHasUnsavedChanges();
-            _unsavedChangesSync = rootVisualElement.schedule.Execute(SyncHasUnsavedChanges).Every(100);
-        }
-
         /// <summary>
         /// Unity reads hasUnsavedChanges when the window is closed through its own X button
         /// (prompting Save/Discard/Cancel), so it has to be current before that happens.
+        /// The tracker keeps it in step by reacting to the entries' signals.
         /// </summary>
-        private void SyncHasUnsavedChanges()
+        private void PrepUnsavedChangesSync()
         {
-            bool dirty = _entries.AnyHaveUnsavedChanges();
-            if (hasUnsavedChanges != dirty)
-            {
-                hasUnsavedChanges = dirty;
-            }
+            _unsavedChangesTracker?.Dispose();
+            _unsavedChangesTracker = new UnsavedChangesTracker(_entries,
+                dirty => hasUnsavedChanges = dirty);
+            _unsavedChangesTracker.Start();
         }
 
-        private IVisualElementScheduledItem _unsavedChangesSync;
+        private UnsavedChangesTracker _unsavedChangesTracker;
 
 
         #region Entry Preps
@@ -372,7 +367,7 @@ namespace AtMycelia.Myceliarium
 
             _footer = null;
 
-            _unsavedChangesSync?.Pause();
+            _unsavedChangesTracker?.Dispose();
         }
 
         protected virtual void OnDisable()

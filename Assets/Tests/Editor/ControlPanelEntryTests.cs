@@ -165,6 +165,71 @@ namespace AtMycelia.Myceliarium.Tests
         }
         #endregion
 
+        #region HasUnsavedChanges signalling
+        [Test]
+        public void HasUnsavedChanges_WhenItChanges_RaisesTheSignalOnce()
+        {
+            var entry = new TestEntry();
+            var raised = new List<IControlPanelEntry>();
+            Action<IControlPanelEntry> handler = raised.Add;
+            ControlPanelSignals.UnsavedChangesChanged += handler;
+
+            try
+            {
+                entry.SetDirty(true);
+                entry.SetDirty(true);
+            }
+            finally
+            {
+                ControlPanelSignals.UnsavedChangesChanged -= handler;
+            }
+
+            Assert.That(raised, Is.EqualTo(new[] { entry }));
+            Assert.That(entry.HasUnsavedChanges, Is.True);
+        }
+
+        [Test]
+        public void HasUnsavedChanges_BackToFalse_RaisesTheSignalAgain()
+        {
+            var entry = new TestEntry();
+            entry.SetDirty(true);
+            int raisedCount = 0;
+            Action<IControlPanelEntry> handler = _ => raisedCount++;
+            ControlPanelSignals.UnsavedChangesChanged += handler;
+
+            try
+            {
+                entry.SetDirty(false);
+            }
+            finally
+            {
+                ControlPanelSignals.UnsavedChangesChanged -= handler;
+            }
+
+            Assert.That(raisedCount, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void NotifyUnsavedChangesChanged_RaisesTheSignal()
+        {
+            var entry = new TestEntry();
+            IControlPanelEntry raisedFor = null;
+            Action<IControlPanelEntry> handler = e => raisedFor = e;
+            ControlPanelSignals.UnsavedChangesChanged += handler;
+
+            try
+            {
+                entry.Notify();
+            }
+            finally
+            {
+                ControlPanelSignals.UnsavedChangesChanged -= handler;
+            }
+
+            Assert.That(raisedFor, Is.SameAs(entry));
+        }
+        #endregion
+
         #region Defaults
         [Test]
         public void IsTestOnly_DefaultsToFalse()
@@ -219,6 +284,9 @@ namespace AtMycelia.Myceliarium.Tests
 
             public override string SortingName => nameof(TestEntry);
             public override bool IsMeantToHaveSubwindow => _meantToHaveSubwindow;
+
+            public void SetDirty(bool dirty) => HasUnsavedChanges = dirty;
+            public void Notify() => NotifyUnsavedChangesChanged();
 
             public int PrepareLeftSidebarTabCallCount { get; private set; }
             public int PrepareSubentriesCallCount { get; private set; }
