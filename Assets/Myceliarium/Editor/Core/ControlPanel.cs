@@ -75,7 +75,10 @@ namespace AtMycelia.Myceliarium
             }
         }
 
-        protected readonly IDictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>> _savers =
+        protected IReadOnlyDictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>> Savers =>
+            _savers;
+
+        private readonly Dictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>> _savers =
             new Dictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>>();
 
         protected virtual void OnCloseRequested(IControlPanel cPanel)
@@ -179,14 +182,18 @@ namespace AtMycelia.Myceliarium
             PreRootPrep(out bool success);
             if (!success)
             {
-                string logMessage = $"{DisplayName} failed to initialize. " +
-                    $"Aborting GUI creation.";
-                UnityDebug.LogError(logMessage);
-                this.Close();
+                AbortInit();
                 return;
             }
 
             RootPrep();
+        }
+
+        private void AbortInit()
+        {
+            UnityDebug.LogError($"{DisplayName} failed to initialize. " +
+                $"Aborting GUI creation.");
+            this.Close();
         }
 
         /// <summary>
@@ -287,7 +294,7 @@ namespace AtMycelia.Myceliarium
                     $"Please ensure that a concrete class implementing that interface exists.");
                 return;
             }
-            _footer?.Init(this);
+            _footer.Init(this);
         }
 
         protected IControlPanelFooter _footer;
@@ -339,10 +346,7 @@ namespace AtMycelia.Myceliarium
             TryAddBaseWindow(out bool success);
             if (!success)
             {
-                string logMessage = $"{DisplayName} failed to initialize. " +
-                    $"Aborting GUI creation.";
-                UnityDebug.LogError(logMessage);
-                this.Close();
+                AbortInit();
                 return;
             }
 
@@ -427,7 +431,7 @@ namespace AtMycelia.Myceliarium
 
         private void PrepAttacher()
         {
-            _attacher?.Dispose();
+            _attacher.Dispose();
             _attacher.Init(rootVisualElement);
 
             Sort(_topLevelEntries);
@@ -436,12 +440,12 @@ namespace AtMycelia.Myceliarium
 
         private void PrepSelectionController()
         {
-            _selectionController?.Dispose();
+            _selectionController.Dispose();
             _selectionController.Init(_allEntriesWithSubwindows);
         }
 
-        private ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
-        private ControlPanelTabSelectionController _selectionController =
+        private readonly ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
+        private readonly ControlPanelTabSelectionController _selectionController =
             new ControlPanelTabSelectionController();
 
         /// <summary>
@@ -489,7 +493,7 @@ namespace AtMycelia.Myceliarium
             for (int i = 0; i < collected.Count; i++)
             {
                 var entry = collected[i];
-                if (!_allEntriesWithSubwindows.Contains(entry))
+                if (_allEntriesWithSubwindowsSet.Add(entry))
                 {
                     _allEntriesWithSubwindows.Add(entry);
                 }
@@ -514,14 +518,14 @@ namespace AtMycelia.Myceliarium
         private IList<IControlPanelEntry> GetAllEntries()
         {
             var allEntries = new List<IControlPanelEntry>(_topLevelEntries);
+            var seen = new HashSet<IControlPanelEntry>(_topLevelEntries);
             for (int i = 0; i < _allEntriesWithSubwindows.Count; i++)
             {
                 var sub = _allEntriesWithSubwindows[i];
-                if (allEntries.Contains(sub))
+                if (seen.Add(sub))
                 {
-                    continue;
+                    allEntries.Add(sub);
                 }
-                allEntries.Add(sub);
             }
             return allEntries;
         }
@@ -540,19 +544,20 @@ namespace AtMycelia.Myceliarium
                 return result;
             }
 
+            var seen = new HashSet<IControlPanelEntry>();
             for (int i = 0; i < topLevelEntries.Count; i++)
             {
                 var topLevelElem = topLevelEntries[i];
-                if (topLevelElem.IsMeantToHaveSubwindow && !result.Contains(topLevelElem))
+                if (topLevelElem.IsMeantToHaveSubwindow && seen.Add(topLevelElem))
                 {
                     result.Add(topLevelElem);
                 }
 
                 var subentries = topLevelElem.GetSubentries(recursive: true);
-                for (int j = 0; j < subentries.Count; j++)//
+                for (int j = 0; j < subentries.Count; j++)
                 {
                     var subentry = subentries[j];
-                    if (!result.Contains(subentry) && subentry.IsMeantToHaveSubwindow)
+                    if (subentry.IsMeantToHaveSubwindow && seen.Add(subentry))
                     {
                         result.Add(subentry);
                     }
@@ -562,20 +567,24 @@ namespace AtMycelia.Myceliarium
         }
 
 
-        protected readonly List<IControlPanelEntry> _allEntriesWithSubwindows = new List<IControlPanelEntry>();
+        protected IReadOnlyList<IControlPanelEntry> AllEntriesWithSubwindows =>
+            _allEntriesWithSubwindows;
+
+        // The set mirrors the list, for O(1) membership checks.
+        private readonly List<IControlPanelEntry> _allEntriesWithSubwindows = new List<IControlPanelEntry>();
+        private readonly HashSet<IControlPanelEntry> _allEntriesWithSubwindowsSet =
+            new HashSet<IControlPanelEntry>();
         #endregion
 
         protected virtual void OnDestroy()
         {
             ControlPanelSignals.PreControlPanelClosed(this);
 
-            _attacher?.Dispose();
-            _footer.Dispose();
-            _selectionController?.Dispose();
+            _attacher.Dispose();
+            _footer?.Dispose();
+            _selectionController.Dispose();
 
-            _attacher = null;
             _footer = null;
-            _selectionController = null;
 
             _unsavedChangesSync?.Pause();
         }
@@ -588,8 +597,8 @@ namespace AtMycelia.Myceliarium
 
         public bool Contains(IControlPanelEntry entry)
         {
-            bool result = entry != null && (_topLevelEntries.Contains(entry) || 
-                _allEntriesWithSubwindows.Contains(entry));
+            bool result = entry != null && (_topLevelEntries.Contains(entry) ||
+                _allEntriesWithSubwindowsSet.Contains(entry));
 
             return result;
         }

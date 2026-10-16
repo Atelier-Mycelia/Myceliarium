@@ -6,8 +6,8 @@ namespace AtMycelia.Myceliarium
 {
     /// <summary>
     /// Discovers all the concrete IControlPanelFooter types in the project. Unlike savers,
-    /// footers are bound to one panel's UI, so this hands out a new instance per request
-    /// rather than shared ones.
+    /// footers are bound to one panel's UI, so this hands out a new footer instance per
+    /// request (one per panel) rather than a shared one.
     /// </summary>
     public static class ControlPanelFooterRegistry
     {
