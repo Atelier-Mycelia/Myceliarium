@@ -277,28 +277,20 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         protected virtual Type FooterSuperType => typeof(IControlPanelFooter);
 
-        protected virtual void RefreshFooterCache()
+        protected virtual void RefreshFooter()
         {
-            DisposeFooters();
-            var created = ControlPanelFooterRegistry.CreateFootersOfType(FooterSuperType);
-            for (int i = 0; i < created.Count; i++)
+            _footer?.Dispose();
+            _footer = ControlPanelFooterRegistry.CreateFooterOfType(FooterSuperType);
+            if (_footer == null)
             {
-                var footer = created[i];
-                footer.Init(this);
-                _footers.Add(footer);
+                UnityDebug.LogError($"Failed to create footer of type {FooterSuperType}. " +
+                    $"Please ensure that a concrete class implementing that interface exists.");
+                return;
             }
+            _footer?.Init(this);
         }
 
-        private void DisposeFooters()
-        {
-            for (int i = 0; i < _footers.Count; i++)
-            {
-                _footers[i].Dispose();
-            }
-            _footers.Clear();
-        }
-
-        protected readonly List<IControlPanelFooter> _footers = new List<IControlPanelFooter>();
+        protected IControlPanelFooter _footer;
 
         protected virtual void RefreshSaverCache()
         {
@@ -358,7 +350,7 @@ namespace AtMycelia.Myceliarium
             SetLocalSubs(false);
             SetLocalSubs(true);
             DoEntryPreps();
-            RefreshFooterCache();
+            RefreshFooter();
             PrepUnsavedChangesSync();
         }
 
@@ -576,11 +568,15 @@ namespace AtMycelia.Myceliarium
         protected virtual void OnDestroy()
         {
             ControlPanelSignals.PreControlPanelClosed(this);
+
             _attacher?.Dispose();
-            _attacher = null;
+            _footer.Dispose();
             _selectionController?.Dispose();
+
+            _attacher = null;
+            _footer = null;
             _selectionController = null;
-            DisposeFooters();
+
             _unsavedChangesSync?.Pause();
         }
 
@@ -590,19 +586,12 @@ namespace AtMycelia.Myceliarium
             SetLocalSubs(false);
         }
 
-        
-
         public bool Contains(IControlPanelEntry entry)
         {
-            if (entry == null)
-            {
-                return false;
-            }
-            if (_topLevelEntries.Contains(entry))
-            {
-                return true;
-            }
-            return _allEntriesWithSubwindows.Contains(entry);
+            bool result = entry != null && (_topLevelEntries.Contains(entry) || 
+                _allEntriesWithSubwindows.Contains(entry));
+
+            return result;
         }
 
     }

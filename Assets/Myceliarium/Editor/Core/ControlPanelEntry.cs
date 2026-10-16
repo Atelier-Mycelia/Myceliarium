@@ -46,14 +46,14 @@ namespace AtMycelia.Myceliarium
                 PrepareSubentries();
                 PrepareSubwindow();
                 PrepareLoader();
-                SetSubs(false); // Taking reinitting into account
-                SetSubs(true);
                 _subwindow?.Hide();
                 if (ShouldPreloadOnInit)
                 {
                     HandleLoading();
                 }
                 SetCurrentStateAsBase();
+                SetSubs(false); // Taking reinitting into account
+                SetSubs(true);
                 _isInitted = true;
             }
         }
@@ -180,19 +180,13 @@ namespace AtMycelia.Myceliarium
             {
                 ControlPanelSignals.ControlPanelOpened += OnControlPanelOpened;
                 ControlPanelSignals.SaveCompleted += OnSaveCompleted;
-                if (_tab != null)
-                {
-                    _tab.Clicked += OnTabClicked;
-                }
+                _tab.Clicked += OnTabClicked;
             }
             else
             {
                 ControlPanelSignals.ControlPanelOpened -= OnControlPanelOpened;
                 ControlPanelSignals.SaveCompleted -= OnSaveCompleted;
-                if (_tab != null)
-                {
-                    _tab.Clicked -= OnTabClicked;
-                }
+                _tab.Clicked -= OnTabClicked;
             }
         }
 
