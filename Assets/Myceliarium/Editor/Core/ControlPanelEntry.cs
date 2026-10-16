@@ -93,7 +93,7 @@ namespace AtMycelia.Myceliarium
                 _subentries.Clear();
             }
 
-            _tab.Dispose();
+            _tab?.Dispose();
             _subwindow?.Dispose();
             _tab = null;
             _subwindow = null;
@@ -176,17 +176,25 @@ namespace AtMycelia.Myceliarium
 
         protected virtual void SetSubs(bool on)
         {
+            // The tab is null if this was never initialized (or already disposed), in
+            // which case there's nothing of its to (un)subscribe from.
             if (on)
             {
                 ControlPanelSignals.ControlPanelOpened += OnControlPanelOpened;
                 ControlPanelSignals.SaveCompleted += OnSaveCompleted;
-                _tab.Clicked += OnTabClicked;
+                if (_tab != null)
+                {
+                    _tab.Clicked += OnTabClicked;
+                }
             }
             else
             {
                 ControlPanelSignals.ControlPanelOpened -= OnControlPanelOpened;
                 ControlPanelSignals.SaveCompleted -= OnSaveCompleted;
-                _tab.Clicked -= OnTabClicked;
+                if (_tab != null)
+                {
+                    _tab.Clicked -= OnTabClicked;
+                }
             }
         }
 
@@ -317,7 +325,31 @@ namespace AtMycelia.Myceliarium
         }
 
         public virtual bool HasSubentries => _subentries.Count > 0;
-        public virtual bool HasUnsavedChanges { get; protected set; }
+        /// <summary>
+        /// Setting this raises ControlPanelSignals.UnsavedChangesChanged when the value
+        /// actually changes. Subclasses that override this to compute their own value
+        /// should call NotifyUnsavedChangesChanged whenever it may have changed.
+        /// </summary>
+        public virtual bool HasUnsavedChanges
+        {
+            get => _hasUnsavedChanges;
+            protected set
+            {
+                if (_hasUnsavedChanges == value)
+                {
+                    return;
+                }
+
+                _hasUnsavedChanges = value;
+                NotifyUnsavedChangesChanged();
+            }
+        }
+        private bool _hasUnsavedChanges;
+
+        protected void NotifyUnsavedChangesChanged()
+        {
+            ControlPanelSignals.UnsavedChangesChanged(this);
+        }
 
     }
 

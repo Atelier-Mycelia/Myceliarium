@@ -26,6 +26,12 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         public static Action<IControlPanel> SaveRequested = delegate { };
 
+        /// <summary>
+        /// Occurs when an entry's HasUnsavedChanges changes, so that panels can react
+        /// without having to poll their entries.
+        /// </summary>
+        public static Action<IControlPanelEntry> UnsavedChangesChanged = delegate { };
+
         public static Action<IControlPanelEntry> SaveCompleted = delegate { };
         public static Action<IControlPanelEntry> LoadCompleted = delegate { };
 
