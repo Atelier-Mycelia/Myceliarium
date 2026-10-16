@@ -184,7 +184,7 @@ namespace AtMycelia.Myceliarium
 
         private bool HasUnsavedChanges()
         {
-            return Myceliarium.ControlPanel.AnyEntryHasUnsavedChanges(ControlPanel.TopLevelEntries);
+            return EntryCollection.AnyEntryHasUnsavedChanges(ControlPanel.TopLevelEntries);
         }
 
         protected virtual void OnCancelConfirmed()

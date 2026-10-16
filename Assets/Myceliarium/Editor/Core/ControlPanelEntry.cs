@@ -58,7 +58,7 @@ namespace AtMycelia.Myceliarium
             }
         }
 
-        private bool _isDisposed;
+        protected bool _isDisposed;
 
         public virtual bool IsInitted
         {

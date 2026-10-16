@@ -52,7 +52,7 @@ namespace AtMycelia.Myceliarium
         private VisualElement _mainTabSet;
         private ScrollView _subwindowDisplay;
 
-        public void Attach(IList<IControlPanelEntry> toAttach)
+        public void Attach(IEnumerable<IControlPanelEntry> toAttach)
         {
             foreach (var elem in toAttach)
             {
