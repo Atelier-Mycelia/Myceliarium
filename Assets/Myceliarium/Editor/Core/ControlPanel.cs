@@ -94,18 +94,8 @@ namespace AtMycelia.Myceliarium
 
         public void OnReinitConfirmed()
         {
-            foreach (var entry in _entries.TopLevel)
-            {
-                entry.Dispose();
-                entry.Init(forceReinit: true);
-            }
-
-            // Reinitting makes the entries recreate their subentries, so everything
-            // derived from the old instances has to be refreshed.
-            RegisterSubentries();
-            _attacher.Attach(_entries.TopLevel);
-            RefreshSaverCache();
-            _selectionController.OnAllEntriesReinitted();
+            ControlPanelReinitializer.Reinit(_entries, _attacher, _selectionController,
+                RegisterSubentries, RefreshSaverCache);
         }
 
         /// <summary>

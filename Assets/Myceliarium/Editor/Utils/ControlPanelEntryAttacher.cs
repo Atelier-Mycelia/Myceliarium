@@ -90,6 +90,15 @@ namespace AtMycelia.Myceliarium
                 UnityDebug.LogError(logMessage);
             }
 
+            // If Init failed before the tab was made, there's nothing to attach, and
+            // dereferencing it would only bury the error logged above.
+            if (entry.Tab == null)
+            {
+                UnityDebug.LogError($"Entry of type {entry.GetType().Name} has no Tab " +
+                    $"after Init(), so it can't be attached to ControlPanel.");
+                return;
+            }
+
             _mainTabSet.Add(entry.Tab.Root);
             RegisterSubwindowsOf(entry);
         }

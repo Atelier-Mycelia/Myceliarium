@@ -131,6 +131,40 @@ namespace AtMycelia.Myceliarium.Tests
         #endregion
 
 
+        #region Dispose
+        [Test]
+        public void Dispose_BeforeInit_DoesNotThrow()
+        {
+            var entry = new TestEntry();
+
+            Assert.DoesNotThrow(() => entry.Dispose());
+        }
+
+        [Test]
+        public void Dispose_CalledTwice_DoesNotThrow()
+        {
+            var entry = new TestEntry();
+            entry.Init();
+
+            Assert.DoesNotThrow(() =>
+            {
+                entry.Dispose();
+                entry.Dispose();
+            });
+        }
+
+        [Test]
+        public void Init_AfterDisposeBeforeAnyInit_StillInitializes()
+        {
+            var entry = new TestEntry();
+            entry.Dispose();
+
+            entry.Init(forceReinit: true);
+
+            Assert.That(entry.IsInitted, Is.True);
+        }
+        #endregion
+
         #region Defaults
         [Test]
         public void IsTestOnly_DefaultsToFalse()

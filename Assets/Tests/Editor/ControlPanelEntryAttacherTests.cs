@@ -165,6 +165,23 @@ namespace AtMycelia.Myceliarium.Tests
                 _attacher.Attach(new List<IControlPanelEntry> { entry }));
             Assert.That(mainTabSet.Contains(entry.Tab.Root), Is.True);
         }
+
+        [Test]
+        public void Attach_EntryInitThrowsWithoutMakingTab_LogsErrorsAndDoesNotThrow()
+        {
+            var root = CreateValidRoot(out var mainTabSet, out _);
+            _attacher.Init(root);
+            var entry = new FakeEntry(isInitted: false, initThrows: true, hasTab: false);
+
+            LogAssert.Expect(LogType.Error,
+                new System.Text.RegularExpressions.Regex(".*Failed to attach.*"));
+            LogAssert.Expect(LogType.Error,
+                new System.Text.RegularExpressions.Regex(".*has no Tab.*"));
+
+            Assert.DoesNotThrow(() =>
+                _attacher.Attach(new List<IControlPanelEntry> { entry }));
+            Assert.That(mainTabSet.childCount, Is.EqualTo(0));
+        }
         #endregion
 
         #region Attach - subwindow registration
@@ -273,13 +290,14 @@ namespace AtMycelia.Myceliarium.Tests
                 bool initThrows = false,
                 bool hasSubwindow = true,
                 IControlPanelSubwindow subwindow = null,
-                IReadOnlyList<IControlPanelEntry> subentries = null)
+                IReadOnlyList<IControlPanelEntry> subentries = null,
+                bool hasTab = true)
             {
                 IsTopLevel = isTopLevel;
                 IsInitted = isInitted;
                 _initThrows = initThrows;
                 _subentries = subentries ?? Array.Empty<IControlPanelEntry>();
-                Tab = new FakeTab();
+                Tab = hasTab ? new FakeTab() : null;
 
                 if (!hasSubwindow)
                 {
