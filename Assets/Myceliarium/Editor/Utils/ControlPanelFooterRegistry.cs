@@ -23,19 +23,7 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         public static void RefreshRegistry(Func<IEnumerable<Type>> typeProvider = null)
         {
-            typeProvider ??= GetTypesFromTypeCache;
-            var discovered = FilterFooterTypes(typeProvider());
-
-            lock (_registryLock)
-            {
-                _allFooterTypes = discovered;
-                _refreshed = true;
-            }
-        }
-
-        private static IEnumerable<Type> GetTypesFromTypeCache()
-        {
-            return TypeCache.GetTypesDerivedFrom<IControlPanelFooter>();
+            _registry.Refresh(typeProvider);
         }
 
         /// <summary>
@@ -44,43 +32,10 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         public static Type[] FilterFooterTypes(IEnumerable<Type> candidates)
         {
-            if (candidates == null)
-            {
-                return Array.Empty<Type>();
-            }
-
-            var result = new List<Type>();
-            foreach (var type in candidates)
-            {
-                if (type != null &&
-                    _footerType.IsAssignableFrom(type) &&
-                    type.IsConcrete())
-                {
-                    result.Add(type);
-                }
-            }
-            return result.ToArray();
+            return TypeRegistry<IControlPanelFooter>.FilterTypes(candidates);
         }
 
-        private static readonly Type _footerType = typeof(IControlPanelFooter);
-        private static readonly object _registryLock = new object();
-        private static Type[] _allFooterTypes = Array.Empty<Type>();
-        private static bool _refreshed;
-
-        public static IEnumerable<Type> AllFooterTypes
-        {
-            get
-            {
-                lock (_registryLock)
-                {
-                    if (!_refreshed)
-                    {
-                        RefreshRegistry();
-                    }
-                    return (Type[])_allFooterTypes.Clone();
-                }
-            }
-        }
+        public static IEnumerable<Type> AllFooterTypes => _registry.Types;
 
         public static IControlPanelFooter CreateFooterOfType<T>()
             where T : IControlPanelFooter
@@ -96,46 +51,7 @@ namespace AtMycelia.Myceliarium
         public static IControlPanelFooter CreateFooterOfType(Type footerSuperType,
             Func<Type, IControlPanelFooter> instanceFactory = null)
         {
-            instanceFactory ??= DefaultInstanceFactory;
-            Type chosen = null;
-            int matchCount = 0;
-            foreach (var type in AllFooterTypes)
-            {
-                if (!footerSuperType.IsAssignableFrom(type))
-                {
-                    continue;
-                }
-
-                chosen ??= type;
-                matchCount++;
-            }
-
-            if (chosen == null)
-            {
-                return null;
-            }
-
-            if (matchCount > 1)
-            {
-                UnityEngine.Debug.LogWarning($"Multiple footer types match " +
-                    $"{footerSuperType.Name}; using {chosen.Name}.");
-            }
-
-            try
-            {
-                return instanceFactory(chosen);
-            }
-            catch (Exception ex)
-            {
-                UnityEngine.Debug.LogError($"Failed to create instance of " +
-                    $"{chosen.Name}: {ex.Message}");
-                return null;
-            }
-        }
-
-        private static IControlPanelFooter DefaultInstanceFactory(Type type)
-        {
-            return Activator.CreateInstance(type) as IControlPanelFooter;
+            return _registry.CreateOneOfType(footerSuperType, instanceFactory);
         }
 
         /// <summary>
@@ -143,11 +59,10 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         internal static void ResetForTests()
         {
-            lock (_registryLock)
-            {
-                _allFooterTypes = Array.Empty<Type>();
-                _refreshed = false;
-            }
+            _registry.Reset();
         }
+
+        private static readonly TypeRegistry<IControlPanelFooter> _registry =
+            new TypeRegistry<IControlPanelFooter>(refreshOnFirstUse: true);
     }
 }

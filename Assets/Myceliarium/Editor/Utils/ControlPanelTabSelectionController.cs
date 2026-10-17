@@ -86,43 +86,13 @@ namespace AtMycelia.Myceliarium
         private IControlPanelEntry LastSelected { get; set; }
 
         /// <summary>
-        /// Reinitting replaces entry instances (e.g. the subentries a parent creates for
-        /// itself), so the previously selected one is swapped for its new counterpart
-        /// of the same type before being selected again.
+        /// Entries keep their identity when reinitted, but their tabs are rebuilt, so
+        /// whichever was selected last has to be selected again.
         /// </summary>
         public void OnAllEntriesReinitted()
         {
-            if (LastSelected == null)
-            {
-                return;
-            }
-
-            LastSelected = FindOfSameType(LastSelected);
             _entryBeingDisplayed = LastSelected;
             LastSelected?.Select();
-        }
-
-        private IControlPanelEntry FindOfSameType(IControlPanelEntry old)
-        {
-            var type = old.GetType();
-            for (int i = 0; i < _entries.Count; i++)
-            {
-                var elem = _entries[i];
-                if (elem.GetType() == type)
-                {
-                    return elem;
-                }
-
-                var subentries = elem.GetSubentries(recursive: true);
-                for (int j = 0; j < subentries.Count; j++)
-                {
-                    if (subentries[j].GetType() == type)
-                    {
-                        return subentries[j];
-                    }
-                }
-            }
-            return null;
         }
 
         private bool WeHave(IControlPanelEntry entry)
