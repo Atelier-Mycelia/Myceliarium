@@ -8,7 +8,7 @@ namespace AtMycelia.Myceliarium.Tests
     /// <summary>
     /// Runs the reinit sequence against real ControlPanelEntry instances laid out like
     /// MyceliariumRootEntry / MyceliariumAboutEntry: a top-level entry with no subwindow
-    /// that builds brand new subentry instances every time it's initialized.
+    /// that has a subentry.
     /// </summary>
     public class ControlPanelReinitializerTests
     {
@@ -61,8 +61,7 @@ namespace AtMycelia.Myceliarium.Tests
 
         private void Reinit()
         {
-            ControlPanelReinitializer.Reinit(_entries, _attacher, _selection,
-                RebuildFlattened, RefreshSavers);
+            ControlPanelReinitializer.Reinit(_entries, _attacher, _selection);
         }
 
         private ChildEntry CurrentChild => (ChildEntry)_root.GetSubentries()[0];
@@ -94,31 +93,37 @@ namespace AtMycelia.Myceliarium.Tests
         }
 
         [Test]
-        public void Reinit_ReplacesSubentryInstanceAndRefreshesFlattenedList()
+        public void Reinit_KeepsTheSameSubentryInstanceInTheCollection()
         {
             var oldChild = CurrentChild;
 
             Reinit();
 
-            Assert.That(CurrentChild, Is.Not.SameAs(oldChild));
-            Assert.That(_entries.Contains(CurrentChild), Is.True);
-            Assert.That(_entries.Contains(oldChild), Is.False);
+            Assert.That(CurrentChild, Is.SameAs(oldChild));
+            Assert.That(_entries.Contains(oldChild), Is.True);
         }
 
         [Test]
-        public void Reinit_PairsSaversWithTheNewEntriesOnly()
+        public void Reinit_ReinitializesTheSubentry()
         {
-            var oldChild = CurrentChild;
+            var oldTab = CurrentChild.Tab;
 
             Reinit();
 
-            var paired = _saveCoordinator.Savers[_saver];
-            Assert.That(paired, Has.Member(CurrentChild));
-            Assert.That(paired, Has.No.Member(oldChild));
+            Assert.That(CurrentChild.IsInitted, Is.True);
+            Assert.That(CurrentChild.Tab, Is.Not.SameAs(oldTab));
         }
 
         [Test]
-        public void Reinit_ReselectsTheNewCounterpartOfTheSelectedEntry()
+        public void Reinit_LeavesSaversPairedWithTheEntries()
+        {
+            Reinit();
+
+            Assert.That(_saveCoordinator.Savers[_saver], Has.Member(CurrentChild));
+        }
+
+        [Test]
+        public void Reinit_ReselectsTheSelectedEntry()
         {
             ControlPanelSignals.EntryTabClicked(CurrentChild);
             Assert.That(CurrentChild.Tab.IsSelected, Is.True);
@@ -152,7 +157,7 @@ namespace AtMycelia.Myceliarium.Tests
         public void Reinit_NullEntries_Throws()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                ControlPanelReinitializer.Reinit(null, _attacher, _selection, null, null));
+                ControlPanelReinitializer.Reinit(null, _attacher, _selection));
         }
 
         #region Test Doubles
@@ -164,12 +169,9 @@ namespace AtMycelia.Myceliarium.Tests
 
             protected override void PrepareLeftSidebarTab() => Tab = new FakeTab();
 
-            protected override void PrepareSubentries()
+            protected override IEnumerable<IControlPanelEntry> CreateSubentries()
             {
-                var child = new ChildEntry();
-                _subentries.Add(child);
-                child.Init();
-                Tab.Register(child.Tab);
+                return new IControlPanelEntry[] { new ChildEntry() };
             }
         }
 

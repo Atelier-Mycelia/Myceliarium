@@ -18,26 +18,12 @@ namespace AtMycelia.Myceliarium
             Tab.Init();
         }
 
-        protected override void PrepareSubentries()
+        protected override IEnumerable<IControlPanelEntry> CreateSubentries()
         {
-            base.PrepareSubentries();
-
-            #region Register the instances
-            var subsToAdd = new List<ControlPanelEntry>
+            return new IControlPanelEntry[]
             {
                 new MyceliariumAboutEntry(),
             };
-            _subentries.AddRange(subsToAdd);
-            #endregion
-
-            #region Init Subentries
-            for (int i = 0; i < _subentries.Count; i++)
-            {
-                var elem = _subentries[i];
-                elem.Init();
-                Tab.Register(elem.Tab);
-            }
-            #endregion
         }
     }
 }

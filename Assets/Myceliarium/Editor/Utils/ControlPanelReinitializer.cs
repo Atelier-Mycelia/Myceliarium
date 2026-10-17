@@ -4,21 +4,17 @@ namespace AtMycelia.Myceliarium
 {
     /// <summary>
     /// The sequence a ControlPanel goes through when its entries are reinitialized.
-    /// Reinitting makes top-level entries recreate their subentries, so anything
-    /// derived from the old instances (the flattened entry list, what's attached to
-    /// the UI, the saver pairings, the selection) has to be refreshed in step.
-    /// Isolated from ControlPanel so it can be unit tested without a live EditorWindow.
+    /// Entries and subs get recycled instead of thrown away after their disposal, 
+    /// but their tabs and subwindows still get rebuilt. Thus, the entries need to be
+    /// re-attached. The one previously selected needs to be reselected, too. <br></br>
+    /// Isolated this class from ControlPanel so it can be unit tested without a live EditorWindow.
     /// </summary>
     public static class ControlPanelReinitializer
     {
-        /// <param name="rebuildFlattened">Refreshes the entries' flattened list.</param>
-        /// <param name="refreshSavers">Re-pairs the savers with the new entries.</param>
         public static void Reinit(
             EntryCollection entries,
             ControlPanelEntryAttacher attacher,
-            ControlPanelTabSelectionController selectionController,
-            Action rebuildFlattened,
-            Action refreshSavers)
+            ControlPanelTabSelectionController selectionController)
         {
             if (entries == null) throw new ArgumentNullException(nameof(entries));
             if (attacher == null) throw new ArgumentNullException(nameof(attacher));
@@ -35,11 +31,9 @@ namespace AtMycelia.Myceliarium
                 entry.Init(forceReinit: true);
             }
 
-            rebuildFlattened?.Invoke();
             // Top-level on purpose: the attacher skips everything else, and a top-level
             // entry with no subwindow of its own isn't in the flattened list.
             attacher.Attach(entries.TopLevel);
-            refreshSavers?.Invoke();
             selectionController.OnAllEntriesReinitted();
         }
     }

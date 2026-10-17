@@ -50,13 +50,13 @@ namespace AtMycelia.Myceliarium.Tests
         }
 
         [Test]
-        public void Init_CallsPrepareSubentriesAndPrepareSubwindow()
+        public void Init_CallsCreateSubentriesAndPrepareSubwindow()
         {
             var entry = new TestEntry();
 
             entry.Init();
 
-            Assert.That(entry.PrepareSubentriesCallCount, Is.EqualTo(1));
+            Assert.That(entry.CreateSubentriesCallCount, Is.EqualTo(1));
             Assert.That(entry.PrepareSubwindowCallCount, Is.EqualTo(1));
         }
         #endregion
@@ -230,6 +230,70 @@ namespace AtMycelia.Myceliarium.Tests
         }
         #endregion
 
+        #region Subentry identity
+        [Test]
+        public void Init_CreatesSubentriesOnceAndRegistersThemUnderTheTab()
+        {
+            var parent = new ParentEntry();
+
+            parent.Init();
+
+            Assert.That(parent.CreateSubentriesCallCount, Is.EqualTo(1));
+            Assert.That(parent.GetSubentries(), Has.Count.EqualTo(1));
+            Assert.That(parent.GetSubentries()[0].IsInitted, Is.True);
+            Assert.That(((FakeTab)parent.Tab).Registered,
+                Is.EqualTo(new[] { parent.GetSubentries()[0].Tab }));
+        }
+
+        [Test]
+        public void Init_ForceReinit_KeepsTheSameSubentryInstancesAndReinitializesThem()
+        {
+            var parent = new ParentEntry();
+            parent.Init();
+            var child = (TestEntry)parent.GetSubentries()[0];
+            var oldChildTab = child.Tab;
+
+            parent.Init(forceReinit: true);
+
+            Assert.That(parent.CreateSubentriesCallCount, Is.EqualTo(1));
+            Assert.That(parent.GetSubentries(), Is.EqualTo(new[] { child }));
+            Assert.That(child.IsInitted, Is.True);
+            Assert.That(child.Tab, Is.Not.SameAs(oldChildTab));
+            Assert.That(((FakeTab)parent.Tab).Registered,
+                Is.EqualTo(new[] { child.Tab }));
+        }
+
+        [Test]
+        public void DisposeThenForceReinit_KeepsTheSameSubentryInstances()
+        {
+            var parent = new ParentEntry();
+            parent.Init();
+            var child = (TestEntry)parent.GetSubentries()[0];
+
+            parent.Dispose();
+            parent.Init(forceReinit: true);
+
+            Assert.That(parent.CreateSubentriesCallCount, Is.EqualTo(1));
+            Assert.That(parent.GetSubentries(), Is.EqualTo(new[] { child }));
+            Assert.That(child.IsInitted, Is.True);
+            Assert.That(child.Tab, Is.Not.Null);
+        }
+
+        [Test]
+        public void Dispose_AlsoDisposesTheSubentries()
+        {
+            var parent = new ParentEntry();
+            parent.Init();
+            var child = (TestEntry)parent.GetSubentries()[0];
+            var childTab = (FakeTab)child.Tab;
+
+            parent.Dispose();
+
+            Assert.That(childTab.DisposeCallCount, Is.EqualTo(1));
+            Assert.That(child.Tab, Is.Null);
+        }
+        #endregion
+
         #region Defaults
         [Test]
         public void IsTestOnly_DefaultsToFalse()
@@ -289,7 +353,7 @@ namespace AtMycelia.Myceliarium.Tests
             public void Notify() => NotifyUnsavedChangesChanged();
 
             public int PrepareLeftSidebarTabCallCount { get; private set; }
-            public int PrepareSubentriesCallCount { get; private set; }
+            public int CreateSubentriesCallCount { get; private set; }
             public int PrepareSubwindowCallCount { get; private set; }
 
             protected override void PrepareLeftSidebarTab()
@@ -298,10 +362,10 @@ namespace AtMycelia.Myceliarium.Tests
                 Tab = new FakeTab();
             }
 
-            protected override void PrepareSubentries()
+            protected override IEnumerable<IControlPanelEntry> CreateSubentries()
             {
-                PrepareSubentriesCallCount++;
-                base.PrepareSubentries();
+                CreateSubentriesCallCount++;
+                return base.CreateSubentries();
             }
 
             protected override void PrepareSubwindow()
@@ -311,6 +375,21 @@ namespace AtMycelia.Myceliarium.Tests
                 {
                     Subwindow = new FakeSubwindow();
                 }
+            }
+        }
+
+        private class ParentEntry : ControlPanelEntry
+        {
+            public override string SortingName => nameof(ParentEntry);
+            public override bool IsMeantToHaveSubwindow => false;
+            public int CreateSubentriesCallCount { get; private set; }
+
+            protected override void PrepareLeftSidebarTab() => Tab = new FakeTab();
+
+            protected override IEnumerable<IControlPanelEntry> CreateSubentries()
+            {
+                CreateSubentriesCallCount++;
+                return new IControlPanelEntry[] { new TestEntry() };
             }
         }
 
@@ -330,7 +409,8 @@ namespace AtMycelia.Myceliarium.Tests
 
             public void Init() { }
             public void InvokeClicked() => Clicked?.Invoke(this);
-            public void Register(IControlPanelTab subtab) { }
+            public List<IControlPanelTab> Registered { get; } = new List<IControlPanelTab>();
+            public void Register(IControlPanelTab subtab) => Registered.Add(subtab);
             public void RemoveFromHierarchy() => Root.RemoveFromHierarchy();
         }
 

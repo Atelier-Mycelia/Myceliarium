@@ -94,8 +94,7 @@ namespace AtMycelia.Myceliarium
 
         public void OnReinitConfirmed()
         {
-            ControlPanelReinitializer.Reinit(_entries, _attacher, _selectionController,
-                RegisterSubentries, RefreshSaverCache);
+            ControlPanelReinitializer.Reinit(_entries, _attacher, _selectionController);
             // Fresh entries start out clean without signalling anything, so check again
             _unsavedChangesTracker?.Refresh();
         }
