@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using UnityEditor;
 
@@ -48,18 +47,7 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         public static void RefreshRegistry(Func<IEnumerable<Type>> typeProvider = null)
         {
-            typeProvider ??= GetTypesFromTypeCache;
-            var discovered = FilterSaverTypes(typeProvider());
-
-            lock (_registryLock)
-            {
-                _allSaverTypes = discovered;
-            }
-        }
-
-        private static IEnumerable<Type> GetTypesFromTypeCache()
-        {
-            return TypeCache.GetTypesDerivedFrom<IControlPanelEntrySaver>();
+            _registry.Refresh(typeProvider);
         }
 
         /// <summary>
@@ -68,65 +56,15 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         public static Type[] FilterSaverTypes(IEnumerable<Type> candidates)
         {
-            if (candidates == null)
-            {
-                return Array.Empty<Type>();
-            }
-
-            return candidates
-                .Where(type =>
-                    type != null &&
-                    _saverType.IsAssignableFrom(type) &&
-                    !type.IsAbstract &&
-                    !type.IsInterface)
-                .ToArray();
+            return TypeRegistry<IControlPanelEntrySaver>.FilterTypes(candidates);
         }
 
-        private static readonly Type _saverType = typeof(IControlPanelEntrySaver);
-        private static readonly object _registryLock = new object();
-        private static Type[] _allSaverTypes = Array.Empty<Type>();
-
-        public static IEnumerable<Type> AllSaverTypes
-        {
-            get
-            {
-                lock (_registryLock)
-                {
-                    return _allSaverTypes.ToArray();
-                }
-            }
-        }
+        public static IEnumerable<Type> AllSaverTypes => _registry.Types;
 
         internal static IEnumerable<IControlPanelEntrySaver> CreateAllSavers(
             Func<Type, IControlPanelEntrySaver> instanceFactory = null)
         {
-            instanceFactory ??= DefaultInstanceFactory;
-            var saverTypes = AllSaverTypes;
-            _savers.Clear();
-
-            foreach (var elem in saverTypes)
-            {
-                try
-                {
-                    var instance = instanceFactory(elem);
-                    if (instance != null)
-                    {
-                        _savers.Add(instance);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    UnityEngine.Debug.LogError($"Failed to create instance of " +
-                        $"{elem.Name}: {ex.Message}");
-                }
-            }
-
-            return _savers;
-        }
-
-        private static IControlPanelEntrySaver DefaultInstanceFactory(Type type)
-        {
-            return Activator.CreateInstance(type) as IControlPanelEntrySaver;
+            return _registry.CreateAll(instanceFactory);
         }
 
         /// <summary>
@@ -135,19 +73,12 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         internal static void ResetForTests()
         {
-            lock (_registryLock)
-            {
-                _allSaverTypes = Array.Empty<Type>();
-                _savers.Clear();
-            }
+            _registry.Reset();
         }
 
-        private static readonly List<IControlPanelEntrySaver> _savers = 
-            new List<IControlPanelEntrySaver>();
+        public static IReadOnlyList<IControlPanelEntrySaver> Savers => _registry.Instances;
 
-        public static IReadOnlyList<IControlPanelEntrySaver> Savers => _savers;
-
-        public static IList<IControlPanelEntrySaver> GetSaversOfType<T>() 
+        public static IList<IControlPanelEntrySaver> GetSaversOfType<T>()
             where T : IControlPanelEntrySaver
         {
             return GetSaversOfType(typeof(T));
@@ -155,17 +86,10 @@ namespace AtMycelia.Myceliarium
 
         public static IList<IControlPanelEntrySaver> GetSaversOfType(Type saverType)
         {
-            var result = new List<IControlPanelEntrySaver>();
-            for (int i = 0; i < _savers.Count; i++)
-            {
-                var saver = _savers[i];
-                if (saverType.IsAssignableFrom(saver.GetType()))
-                {
-                    result.Add(saver);
-                }
-            }
-            return result;
+            return _registry.GetInstancesOfType(saverType);
         }
 
+        private static readonly TypeRegistry<IControlPanelEntrySaver> _registry =
+            new TypeRegistry<IControlPanelEntrySaver>();
     }
 }
