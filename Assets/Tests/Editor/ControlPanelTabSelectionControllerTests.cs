@@ -90,6 +90,66 @@ namespace AtMycelia.Myceliarium.Tests
         }
         #endregion
 
+        #region Init with an EntryCollection
+        [Test]
+        public void Init_WithCollection_NestedSubentryIsRecognizedAndSelected()
+        {
+            var child = new FakeChildEntry();
+            var parent = new FakeEntry(subentries: new List<IControlPanelEntry> { child });
+            var collection = BuildCollection(parent);
+            _controller.Init(collection);
+
+            child.Tab.InvokeClicked();
+
+            Assert.That(child.Tab.IsSelected, Is.True);
+            Assert.That(((FakeSubwindow)child.Subwindow).IsShown, Is.True);
+        }
+
+        [Test]
+        public void Init_WithCollection_UnknownEntryIsIgnored()
+        {
+            var known = new FakeEntry();
+            var unknown = new FakeEntry();
+            _controller.Init(BuildCollection(known));
+
+            unknown.Tab.InvokeClicked();
+
+            Assert.That(unknown.Tab.IsSelected, Is.False);
+        }
+
+        [Test]
+        public void Init_WithCollection_SeesEntriesAddedByLaterRebuilds()
+        {
+            var first = new FakeEntry();
+            var collection = BuildCollection(first);
+            _controller.Init(collection);
+            var replacement = new FakeEntry();
+            collection.SetTopLevel(new List<IControlPanelEntry> { replacement });
+            collection.RebuildFlattened();
+
+            replacement.Tab.InvokeClicked();
+            first.Tab.InvokeClicked();
+
+            Assert.That(replacement.Tab.IsSelected, Is.True);
+            Assert.That(first.Tab.IsSelected, Is.False);
+        }
+
+        [Test]
+        public void Init_NullCollection_Throws()
+        {
+            Assert.Throws<ArgumentNullException>(() =>
+                _controller.Init((EntryCollection)null));
+        }
+
+        private static EntryCollection BuildCollection(params IControlPanelEntry[] topLevel)
+        {
+            var collection = new EntryCollection();
+            collection.SetTopLevel(topLevel);
+            collection.RebuildFlattened();
+            return collection;
+        }
+        #endregion
+
         #region Nested subentries
         [Test]
         public void TabClicked_NestedSubentry_IsRecognizedAndSelected()
@@ -124,7 +184,7 @@ namespace AtMycelia.Myceliarium.Tests
         [Test]
         public void Init_NullEntries_DoesNotThrowAndTreatsAsEmpty()
         {
-            Assert.DoesNotThrow(() => _controller.Init(null));
+            Assert.DoesNotThrow(() => _controller.Init((IReadOnlyList<IControlPanelEntry>)null));
 
             var entry = new FakeEntry();
             entry.Tab.InvokeClicked();
@@ -175,6 +235,9 @@ namespace AtMycelia.Myceliarium.Tests
         #endregion
 
         #region Test Doubles
+        // A distinct type, since an EntryCollection rejects duplicate entry types.
+        private class FakeChildEntry : FakeEntry { }
+
         private class FakeEntry : IControlPanelEntry
         {
             private readonly IReadOnlyList<IControlPanelEntry> _subentries;

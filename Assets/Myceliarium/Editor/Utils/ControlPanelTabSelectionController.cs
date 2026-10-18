@@ -15,14 +15,36 @@ namespace AtMycelia.Myceliarium
     /// </summary>
     public sealed class ControlPanelTabSelectionController : IDisposable
     {
+        /// <summary>
+        /// Works with the given entries, finding nested ones by walking their
+        /// subentries on each click.
+        /// </summary>
         public void Init(IReadOnlyList<IControlPanelEntry> entries)
         {
             _isDisposed = false;
+            _collection = null;
             _entries = entries ?? Array.Empty<IControlPanelEntry>();
             _entryBeingDisplayed = null;
             SetSubs(true);
         }
 
+        /// <summary>
+        /// Works with the entries of the given collection, using its (set-based)
+        /// Contains rather than walking subentries on each click. The collection is
+        /// read live, so it can be rebuilt without needing to call this again.
+        /// </summary>
+        public void Init(EntryCollection collection)
+        {
+            if (collection == null)
+            {
+                throw new ArgumentNullException(nameof(collection));
+            }
+
+            Init(collection.AllWithSubwindows);
+            _collection = collection;
+        }
+
+        private EntryCollection _collection;
         private bool _isDisposed = true;
         private IReadOnlyList<IControlPanelEntry> _entries = Array.Empty<IControlPanelEntry>();
         private IControlPanelEntry _entryBeingDisplayed;
@@ -63,13 +85,23 @@ namespace AtMycelia.Myceliarium
 
         private IControlPanelEntry LastSelected { get; set; }
 
+        /// <summary>
+        /// Entries keep their identity when reinitted, but their tabs are rebuilt, so
+        /// whichever was selected last has to be selected again.
+        /// </summary>
         public void OnAllEntriesReinitted()
         {
+            _entryBeingDisplayed = LastSelected;
             LastSelected?.Select();
         }
 
         private bool WeHave(IControlPanelEntry entry)
         {
+            if (_collection != null)
+            {
+                return _collection.Contains(entry);
+            }
+
             // Need to do a recursive search because some entries are subentries of other entries.
             if (_entries == null || _entries.Count == 0)
             {
@@ -111,6 +143,7 @@ namespace AtMycelia.Myceliarium
 
             SetSubs(false);
             _entryBeingDisplayed = null;
+            _collection = null;
             _entries = Array.Empty<IControlPanelEntry>();
             _isDisposed = true;
         }

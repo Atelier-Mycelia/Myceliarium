@@ -1,14 +1,13 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 
 namespace AtMycelia.Myceliarium
 {
     /// <summary>
     /// Discovers all the concrete IControlPanelFooter types in the project. Unlike savers,
-    /// footers are bound to one panel's UI, so this hands out a new instance per request
-    /// rather than shared ones.
+    /// footers are bound to one panel's UI, so this hands out a new footer instance per
+    /// request (one per panel) rather than a shared one.
     /// </summary>
     public static class ControlPanelFooterRegistry
     {
@@ -24,19 +23,7 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         public static void RefreshRegistry(Func<IEnumerable<Type>> typeProvider = null)
         {
-            typeProvider ??= GetTypesFromTypeCache;
-            var discovered = FilterFooterTypes(typeProvider());
-
-            lock (_registryLock)
-            {
-                _allFooterTypes = discovered;
-                _refreshed = true;
-            }
-        }
-
-        private static IEnumerable<Type> GetTypesFromTypeCache()
-        {
-            return TypeCache.GetTypesDerivedFrom<IControlPanelFooter>();
+            _registry.Refresh(typeProvider);
         }
 
         /// <summary>
@@ -45,81 +32,26 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         public static Type[] FilterFooterTypes(IEnumerable<Type> candidates)
         {
-            if (candidates == null)
-            {
-                return Array.Empty<Type>();
-            }
-
-            return candidates
-                .Where(type =>
-                    type != null &&
-                    _footerType.IsAssignableFrom(type) &&
-                    !type.IsAbstract &&
-                    !type.IsInterface)
-                .ToArray();
+            return TypeRegistry<IControlPanelFooter>.FilterTypes(candidates);
         }
 
-        private static readonly Type _footerType = typeof(IControlPanelFooter);
-        private static readonly object _registryLock = new object();
-        private static Type[] _allFooterTypes = Array.Empty<Type>();
-        private static bool _refreshed;
+        public static IEnumerable<Type> AllFooterTypes => _registry.Types;
 
-        public static IEnumerable<Type> AllFooterTypes
-        {
-            get
-            {
-                lock (_registryLock)
-                {
-                    if (!_refreshed)
-                    {
-                        RefreshRegistry();
-                    }
-                    return _allFooterTypes.ToArray();
-                }
-            }
-        }
-
-        public static IList<IControlPanelFooter> CreateFootersOfType<T>()
+        public static IControlPanelFooter CreateFooterOfType<T>()
             where T : IControlPanelFooter
         {
-            return CreateFootersOfType(typeof(T));
+            return CreateFooterOfType(typeof(T));
         }
 
         /// <summary>
-        /// Creates a new instance of every footer type assignable to the given one.
+        /// Creates a new instance of the first footer type assignable to the given one.
+        /// Panels only have one footer, so if several types match, the extras are
+        /// ignored with a warning. Returns null if none match or creation fails.
         /// </summary>
-        public static IList<IControlPanelFooter> CreateFootersOfType(Type footerSuperType,
+        public static IControlPanelFooter CreateFooterOfType(Type footerSuperType,
             Func<Type, IControlPanelFooter> instanceFactory = null)
         {
-            instanceFactory ??= DefaultInstanceFactory;
-            var result = new List<IControlPanelFooter>();
-            foreach (var type in AllFooterTypes)
-            {
-                if (!footerSuperType.IsAssignableFrom(type))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    var instance = instanceFactory(type);
-                    if (instance != null)
-                    {
-                        result.Add(instance);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    UnityEngine.Debug.LogError($"Failed to create instance of " +
-                        $"{type.Name}: {ex.Message}");
-                }
-            }
-            return result;
-        }
-
-        private static IControlPanelFooter DefaultInstanceFactory(Type type)
-        {
-            return Activator.CreateInstance(type) as IControlPanelFooter;
+            return _registry.CreateOneOfType(footerSuperType, instanceFactory);
         }
 
         /// <summary>
@@ -127,11 +59,10 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         internal static void ResetForTests()
         {
-            lock (_registryLock)
-            {
-                _allFooterTypes = Array.Empty<Type>();
-                _refreshed = false;
-            }
+            _registry.Reset();
         }
+
+        private static readonly TypeRegistry<IControlPanelFooter> _registry =
+            new TypeRegistry<IControlPanelFooter>(refreshOnFirstUse: true);
     }
 }

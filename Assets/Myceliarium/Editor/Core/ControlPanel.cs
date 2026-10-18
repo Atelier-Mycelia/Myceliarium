@@ -64,19 +64,13 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
-            foreach (var kvp in _savers)
-            {
-                var saver = kvp.Key;
-                var compatibleEntries = kvp.Value;
-                foreach (var entry in compatibleEntries)
-                {
-                    saver.Save(entry);
-                }
-            }
+            _saveCoordinator.SaveAll();
         }
 
-        protected readonly IDictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>> _savers =
-            new Dictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>>();
+        protected IReadOnlyDictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>> Savers =>
+            _saveCoordinator.Savers;
+
+        private readonly SaveCoordinator _saveCoordinator = new SaveCoordinator();
 
         protected virtual void OnCloseRequested(IControlPanel cPanel)
         {
@@ -100,14 +94,9 @@ namespace AtMycelia.Myceliarium
 
         public void OnReinitConfirmed()
         {
-            foreach (var entry in _topLevelEntries)
-            {
-                entry.Dispose();
-                entry.Init(forceReinit: true);
-            }
-
-            _attacher.Attach(_allEntriesWithSubwindows);
-            _selectionController.OnAllEntriesReinitted();
+            ControlPanelReinitializer.Reinit(_entries, _attacher, _selectionController);
+            // Fresh entries start out clean without signalling anything, so check again
+            _unsavedChangesTracker?.Refresh();
         }
 
         /// <summary>
@@ -147,46 +136,23 @@ namespace AtMycelia.Myceliarium
         {
         }
 
-        /// <summary>
-        /// Checks the given entries and all their descendants.
-        /// </summary>
-        public static bool AnyEntryHasUnsavedChanges(IEnumerable<IControlPanelEntry> entries)
-        {
-            if (entries == null)
-            {
-                return false;
-            }
-
-            foreach (var entry in entries)
-            {
-                if (entry == null)
-                {
-                    continue;
-                }
-
-                if (entry.HasUnsavedChanges ||
-                    AnyEntryHasUnsavedChanges(entry.GetSubentries()))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
         public virtual void CreateGUI()
         {
             PreRootPrep(out bool success);
             if (!success)
             {
-                string logMessage = $"{DisplayName} failed to initialize. " +
-                    $"Aborting GUI creation.";
-                UnityDebug.LogError(logMessage);
-                this.Close();
+                AbortInit();
                 return;
             }
 
             RootPrep();
+        }
+
+        private void AbortInit()
+        {
+            UnityDebug.LogError($"{DisplayName} failed to initialize. " +
+                $"Aborting GUI creation.");
+            this.Close();
         }
 
         /// <summary>
@@ -217,37 +183,8 @@ namespace AtMycelia.Myceliarium
 
         protected virtual void RefreshTopLevelEntryCache()
         {
-            _topLevelEntries.Clear();
             var toCheck = ControlPanelEntryRegistry.GetEntriesOfType(EntrySuperType);
-            var topLevelOnes = FilterTopLevelEntries(toCheck);
-            for (int i = 0; i < topLevelOnes.Count; i++)
-            {
-                var toAdd = topLevelOnes[i];
-                _topLevelEntries.Add(toAdd);
-            }
-        }
-
-        /// <summary>
-        /// Pure filtering logic, isolated from the registry/cache so it can be
-        /// unit tested without needing a live ControlPanel/EditorWindow.
-        /// </summary>
-        public static IList<IControlPanelEntry> FilterTopLevelEntries(IList<IControlPanelEntry> toCheck)
-        {
-            var result = new List<IControlPanelEntry>();
-            if (toCheck == null)
-            {
-                return result;
-            }
-
-            for (int i = 0; i < toCheck.Count; i++)
-            {
-                var elem = toCheck[i];
-                if (elem != null && elem.IsTopLevel)
-                {
-                    result.Add(elem);
-                }
-            }
-            return result;
+            _entries.SetTopLevel(toCheck);
         }
 
         /// <summary>
@@ -277,69 +214,24 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         protected virtual Type FooterSuperType => typeof(IControlPanelFooter);
 
-        protected virtual void RefreshFooterCache()
+        protected virtual void RefreshFooter()
         {
-            DisposeFooters();
-            var created = ControlPanelFooterRegistry.CreateFootersOfType(FooterSuperType);
-            for (int i = 0; i < created.Count; i++)
+            _footer?.Dispose();
+            _footer = ControlPanelFooterRegistry.CreateFooterOfType(FooterSuperType);
+            if (_footer == null)
             {
-                var footer = created[i];
-                footer.Init(this);
-                _footers.Add(footer);
+                UnityDebug.LogError($"Failed to create footer of type {FooterSuperType}. " +
+                    $"Please ensure that a concrete class implementing that interface exists.");
+                return;
             }
+            _footer.Init(this);
         }
 
-        private void DisposeFooters()
-        {
-            for (int i = 0; i < _footers.Count; i++)
-            {
-                _footers[i].Dispose();
-            }
-            _footers.Clear();
-        }
-
-        protected readonly List<IControlPanelFooter> _footers = new List<IControlPanelFooter>();
+        protected IControlPanelFooter _footer;
 
         protected virtual void RefreshSaverCache()
         {
-            _savers.Clear();
-            var found = CpEntrySaverReg.GetSaversOfType(SaverSuperType);
-            for (int i = 0; i < found.Count; i++)
-            {
-                var elem = found[i];
-                var compatibleEntries = EntriesCompatibleWith(elem);
-                _savers.Add(elem, compatibleEntries);
-            }
-        }
-
-        private IList<IControlPanelEntry> EntriesCompatibleWith(IControlPanelEntrySaver saver)
-        {
-            return FilterCompatibleEntries(_allEntriesWithSubwindows, saver.IsCompatibleWith);
-        }
-
-        /// <summary>
-        /// Pure filtering logic, isolated so it can be unit tested without
-        /// needing a live ControlPanel/EditorWindow, concrete savers, or loaders.
-        /// </summary>
-        public static IList<IControlPanelEntry> FilterCompatibleEntries(
-            IList<IControlPanelEntry> allEntries,
-            Func<IControlPanelEntry, bool> isCompatible)
-        {
-            var compatibleEntries = new List<IControlPanelEntry>();
-            if (allEntries == null || isCompatible == null)
-            {
-                return compatibleEntries;
-            }
-
-            for (int i = 0; i < allEntries.Count; i++)
-            {
-                var entry = allEntries[i];
-                if (isCompatible(entry))
-                {
-                    compatibleEntries.Add(entry);
-                }
-            }
-            return compatibleEntries;
+            _saveCoordinator.Refresh(SaverSuperType, _entries.AllWithSubwindows);
         }
 
         protected virtual void RootPrep()
@@ -347,10 +239,7 @@ namespace AtMycelia.Myceliarium
             TryAddBaseWindow(out bool success);
             if (!success)
             {
-                string logMessage = $"{DisplayName} failed to initialize. " +
-                    $"Aborting GUI creation.";
-                UnityDebug.LogError(logMessage);
-                this.Close();
+                AbortInit();
                 return;
             }
 
@@ -358,7 +247,7 @@ namespace AtMycelia.Myceliarium
             SetLocalSubs(false);
             SetLocalSubs(true);
             DoEntryPreps();
-            RefreshFooterCache();
+            RefreshFooter();
             PrepUnsavedChangesSync();
         }
 
@@ -393,7 +282,7 @@ namespace AtMycelia.Myceliarium
 
         public virtual VisualElement Root => rootVisualElement;
 
-        public IReadOnlyList<IControlPanelEntry> TopLevelEntries => _topLevelEntries;
+        public IReadOnlyList<IControlPanelEntry> TopLevelEntries => _entries.TopLevel;
         protected virtual void RegisterVisualElements()
         {
             _bottomBar = Root.Q<VisualElement>("BottomBar");
@@ -401,27 +290,20 @@ namespace AtMycelia.Myceliarium
 
         protected VisualElement _bottomBar;
 
-        private void PrepUnsavedChangesSync()
-        {
-            _unsavedChangesSync?.Pause();
-            SyncHasUnsavedChanges();
-            _unsavedChangesSync = rootVisualElement.schedule.Execute(SyncHasUnsavedChanges).Every(100);
-        }
-
         /// <summary>
         /// Unity reads hasUnsavedChanges when the window is closed through its own X button
         /// (prompting Save/Discard/Cancel), so it has to be current before that happens.
+        /// The tracker keeps it in step by reacting to the entries' signals.
         /// </summary>
-        private void SyncHasUnsavedChanges()
+        private void PrepUnsavedChangesSync()
         {
-            bool dirty = AnyEntryHasUnsavedChanges(_topLevelEntries);
-            if (hasUnsavedChanges != dirty)
-            {
-                hasUnsavedChanges = dirty;
-            }
+            _unsavedChangesTracker?.Dispose();
+            _unsavedChangesTracker = new UnsavedChangesTracker(_entries,
+                dirty => hasUnsavedChanges = dirty);
+            _unsavedChangesTracker.Start();
         }
 
-        private IVisualElementScheduledItem _unsavedChangesSync;
+        private UnsavedChangesTracker _unsavedChangesTracker;
 
 
         #region Entry Preps
@@ -435,153 +317,56 @@ namespace AtMycelia.Myceliarium
 
         private void PrepAttacher()
         {
-            _attacher?.Dispose();
+            _attacher.Dispose();
             _attacher.Init(rootVisualElement);
 
-            Sort(_topLevelEntries);
-            _attacher.Attach(_topLevelEntries);
+            _entries.SortTopLevel(Sort);
+            _attacher.Attach(_entries.TopLevel);
         }
 
         private void PrepSelectionController()
         {
-            _selectionController?.Dispose();
-            _selectionController.Init(_allEntriesWithSubwindows);
+            _selectionController.Dispose();
+            _selectionController.Init(_entries);
         }
 
-        private ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
-        private ControlPanelTabSelectionController _selectionController =
+        private readonly ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
+        private readonly ControlPanelTabSelectionController _selectionController =
             new ControlPanelTabSelectionController();
 
         /// <summary>
         /// Default implementation sorts the entries by SortingOrder first,
-        /// then by MainDisplayName. Subclasses can override to provide
+        /// then by SortingName. Subclasses can override to provide
         /// different sorting logic for the entries before they are
         /// attached to the control panel.
         /// </summary>
         protected virtual void Sort(IList<IControlPanelEntry> entries)
         {
-            if (entries is List<IControlPanelEntry> list)
-            {
-                list.Sort(CompareEntries);
-                return;
-            }
-
-            var buffer = new List<IControlPanelEntry>(entries);
-            buffer.Sort(CompareEntries);
-            entries.Clear();
-            for (int i = 0; i < buffer.Count; i++)
-            {
-                entries.Add(buffer[i]);
-            }
+            EntryCollection.SortByDefault(entries);
         }
-
-        /// <summary>
-        /// Pure comparison logic, isolated so it can be unit tested directly
-        /// without needing a live ControlPanel/EditorWindow.
-        /// </summary>
-        public static int CompareEntries(IControlPanelEntry a, IControlPanelEntry b)
-        {
-            int sortingOrderComparison = a.SortingOrder.CompareTo(b.SortingOrder);
-            if (sortingOrderComparison != 0)
-            {
-                return sortingOrderComparison;
-            }
-
-            return string.Compare(a.SortingName, b.SortingName, System.StringComparison.Ordinal);
-        }
-        protected readonly List<IControlPanelEntry> _topLevelEntries = new List<IControlPanelEntry>();
 
         protected virtual void RegisterSubentries()
         {
-            var collected = CollectAllEntriesWithSubwindows(_topLevelEntries);
-            for (int i = 0; i < collected.Count; i++)
-            {
-                var entry = collected[i];
-                if (!_allEntriesWithSubwindows.Contains(entry))
-                {
-                    _allEntriesWithSubwindows.Add(entry);
-                }
-            }
-
-            AssertNoDuplicateEntryTypes();
+            _entries.RebuildFlattened();
         }
 
-        /// <summary>
-        /// RPG Maker's Database window never has more than one tab for the same
-        /// data category (e.g. only ever one "Actors" tab). Since Myceliarium
-        /// entries are discovered via reflection, it's possible for a user to
-        /// accidentally register the same entry type as a subentry under two
-        /// different top-level parents. This guards against that.
-        /// </summary>
-        protected virtual void AssertNoDuplicateEntryTypes()
-        {
-            var allEntries = GetAllEntries();
-            ControlPanelEntryTypeValidator.AssertNoDuplicateEntryTypes(allEntries);
-        }
+        protected IReadOnlyList<IControlPanelEntry> AllEntriesWithSubwindows =>
+            _entries.AllWithSubwindows;
 
-        private IList<IControlPanelEntry> GetAllEntries()
-        {
-            var allEntries = new List<IControlPanelEntry>(_topLevelEntries);
-            for (int i = 0; i < _allEntriesWithSubwindows.Count; i++)
-            {
-                var sub = _allEntriesWithSubwindows[i];
-                if (allEntries.Contains(sub))
-                {
-                    continue;
-                }
-                allEntries.Add(sub);
-            }
-            return allEntries;
-        }
-
-        /// <summary>
-        /// Pure logic for gathering every top-level entry's (recursive) subentries
-        /// into a single flat, de-duplicated list. Isolated so it can be unit
-        /// tested without needing a live ControlPanel/EditorWindow.
-        /// </summary>
-        public static IList<IControlPanelEntry> CollectAllEntriesWithSubwindows(
-            IList<IControlPanelEntry> topLevelEntries)
-        {
-            var result = new List<IControlPanelEntry>();
-            if (topLevelEntries == null)
-            {
-                return result;
-            }
-
-            for (int i = 0; i < topLevelEntries.Count; i++)
-            {
-                var topLevelElem = topLevelEntries[i];
-                if (topLevelElem.IsMeantToHaveSubwindow && !result.Contains(topLevelElem))
-                {
-                    result.Add(topLevelElem);
-                }
-
-                var subentries = topLevelElem.GetSubentries(recursive: true);
-                for (int j = 0; j < subentries.Count; j++)//
-                {
-                    var subentry = subentries[j];
-                    if (!result.Contains(subentry) && subentry.IsMeantToHaveSubwindow)
-                    {
-                        result.Add(subentry);
-                    }
-                }
-            }
-            return result;
-        }
-
-
-        protected readonly List<IControlPanelEntry> _allEntriesWithSubwindows = new List<IControlPanelEntry>();
+        private readonly EntryCollection _entries = new EntryCollection();
         #endregion
 
         protected virtual void OnDestroy()
         {
             ControlPanelSignals.PreControlPanelClosed(this);
-            _attacher?.Dispose();
-            _attacher = null;
-            _selectionController?.Dispose();
-            _selectionController = null;
-            DisposeFooters();
-            _unsavedChangesSync?.Pause();
+
+            _attacher.Dispose();
+            _footer?.Dispose();
+            _selectionController.Dispose();
+
+            _footer = null;
+
+            _unsavedChangesTracker?.Dispose();
         }
 
         protected virtual void OnDisable()
@@ -590,19 +375,9 @@ namespace AtMycelia.Myceliarium
             SetLocalSubs(false);
         }
 
-        
-
         public bool Contains(IControlPanelEntry entry)
         {
-            if (entry == null)
-            {
-                return false;
-            }
-            if (_topLevelEntries.Contains(entry))
-            {
-                return true;
-            }
-            return _allEntriesWithSubwindows.Contains(entry);
+            return _entries.Contains(entry);
         }
 
     }

@@ -46,19 +46,19 @@ namespace AtMycelia.Myceliarium
                 PrepareSubentries();
                 PrepareSubwindow();
                 PrepareLoader();
-                SetSubs(false); // Taking reinitting into account
-                SetSubs(true);
                 _subwindow?.Hide();
                 if (ShouldPreloadOnInit)
                 {
                     HandleLoading();
                 }
                 SetCurrentStateAsBase();
+                SetSubs(false); // Taking reinitting into account
+                SetSubs(true);
                 _isInitted = true;
             }
         }
 
-        private bool _isDisposed;
+        protected bool _isDisposed;
 
         public virtual bool IsInitted
         {
@@ -83,17 +83,15 @@ namespace AtMycelia.Myceliarium
 
             SetSubs(false);
 
-            DisposeSubentries();
-            void DisposeSubentries()
+            // The subentry instances themselves are kept, so that reinitializing this
+            // entry (Dispose, then Init with forceReinit) brings back the same objects
+            // rather than replacing them.
+            for (int i = 0; i < _subentries.Count; i++)
             {
-                for (int i = 0; i < _subentries.Count; i++)
-                {
-                    _subentries[i].Dispose();
-                }
-                _subentries.Clear();
+                _subentries[i].Dispose();
             }
 
-            _tab.Dispose();
+            _tab?.Dispose();
             _subwindow?.Dispose();
             _tab = null;
             _subwindow = null;
@@ -106,9 +104,45 @@ namespace AtMycelia.Myceliarium
 
         protected IControlPanelTab _tab;
 
-        // Expected for subclasses to override this method if they have subentries.
-        // The default implementation does nothing.
-        protected virtual void PrepareSubentries() { }
+        /// <summary>
+        /// Override this to give the entry subentries. It's called only once, the first
+        /// time the entry is initialized, and the instances it returns are kept for the
+        /// entry's lifetime: reinitializing the entry reinitializes those same instances
+        /// instead of creating new ones. The default has none.
+        /// </summary>
+        protected virtual IEnumerable<IControlPanelEntry> CreateSubentries()
+        {
+            return Array.Empty<IControlPanelEntry>();
+        }
+
+        /// <summary>
+        /// Creates the subentries if that hasn't happened yet, (re)initializes them, and
+        /// registers their tabs under this entry's tab. Private on purpose: this is the
+        /// only place subentries get added, which is what keeps their instances stable.
+        /// See CreateSubentries.
+        /// </summary>
+        private void PrepareSubentries()
+        {
+            if (!_subentriesCreated)
+            {
+                _subentries.AddRange(CreateSubentries());
+                _subentriesCreated = true;
+            }
+
+            for (int i = 0; i < _subentries.Count; i++)
+            {
+                var subentry = _subentries[i];
+                // Subentries that have been initialized before (and so maybe disposed
+                // along with this entry) need the forced reinit to come back up.
+                subentry.Init(forceReinit: subentry.IsInitted);
+                if (subentry.Tab != null)
+                {
+                    Tab.Register(subentry.Tab);
+                }
+            }
+        }
+
+        private bool _subentriesCreated;
 
         public virtual IReadOnlyList<IControlPanelEntry> GetSubentries(bool recursive = false)
         {
@@ -123,7 +157,7 @@ namespace AtMycelia.Myceliarium
                     if (directChild == null)
                     {
                         string logMessage = $"Subentry at index {i} of {GetType().Name} was null. " +
-                            $"This should not happen if PrepareSubentries() has been called.";
+                            $"This should not happen if Init() has been called.";
                         throw new InvalidOperationException(logMessage);
                     }
 
@@ -143,7 +177,7 @@ namespace AtMycelia.Myceliarium
 
             return result;
         }
-        protected readonly List<IControlPanelEntry> _subentries = new List<IControlPanelEntry>();
+        private readonly List<IControlPanelEntry> _subentries = new List<IControlPanelEntry>();
 
         protected virtual void PrepareSubwindow() { }
 
@@ -176,6 +210,8 @@ namespace AtMycelia.Myceliarium
 
         protected virtual void SetSubs(bool on)
         {
+            // The tab is null if this was never initialized (or already disposed), in
+            // which case there's nothing of its to (un)subscribe from.
             if (on)
             {
                 ControlPanelSignals.ControlPanelOpened += OnControlPanelOpened;
@@ -323,7 +359,31 @@ namespace AtMycelia.Myceliarium
         }
 
         public virtual bool HasSubentries => _subentries.Count > 0;
-        public virtual bool HasUnsavedChanges { get; protected set; }
+        /// <summary>
+        /// Setting this raises ControlPanelSignals.UnsavedChangesChanged when the value
+        /// actually changes. Subclasses that override this to compute their own value
+        /// should call NotifyUnsavedChangesChanged whenever it may have changed.
+        /// </summary>
+        public virtual bool HasUnsavedChanges
+        {
+            get => _hasUnsavedChanges;
+            protected set
+            {
+                if (_hasUnsavedChanges == value)
+                {
+                    return;
+                }
+
+                _hasUnsavedChanges = value;
+                NotifyUnsavedChangesChanged();
+            }
+        }
+        private bool _hasUnsavedChanges;
+
+        protected void NotifyUnsavedChangesChanged()
+        {
+            ControlPanelSignals.UnsavedChangesChanged(this);
+        }
 
     }
 
@@ -335,6 +395,13 @@ namespace AtMycelia.Myceliarium
         /// be reinitialized (say, after being Disposed).
         /// </summary>
         void Init(bool forceReinit = false);
+
+        /// <summary>
+        /// Whether Init has run (and not been undone by a reinit in progress). Stays
+        /// true after a Dispose, until the next forced Init.
+        /// </summary>
+        bool IsInitted { get; }
+
         bool HasUnsavedChanges { get; }
 
         /// <summary>

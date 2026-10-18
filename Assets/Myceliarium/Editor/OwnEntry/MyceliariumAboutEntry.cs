@@ -29,9 +29,13 @@ namespace AtMycelia.Myceliarium
 
         private void UpdateLabels()
         {
+            if (_isDisposed)
+            {
+                return;
+            }
             VersionText = $"Version: {VersionString}";
             CopyrightText = "Copyright © 2026 Atelier Mycelia. All rights reserved.";
-            MultiLinksText = string.Join("\n", Links);
+            MultiLinksText = string.Join("\n", Links);//
         }
 
         private string VersionText
