@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -200,12 +199,6 @@ namespace AtMycelia.Myceliarium
         /// logic as EntrySuperType; take a look at its summary for more details.
         /// </summary>
         protected abstract Type SaverSuperType { get; }
-
-        /// <summary>
-        /// The type of loaders that this control panel is responsible for. Same sort of
-        /// logic as EntrySuperType; take a look at its summary for more details.
-        /// </summary>
-        protected abstract Type LoaderSuperType { get; }
 
         /// <summary>
         /// The type of footer that this Control Panel is responsible for. Same sort of
