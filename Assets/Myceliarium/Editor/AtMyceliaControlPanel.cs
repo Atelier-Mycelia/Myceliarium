@@ -12,9 +12,8 @@ namespace AtMycelia.Myceliarium
 
         #region Super Types
         protected override Type EntrySuperType => typeof(IAtMyceliaControlPanelEntry);
-        protected override Type LoaderSuperType => typeof(IAtMyceliaControlPanelEntryLoader);
         protected override Type SaverSuperType => typeof(IAtMyceliaControlPanelEntrySaver);
-        protected override Type FooterSuperType => typeof(IAtMyceliaControlPanelFooter);
+        protected override Type FooterSuperType => typeof(AtMyceliaControlPanelFooter);
 
         #endregion
 

@@ -32,15 +32,11 @@ namespace AtMycelia.Myceliarium
     public interface IControlPanelEntryLoader
     {
         void Load(IControlPanelEntry toLoadFor, Action onComplete = null);
+        T GetLoadResult<T>();
     }
 
     public class DefaultControlPanelEntryLoader : ControlPanelEntryLoader
     {
     }
 
-    public interface IAtMyceliaControlPanelEntryLoader : IControlPanelEntryLoader
-    {
-        // This interface is a marker interface for loaders that are specific
-        // to the AtMycelia ecosys.
-    }
 }
