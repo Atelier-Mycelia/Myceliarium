@@ -38,9 +38,4 @@ namespace AtMycelia.Myceliarium
     {
     }
 
-    public interface IAtMyceliaControlPanelEntryLoader : IControlPanelEntryLoader
-    {
-        // This interface is a marker interface for loaders that are specific
-        // to the AtMycelia ecosys.
-    }
 }

@@ -198,9 +198,6 @@ namespace AtMycelia.Myceliarium
             ControlPanelSignals.CloseRequested(ControlPanel);
         }
 
-        
-        
-
         private bool _isDisposed = true;
     }
 
@@ -221,15 +218,10 @@ namespace AtMycelia.Myceliarium
         void Init(IControlPanel controlPanel);
     }
 
-    public interface IAtMyceliaControlPanelFooter : IControlPanelFooter
-    {
-        // Marker interface for footers that are specific to the AtMycelia ecosys.
-    }
-
     /// <summary>
     /// The footer used by AtMyceliaControlPanel; found through reflection.
     /// </summary>
-    public class AtMyceliaControlPanelFooter : ControlPanelFooter, IAtMyceliaControlPanelFooter
+    public class AtMyceliaControlPanelFooter : ControlPanelFooter
     {
     }
 }
