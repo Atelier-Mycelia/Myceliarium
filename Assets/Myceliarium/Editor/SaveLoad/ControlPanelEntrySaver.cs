@@ -16,8 +16,17 @@ namespace AtMycelia.Myceliarium
         }
 
         public abstract bool IsCompatibleWith(IControlPanelEntry toSaveFor);
-        protected abstract IEnumerator SaveProcess(IControlPanelEntry toSaveFor,
-            Action onComplete);
+
+        /// <summary>
+        /// Subclasses should override this, calling ControlPanelSignals.SaveCompleted when 
+        /// appropriate. The base implementation simply waits two frames so that delayed
+        /// Ui controls have enough time to commit their values.
+        /// </summary>
+        protected virtual IEnumerator SaveProcess(IControlPanelEntry toSaveFor,
+            Action onComplete)
+        {
+            yield return null; yield return null;
+        }
 
     }
 
