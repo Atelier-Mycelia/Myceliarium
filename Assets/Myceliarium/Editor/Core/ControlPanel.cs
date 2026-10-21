@@ -63,7 +63,19 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
-            _saveCoordinator.SaveAll();
+            EditorApplication.delayCall += () =>
+            {
+                // We might've become null by the time this fires, so...
+                if (this == null) 
+                {
+                    return;
+                }
+                _saveCoordinator.SaveAll();
+            };
+            // ^Why wait one frame? So that text fields and such in the subwindows can update
+            // their state in time. Otherwise, the save coordinator might save the old values
+            // before the controls' changes are applied.
+
         }
 
         protected IReadOnlyDictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>> Savers =>
