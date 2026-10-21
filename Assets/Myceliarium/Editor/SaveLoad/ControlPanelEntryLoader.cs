@@ -32,6 +32,7 @@ namespace AtMycelia.Myceliarium
     public interface IControlPanelEntryLoader
     {
         void Load(IControlPanelEntry toLoadFor, Action onComplete = null);
+        T GetLoadResult<T>();
     }
 
     public class DefaultControlPanelEntryLoader : ControlPanelEntryLoader
