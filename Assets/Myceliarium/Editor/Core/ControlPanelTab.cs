@@ -6,7 +6,7 @@ using UitkButton = UnityEngine.UIElements.Button;
 
 namespace AtMycelia.Myceliarium
 {
-    public abstract class ControlPanelTab : IControlPanelTab, IDisposable
+    public abstract class ControlPanelTab : VisualElement, IControlPanelTab
     {
         public abstract string DisplayName { get; }
         public abstract string PathToUxml { get; }
@@ -15,6 +15,9 @@ namespace AtMycelia.Myceliarium
         {
             PrepRoot();
             RegisterVisualElements();
+            ToggleSubs(false); 
+            // ^Since this can end up reinitted, we need to make sure we don't have
+            // any lingering callbacks from a previous Init.
             ToggleSubs(true);
         }
 
@@ -27,9 +30,8 @@ namespace AtMycelia.Myceliarium
                 logMessage = $"Failed to load tab UXML at {PathToUxml} for {GetType().Name}.";
                 throw new InvalidOperationException(logMessage);
             }
-
-            Root = vta.CloneTree();
-            Root.name = $"{GetType().Name}_Root";
+            vta.CloneTree(this);
+            name = $"{GetType().Name}_Root";
         }
 
         public virtual void Register(IControlPanelTab subtab)
@@ -63,7 +65,10 @@ namespace AtMycelia.Myceliarium
             }
         }
 
-        public VisualElement Root { get; protected set; }
+        public VisualElement Root
+        {
+            get => this;
+        }
 
         /// <summary>
         /// By default, this applies right after the subtab is registered.
@@ -137,9 +142,15 @@ namespace AtMycelia.Myceliarium
             {
                 return;
             }
-            _icon.schedule.Execute(HideIconIfNoBgImage).StartingIn(1);
-            void HideIconIfNoBgImage()
+
+            // resolvedStyle is only reliable once the element has actually been
+            // attached to a panel and gone through at least one layout pass, so we
+            // hook into GeometryChangedEvent (which only fires once that's happened)
+            // instead of blindly guessing at a delay via schedule.Execute.
+            _icon.RegisterCallback<GeometryChangedEvent>(OnIconGeometryChanged);
+            void OnIconGeometryChanged(GeometryChangedEvent evt)
             {
+                _icon.UnregisterCallback<GeometryChangedEvent>(OnIconGeometryChanged);
                 var bgImage = _icon.resolvedStyle.backgroundImage;
                 if (bgImage == null)
                 {
@@ -147,6 +158,7 @@ namespace AtMycelia.Myceliarium
                     _iconHolder.style.height = 0;
                     _iconHolder.style.flexShrink = 1;
                     _iconHolder.visible = false;
+
                     OnIconHidden();
                 }
             }
@@ -155,7 +167,7 @@ namespace AtMycelia.Myceliarium
         protected virtual void OnIconHidden()
         {
             // Since in the default uxml, we have a lot of left padding applied
-            // to make room for the icon//
+            // to make room for the icon
             _mainClickable.style.paddingLeft = 5;
         }
 
@@ -167,10 +179,14 @@ namespace AtMycelia.Myceliarium
                 {
                     return uitkBtn.text;
                 }
+                else if (_mainClickable is Foldout foldout)
+                {
+                    return foldout.text;
+                }
                 else
                 {
                     string logMessage = $"Cannot get Text for {GetType().Name} because the " +
-                        $"button is not a UitkButton.";
+                        $"button is not a UitkButton or Foldout.";
                     throw new InvalidOperationException(logMessage);
                 }
             }
@@ -179,6 +195,10 @@ namespace AtMycelia.Myceliarium
                 if (_mainClickable is UitkButton uitkBtn)
                 {
                     uitkBtn.text = value;
+                }
+                else if (_mainClickable is Foldout foldout)
+                {
+                    foldout.text = value;
                 }
                 else
                 {
@@ -218,8 +238,7 @@ namespace AtMycelia.Myceliarium
 
         protected virtual void OnClicked(ClickEvent evt)
         {
-            IsSelected = true;
-            Clicked.Invoke(this);//
+            Clicked.Invoke(this);
         }
 
         public event Action<IControlPanelTab> Clicked = delegate { };
@@ -235,11 +254,6 @@ namespace AtMycelia.Myceliarium
                 Clicked = delegate { };
                 RemoveFromHierarchy();
             }
-        }
-
-        public virtual void RemoveFromHierarchy()
-        {
-            Root?.RemoveFromHierarchy();
         }
 
         public virtual bool IsSelected
@@ -267,7 +281,7 @@ namespace AtMycelia.Myceliarium
         private readonly List<IControlPanelTab> _subtabs = new List<IControlPanelTab>();
     }
 
-    public interface IControlPanelTab
+    public interface IControlPanelTab : IDisposable
     {
         VisualElement Root { get; }
 
@@ -287,7 +301,6 @@ namespace AtMycelia.Myceliarium
         bool IsSelected { get; set; }
         IReadOnlyList<IControlPanelTab> Subtabs { get; }
         void Register(IControlPanelTab subtab);
-        void RemoveFromHierarchy();
     }
 }
 

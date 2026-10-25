@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
+using System.Runtime.CompilerServices;
 using UnityEditor;
+
+[assembly: InternalsVisibleTo("AtMycelia.Myceliarium.Editor.Tests")]
 
 namespace AtMycelia.Myceliarium
 {
@@ -30,131 +31,79 @@ namespace AtMycelia.Myceliarium
             };
         }
 
-        public static void RefreshRegistry()
+        /// <summary>
+        /// Rebuilds the cached list of entry types. By default this uses Unity's
+        /// TypeCache (fast, no need to scan every loaded assembly). A custom
+        /// <paramref name="typeProvider"/> can be supplied to make this testable
+        /// outside of a live Unity domain reload (e.g. from edit mode tests), or
+        /// to otherwise override how candidate types are discovered.
+        /// </summary>
+        public static void RefreshRegistry(Func<IEnumerable<Type>> typeProvider = null)
         {
-            var discovered = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(SafeGetTypes)
-                .Where(type =>
-                    _entryType.IsAssignableFrom(type) &&
-                    !type.IsAbstract &&
-                    !type.IsInterface)
-                .ToArray();
-
-            lock (_registryLock)
-            {
-                _allEntryTypes = discovered;
-            }
+            _registry.Refresh(typeProvider);
         }
 
-        private static readonly Type _entryType = typeof(IControlPanelEntry);
-        private static readonly object _registryLock = new object();
-        private static Type[] _allEntryTypes = Array.Empty<Type>();
-
-        private static IEnumerable<Type> SafeGetTypes(Assembly assembly)
+        /// <summary>
+        /// Pure filtering logic, isolated so it can be unit tested without
+        /// touching Unity's TypeCache or AppDomain.
+        /// </summary>
+        public static Type[] FilterEntryTypes(IEnumerable<Type> candidates)
         {
-            try 
-            { 
-                return assembly.GetTypes(); 
-            }
-            catch (ReflectionTypeLoadException ex) 
-            { 
-                return ex.Types.Where(type => type != null); 
-            }
+            return TypeRegistry<IControlPanelEntry>.FilterTypes(candidates, HasDefaultConstructor);
         }
 
-        public static IEnumerable<Type> AllEntryTypes
+        private static bool HasDefaultConstructor(Type type)
         {
-            get
-            {
-                lock (_registryLock)
-                {
-                    return _allEntryTypes.ToArray();
-                }
-            }
+            return type.GetConstructor(Type.EmptyTypes) != null;
         }
 
-        private static IEnumerable<IControlPanelEntry> CreateAllEntries()
+        /// <summary>
+        /// When false (the default), entries whose <see cref="IControlPanelEntry.IsTestOnly"/>
+        /// is true are excluded from <see cref="CreateAllEntries"/>. This keeps test-only
+        /// doubles discovered via Unity's TypeCache (which scans every loaded assembly,
+        /// including test assemblies) from leaking into a real editor session. Tests that
+        /// need to exercise IsTestOnly entries should set this to true first.
+        /// </summary>
+        internal static bool InTestMode { get; set; } = false;
+
+        public static IEnumerable<Type> AllEntryTypes => _registry.Types;
+
+        internal static IEnumerable<IControlPanelEntry> CreateAllEntries(
+            Func<Type, IControlPanelEntry> instanceFactory = null)
         {
-            var entryTypes = AllEntryTypes;
-            _cachedEntries.Clear();
-
-            foreach (var elem in entryTypes)
-            {
-                try
-                {
-                    var instance = Activator.CreateInstance(elem) as IControlPanelEntry;
-                    if (instance != null)
-                    {
-                        _cachedEntries.Add(instance);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    UnityEngine.Debug.LogError($"Failed to create instance of " +
-                        $"{elem.Name}: {ex.Message}");
-                }
-            }
-
-            return _cachedEntries;
+            return _registry.CreateAll(instanceFactory);
         }
 
-        private static readonly IList<IControlPanelEntry> _cachedEntries = 
-            new List<IControlPanelEntry>();
+        /// <summary>
+        /// Clears all cached state. Intended for test isolation between test
+        /// cases; not meant to be called during normal editor operation.
+        /// </summary>
+        internal static void ResetForTests()
+        {
+            _registry.Reset();
+            InTestMode = false;
+        }
 
         /// <summary>
         /// For every single entry in the registry. If you want entries that derive
-        /// from a particular implementor of IControlPanelEntry, better to use 
+        /// from a particular implementor of IControlPanelEntry, better to use
         /// GetEntriesOfType instead.
         /// </summary>
-        public static IReadOnlyList<IControlPanelEntry> Entries
-        {
-            get
-            {
-                lock (_registryLock)
-                {
-                    return (IReadOnlyList<IControlPanelEntry>)_cachedEntries;
-                }
-            }
-        }
+        public static IReadOnlyList<IControlPanelEntry> Entries => _registry.Instances;
 
         public static IList<T> GetEntriesOfType<T>() where T : IControlPanelEntry
         {
-            List<T> result = new List<T>();
-            lock (_registryLock)
-            {
-                Type tType = typeof(T);
-                var found = GetEntriesOfType(tType);
-
-                #region Add found elements to result, casted as appropriate
-                for (int i = 0; i < found.Count; i++)
-                {
-                    var elem = found[i];
-                    result.Add((T)found);
-                }
-                #endregion
-
-                return result;
-            }
+            return _registry.GetInstancesOfType<T>();
         }
 
         public static IList<IControlPanelEntry> GetEntriesOfType(Type entryType)
         {
-            List<IControlPanelEntry> result = new List<IControlPanelEntry>();
-            lock (_registryLock)
-            {
-                // Going with a regular for-loop for the sake of performance in 
-                // Unity 2022.3.
-                for (int i = 0; i < _cachedEntries.Count; i++)
-                {
-                    var entry = _cachedEntries[i];
-                    bool correctType = entryType.IsAssignableFrom(entry.GetType());
-                    if (correctType)
-                    {
-                        result.Add(entry);
-                    }
-                }
-                return result;
-            }
+            return _registry.GetInstancesOfType(entryType);
         }
+
+        // Test-only entries are left out unless InTestMode is on
+        private static readonly TypeRegistry<IControlPanelEntry> _registry =
+            new TypeRegistry<IControlPanelEntry>(HasDefaultConstructor,
+                entry => !entry.IsTestOnly || InTestMode);
     }
 }

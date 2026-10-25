@@ -3,6 +3,9 @@
     --language-dropdown-font-size: 24px;
     --button-font-size: 24px;
     --dropdown-width: 200px;
+    --reinit-button-background-color: rgb(153, 61, 0);
+    --reinit-button-background-color-hover: rgb(189, 76, 0);
+    --reinit-button-text-color: rgb(255, 255, 255);
 }
 
 .root {
@@ -83,6 +86,29 @@
 .bottom-control-left .unity-base-popup-field__text {
     padding-left: 8px;
     font-size: var(--language-dropdown-font-size);
+}
+
+.reinit-button {
+    margin-left: 12px;
+    flex-grow: 0;
+    align-self: stretch;
+    width: 150px;
+    font-size: var(--button-font-size);
+    background-color: var(--reinit-button-background-color);
+    color: var(--reinit-button-text-color);
+    -unity-font-style: bold;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: var(--reinit-button-text-color);
+    border-right-color: var(--reinit-button-text-color);
+    border-top-color: var(--reinit-button-text-color);
+    border-bottom-color: var(--reinit-button-text-color);
+}
+
+.reinit-button:hover {
+    background-color: var(--reinit-button-background-color-hover);
 }
 
 .bottom-spacer {

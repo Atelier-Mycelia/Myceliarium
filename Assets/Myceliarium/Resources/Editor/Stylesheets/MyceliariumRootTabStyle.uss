@@ -1,5 +1,8 @@
 :root {
-    --default-tab-selected-color: rgb(0, 255, 255);
+    --tab-selected-color: rgb(44, 93, 135);
+    --tab-selected-text-color: rgb(222, 222, 222);
+    --tab-normal-text-color: rgb(222, 222, 222);
+    --tab-normal-bg-color: rgb(60, 60, 60);
     --default-icon: resource('Editor/Icons/defaultTabIcon');
     --mascot-icon: resource('Editor/Icons/nelSideMugshotIcon_01');
     --default-icon-left-offset: 10px;
@@ -10,17 +13,19 @@
     height: 60px;
     flex-direction: row;
     margin-bottom: 5px;
+    color: var(--tab-normal-text-color);
+    background-color: var(--tab-normal-bg-color);
 }
 
 .tabButton {
     font-size: 32px;
     padding-left: 50px;
     justify-content: center;
-    color: rgb(222, 222, 222);
     -unity-text-align: middle-center;
-    background-color: rgb(60, 60, 60);
+    
+    
     border-color: rgb(30, 30, 30);
-    border-width: 1px;
+    border-width: 2px;
     transition-property: background-color;
     transition-duration: 0.2s;
     width: 100%;
@@ -55,23 +60,16 @@
 
     height: 100%;
     width: 100%;
-
-    /* padding-top: 0;
-    padding-bottom: 0;
-    padding-right: 0;
-    padding-left: 0;
-    position: relative;
-    
-    margin: 0; */
 }
 
 .tabIconHolder
 {
-    padding: 5px 0px 1px 0px;
+    padding: 5px 0px 2px 0px;
     margin: 0px 0px 0px 3px;
     width: 60px;
 }
 
-.tab-selected {
-    background-color: var(--default-tab-selected-color);
+.selected {
+    background-color: var(--tab-selected-color);
+    color: var(--tab-selected-text-color);
 }

@@ -13,7 +13,7 @@ namespace AtMycelia.Myceliarium
     public abstract class ControlPanel : EditorWindow, IControlPanel
     {
         #region Configurable Properties
-        protected virtual string WindowTitle => "Control Panel";
+        protected abstract string DisplayName { get; }
 
         /// <summary>
         /// The path to the uxml for the control panel's root window. This is relative
@@ -26,24 +26,33 @@ namespace AtMycelia.Myceliarium
         public virtual Vector2 MaxWindowSize => DefaultWindowSize;
         #endregion
 
+        /// <summary>
+        /// Alias for DisplayName.
+        /// </summary>
+        protected string WindowTitle => DisplayName;
+
         protected virtual void OnEnable()
         {
-            ToggleGlobalSubs(true);
+            SetGlobalSubs(true);
+            saveChangesMessage = $"{DisplayName} has unsaved changes. Save them before closing?";
+            ControlPanelSignals.ControlPanelOpened.Invoke(this);
         }
 
-        protected virtual void ToggleGlobalSubs(bool on)
+        protected virtual void SetGlobalSubs(bool on)
         {
             if (on)
             {
                 ControlPanelSignals.SaveRequested += OnSaveRequested;
-                ControlPanelSignals.LoadRequested += OnLoadRequested;
                 ControlPanelSignals.CloseRequested += OnCloseRequested;
+                ControlPanelSignals.ReinitRequested += OnReinitRequested;
+                ControlPanelSignals.LanguageChanged += OnLanguageChanged;
             }
             else
             {
                 ControlPanelSignals.SaveRequested -= OnSaveRequested;
-                ControlPanelSignals.LoadRequested -= OnLoadRequested;
                 ControlPanelSignals.CloseRequested -= OnCloseRequested;
+                ControlPanelSignals.ReinitRequested -= OnReinitRequested;
+                ControlPanelSignals.LanguageChanged -= OnLanguageChanged;
             }
         }
 
@@ -54,40 +63,13 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
-            foreach (var kvp in _savers)
-            {
-                var saver = kvp.Key;
-                var compatibleEntries = kvp.Value;
-                foreach (var entry in compatibleEntries)
-                {
-                    saver.Save(entry);
-                }
-            }
+            _saveCoordinator.SaveAll();
         }
 
-        protected readonly IDictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>> _savers =
-            new Dictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>>();
+        protected IReadOnlyDictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>> Savers =>
+            _saveCoordinator.Savers;
 
-        protected virtual void OnLoadRequested(IControlPanel cPanel)
-        {
-            if (!ReferenceEquals(cPanel, this))
-            {
-                return;
-            }
-
-            foreach (var kvp in _loaders)
-            {
-                var loader = kvp.Key;
-                var compatibleEntries = kvp.Value;
-                foreach (var entry in compatibleEntries)
-                {
-                    loader.Load(entry);
-                }
-            }
-        }
-
-        protected readonly IDictionary<IControlPanelEntryLoader, IList<IControlPanelEntry>> _loaders =
-            new Dictionary<IControlPanelEntryLoader, IList<IControlPanelEntry>>();
+        private readonly SaveCoordinator _saveCoordinator = new SaveCoordinator();
 
         protected virtual void OnCloseRequested(IControlPanel cPanel)
         {
@@ -96,51 +78,61 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
-            _cancelButton.SetEnabled(false);
-            this.Close();
+            this.Close(); // Leads to OnDestroy, hence why we don't invoke ControlPanelClosed here.
         }
 
-        protected Button _cancelButton;
+        protected virtual void OnReinitRequested(IControlPanel cPanel)
+        {
+            if (!ReferenceEquals(cPanel, this))
+            {
+                return;
+            }
+
+            OnReinitConfirmed();
+        }
+
+        public void OnReinitConfirmed()
+        {
+            ControlPanelReinitializer.Reinit(_entries, _attacher, _selectionController);
+            // Fresh entries start out clean without signalling anything, so check again
+            _unsavedChangesTracker?.Refresh();
+        }
 
         /// <summary>
-        /// Local to the VisualElements registered under this ControlPanel.
+        /// Called when this panel's footer reports a language change. Does nothing by
+        /// default; override to react to it.
         /// </summary>
-        protected virtual void ToggleLocalSubs(bool on)
+        protected virtual void OnLanguageChanged(IControlPanel cPanel, string language)
         {
-            if (on)
-            {
-                if (_saveButton != null)
-                {
-                    _saveButton.clicked += OnSaveButtonClicked;
-                }
-
-                if (_cancelButton != null)
-                {
-                    _cancelButton.clicked += OnCancelButtonClicked;
-                }
-            }
-            else
-            {
-                if (_saveButton != null)
-                {
-                    _saveButton.clicked -= OnSaveButtonClicked;
-                }
-
-                if (_cancelButton != null)
-                {
-                    _cancelButton.clicked -= OnCancelButtonClicked;
-                }
-            }
         }
 
-        protected virtual void OnSaveButtonClicked()
+        /// <summary>
+        /// Called by Unity when the user picks "Save" in the prompt shown for closing
+        /// the window (e.g. via its X button) while hasUnsavedChanges is true.
+        /// </summary>
+        public override void SaveChanges()
         {
-            ControlPanelSignals.SaveRequested(this);
+            OnSaveRequested(this);
+            base.SaveChanges();
         }
 
-        protected virtual void OnCancelButtonClicked()
+        /// <summary>
+        /// Called by Unity when the user picks "Discard" in that same prompt. Mirrors
+        /// what the Cancel button does after its confirmation; Unity closes the window
+        /// afterwards.
+        /// </summary>
+        public override void DiscardChanges()
         {
-            ControlPanelSignals.CloseRequested(this);
+            OnReinitConfirmed();
+            base.DiscardChanges();
+        }
+
+        /// <summary>
+        /// Local to the VisualElements registered under this ControlPanel. The footers'
+        /// elements are handled by the footers themselves.
+        /// </summary>
+        protected virtual void SetLocalSubs(bool on)
+        {
         }
 
         public virtual void CreateGUI()
@@ -148,14 +140,18 @@ namespace AtMycelia.Myceliarium
             PreRootPrep(out bool success);
             if (!success)
             {
-                string logMessage = $"{WindowTitle} failed to initialize. " +
-                    $"Aborting GUI creation.";
-                UnityDebug.LogError(logMessage);
-                this.Close();
+                AbortInit();
                 return;
             }
 
             RootPrep();
+        }
+
+        private void AbortInit()
+        {
+            UnityDebug.LogError($"{DisplayName} failed to initialize. " +
+                $"Aborting GUI creation.");
+            this.Close();
         }
 
         /// <summary>
@@ -168,14 +164,14 @@ namespace AtMycelia.Myceliarium
             SetTitleContent();
             SetWindowSizeBounds();
             RefreshTopLevelEntryCache();
-            // ^Why just the top-level ones? Because we expect the subentries to be
-            // prepped after their parents are done being attached to this Control Panel.
+            // ^Why just the top-level ones? Because after those are done being attached
+            // to this ControlPanel, we expect them to handle attaching their subs
             success = true;
         }
 
         private void SetTitleContent()
         {
-            titleContent = new GUIContent(WindowTitle);
+            titleContent = new GUIContent(DisplayName);
         }
 
         private void SetWindowSizeBounds()
@@ -186,92 +182,49 @@ namespace AtMycelia.Myceliarium
 
         protected virtual void RefreshTopLevelEntryCache()
         {
-            _topLevelEntries.Clear();
             var toCheck = ControlPanelEntryRegistry.GetEntriesOfType(EntrySuperType);
-            for (int i = 0; i < toCheck.Count; i++)
-            {
-                var elem = toCheck[i];
-                if (elem.IsTopLevel)
-                {
-                    _topLevelEntries.Add(elem);
-                }
-            }
+            _entries.SetTopLevel(toCheck);
         }
 
         /// <summary>
-        /// The type of entries that this control panel is responsible for. This is used to
-        /// help this get only the entries it needs to work with. When overriding, best
-        /// set this to the interface type that your entries implement, rather than any
-        /// one concrete type. 
+        /// The type of entries that this Control Panel is responsible for. This is used to
+        /// help this get only the ones it needs to work with. When overriding, best
+        /// set this to the interface type that your entries implement (rather than any
+        /// one concrete type). 
         /// </summary>
         protected abstract Type EntrySuperType { get; }
 
         /// <summary>
-        /// The type of savers that this control panel is responsible for. This is used to
-        /// make sure this only gathers up the savers that are compatible with the entries
-        /// it is working with. When overriding, best set this to the interface type that
-        /// your savers implement, rather than any one concrete type. 
+        /// The type of savers that this Control Panel is responsible for. Same sort of
+        /// logic as EntrySuperType; take a look at its summary for more details.
         /// </summary>
         protected abstract Type SaverSuperType { get; }
 
         /// <summary>
-        /// The type of loaders that this control panel is responsible for. This is used to
-        /// make sure this only gathers up the loaders that are compatible with the entries
-        /// it is working with. When overriding, best set this to the interface type that
-        /// your loaders implement, rather than any one concrete type.
+        /// The type of footer that this Control Panel is responsible for. Same sort of
+        /// logic as EntrySuperType; take a look at its summary for more details. Defaults
+        /// to the base footer; feel free to override it to go for a different one.
         /// </summary>
-        protected abstract Type LoaderSuperType { get; }
+        protected virtual Type FooterSuperType => typeof(IControlPanelFooter);
+
+        protected virtual void RefreshFooter()
+        {
+            _footer?.Dispose();
+            _footer = ControlPanelFooterRegistry.CreateFooterOfType(FooterSuperType);
+            if (_footer == null)
+            {
+                UnityDebug.LogError($"Failed to create footer of type {FooterSuperType}. " +
+                    $"Please ensure that a concrete class implementing that interface exists.");
+                return;
+            }
+            _footer.Init(this);
+        }
+
+        protected IControlPanelFooter _footer;
 
         protected virtual void RefreshSaverCache()
         {
-            _savers.Clear();
-            var found = CpEntrySaverReg.GetSaversOfType(SaverSuperType);
-            for (int i = 0; i < found.Count; i++)
-            {
-                var elem = found[i];
-                var compatibleEntries = EntriesCompatibleWith(elem);
-                _savers.Add(elem, compatibleEntries);
-            }
-        }
-
-        private IList<IControlPanelEntry> EntriesCompatibleWith(IControlPanelEntrySaver saver)
-        {
-            var compatibleEntries = new List<IControlPanelEntry>();
-            for (int i = 0; i < _allEntries.Count; i++)
-            {
-                var entry = _allEntries[i];
-                if (saver.IsCompatibleWith(entry))
-                {
-                    compatibleEntries.Add(entry);
-                }
-            }
-            return compatibleEntries;
-        }
-
-        private IList<IControlPanelEntry> EntriesCompatibleWith(IControlPanelEntryLoader loader)
-        {
-            var compatibleEntries = new List<IControlPanelEntry>();
-            for (int i = 0; i < _allEntries.Count; i++)
-            {
-                var entry = _allEntries[i];
-                if (loader.IsCompatibleWith(entry))
-                {
-                    compatibleEntries.Add(entry);
-                }
-            }
-            return compatibleEntries;
-        }
-
-        protected virtual void RefreshLoaderCache()
-        {
-            _loaders.Clear();
-            var found = CpEntryLoaderReg.GetLoadersOfType(LoaderSuperType);
-            for (int i = 0; i < found.Count; i++)
-            {
-                var elem = found[i];
-                var compatibleEntries = EntriesCompatibleWith(elem);
-                _loaders.Add(elem, compatibleEntries);
-            }
+            _saveCoordinator.Refresh(SaverSuperType, _entries.AllWithSubwindows);
         }
 
         protected virtual void RootPrep()
@@ -279,18 +232,16 @@ namespace AtMycelia.Myceliarium
             TryAddBaseWindow(out bool success);
             if (!success)
             {
-                string logMessage = $"{WindowTitle} failed to initialize. " +
-                    $"Aborting GUI creation.";
-                UnityDebug.LogError(logMessage);
-                this.Close();
+                AbortInit();
                 return;
             }
 
             RegisterVisualElements();
-            ToggleLocalSubs(false);
-            ToggleLocalSubs(true);
+            SetLocalSubs(false);
+            SetLocalSubs(true);
             DoEntryPreps();
-            HandleLanguageDropdown();
+            RefreshFooter();
+            PrepUnsavedChangesSync();
         }
 
         #region Registering base window
@@ -324,119 +275,111 @@ namespace AtMycelia.Myceliarium
 
         public virtual VisualElement Root => rootVisualElement;
 
-        public IReadOnlyList<IControlPanelEntry> TopLevelEntries => _topLevelEntries;
+        public IReadOnlyList<IControlPanelEntry> TopLevelEntries => _entries.TopLevel;
         protected virtual void RegisterVisualElements()
         {
-            _saveButton = Root.Q<Button>("SaveButton");
-            _cancelButton = Root.Q<Button>("CancelButton");
             _bottomBar = Root.Q<VisualElement>("BottomBar");
-            _langDropdown = Root.Q<DropdownField>("LanguageDropdown");
         }
 
-        protected Button _saveButton;
         protected VisualElement _bottomBar;
-        protected DropdownField _langDropdown;
+
+        /// <summary>
+        /// Unity reads hasUnsavedChanges when the window is closed through its own X button
+        /// (prompting Save/Discard/Cancel), so it has to be current before that happens.
+        /// The tracker keeps it in step by reacting to the entries' signals.
+        /// </summary>
+        private void PrepUnsavedChangesSync()
+        {
+            _unsavedChangesTracker?.Dispose();
+            _unsavedChangesTracker = new UnsavedChangesTracker(_entries,
+                dirty => hasUnsavedChanges = dirty);
+            _unsavedChangesTracker.Start();
+        }
+
+        private UnsavedChangesTracker _unsavedChangesTracker;
+
 
         #region Entry Preps
         private void DoEntryPreps()
         {
             PrepAttacher();
             RegisterSubentries();
+            PrepSelectionController();
             RefreshSaverCache();
-            RefreshLoaderCache();
         }
 
         private void PrepAttacher()
         {
-            _attacher?.Dispose();
+            _attacher.Dispose();
             _attacher.Init(rootVisualElement);
 
-            Sort(_topLevelEntries);
-            _attacher.Attach(_topLevelEntries);
+            _entries.SortTopLevel(Sort);
+            _attacher.Attach(_entries.TopLevel);
         }
 
-        private ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
+        private void PrepSelectionController()
+        {
+            _selectionController.Dispose();
+            _selectionController.Init(_entries);
+        }
+
+        private readonly ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
+        private readonly ControlPanelTabSelectionController _selectionController =
+            new ControlPanelTabSelectionController();
 
         /// <summary>
         /// Default implementation sorts the entries by SortingOrder first,
-        /// then by MainDisplayName. Subclasses can override to provide
+        /// then by SortingName. Subclasses can override to provide
         /// different sorting logic for the entries before they are
         /// attached to the control panel.
         /// </summary>
         protected virtual void Sort(IList<IControlPanelEntry> entries)
         {
-            if (entries is List<IControlPanelEntry> list)
-            {
-                list.Sort(CompareEntries);
-                return;
-            }
-
-            var buffer = new List<IControlPanelEntry>(entries);
-            buffer.Sort(CompareEntries);
-            entries.Clear();
-            for (int i = 0; i < buffer.Count; i++)
-            {
-                entries.Add(buffer[i]);
-            }
+            EntryCollection.SortByDefault(entries);
         }
-
-        private static int CompareEntries(IControlPanelEntry a, IControlPanelEntry b)
-        {
-            int sortingOrderComparison = a.SortingOrder.CompareTo(b.SortingOrder);
-            if (sortingOrderComparison != 0)
-            {
-                return sortingOrderComparison;
-            }
-
-            return string.Compare(a.MainDisplayName, b.MainDisplayName, System.StringComparison.Ordinal);
-        }
-        protected readonly List<IControlPanelEntry> _topLevelEntries = new List<IControlPanelEntry>();
 
         protected virtual void RegisterSubentries()
         {
-            for (int i = 0; i < _topLevelEntries.Count; i++)
-            {
-                var topLevelElem = _topLevelEntries[i];
-                var subentries = topLevelElem.GetSubentries(recursive: true);
-                for (int j = 0; j < subentries.Count; j++)
-                {
-                    var subentry = subentries[j];
-                    if (!_allEntries.Contains(subentry))
-                    {
-                        _allEntries.Add(subentry);
-                    }
-                }
-            }
+            _entries.RebuildFlattened();
         }
 
-        
-        protected readonly List<IControlPanelEntry> _allEntries = new List<IControlPanelEntry>();
+        protected IReadOnlyList<IControlPanelEntry> AllEntriesWithSubwindows =>
+            _entries.AllWithSubwindows;
+
+        private readonly EntryCollection _entries = new EntryCollection();
         #endregion
 
         protected virtual void OnDestroy()
         {
-            _attacher?.Dispose();
-            _attacher = null;
-        }
+            ControlPanelSignals.PreControlPanelClosed(this);
 
-        protected virtual void HandleLanguageDropdown()
-        {
-            _langDropdown.choices.Clear();
-            _langDropdown.choices.Add("English");
-            _langDropdown.value = "English";
+            _attacher.Dispose();
+            _footer?.Dispose();
+            _selectionController.Dispose();
+
+            _footer = null;
+
+            _unsavedChangesTracker?.Dispose();
         }
 
         protected virtual void OnDisable()
         {
-            ToggleGlobalSubs(false);
-            ToggleLocalSubs(false);
+            SetGlobalSubs(false);
+            SetLocalSubs(false);
         }
+
+        public bool Contains(IControlPanelEntry entry)
+        {
+            return _entries.Contains(entry);
+        }
+
     }
 
     public interface IControlPanel
     {
         VisualElement Root { get; }
         IReadOnlyList<IControlPanelEntry> TopLevelEntries { get; }
+        bool Contains(IControlPanelEntry entry);
     }
 
 }

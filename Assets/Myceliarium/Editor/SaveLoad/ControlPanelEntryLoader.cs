@@ -7,29 +7,36 @@ namespace AtMycelia.Myceliarium
     {
         public virtual void Load(IControlPanelEntry toLoadFor, Action onComplete = null)
         {
-            if (!IsCompatibleWith(toLoadFor))
-            {
-                return;
-            }
             var coroutine = LoadProcess(toLoadFor, onComplete);
             EditorCoroutineUtility.StartCoroutine(coroutine, this);
         }
 
-        protected abstract IEnumerator LoadProcess(IControlPanelEntry toLoadFor,
-            Action onComplete = null);
+        public virtual T GetLoadResult<T>()
+        {
+            var toReturn = (T)_loadResult;
+            return toReturn;
+        }
 
-        public abstract bool IsCompatibleWith(IControlPanelEntry toLoadFor);
+        protected object _loadResult; 
+        // ^If the entry is expecting a load result, it can be stored here for
+        // retrieval after the load process is complete.
+
+        protected virtual IEnumerator LoadProcess(IControlPanelEntry toLoadFor, 
+            Action onComplete = null)
+        {
+            onComplete?.Invoke();
+            yield break;
+        }
     }
 
     public interface IControlPanelEntryLoader
     {
         void Load(IControlPanelEntry toLoadFor, Action onComplete = null);
-        bool IsCompatibleWith(IControlPanelEntry toLoadFor);
+        T GetLoadResult<T>();
     }
 
-    public interface IAtMyceliaControlPanelEntryLoader : IControlPanelEntryLoader
+    public class DefaultControlPanelEntryLoader : ControlPanelEntryLoader
     {
-        // This interface is a marker interface for loaders that are specific
-        // to the AtMycelia ecosys.
     }
+
 }

@@ -7,6 +7,7 @@
         </ui:VisualElement>
         <ui:VisualElement name="BottomBar" class="bottom-bar">
             <ui:DropdownField name="LanguageDropdown" label="Language" class="bottom-control-left" />
+            <ui:Button name="ReinitButton" text="Reinit" class="bottom-control-left reinit-button" />
             <ui:VisualElement class="bottom-spacer" />
             <ui:Button name="CancelButton" text="Cancel" class="bottom-control-right" />
             <ui:Button name="SaveButton" text="Save" class="bottom-control-right" />

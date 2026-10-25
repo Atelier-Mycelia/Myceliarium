@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEditor;
+
+[assembly: InternalsVisibleTo("AtMycelia.Myceliarium.Editor.Tests")]
 
 namespace AtMycelia.Myceliarium
 {
@@ -31,28 +34,51 @@ namespace AtMycelia.Myceliarium
 
         private static void OnAfterAssemblyReload()
         {
-            #region Gather up instances of savers
-            var derived = TypeCache.GetTypesDerivedFrom<IControlPanelEntrySaver>();
-            for (int i = 0; i < derived.Count; i++)
-            {
-                var element = derived[i];
-                if (element.IsAbstract || element.IsInterface)
-                {
-                    continue;
-                }
-
-                var toRegister = Activator.CreateInstance(element) as IControlPanelEntrySaver;
-                _savers.Add(toRegister);
-            }
-            #endregion
+            RefreshRegistry();
+            CreateAllSavers();
         }
 
-        private static readonly List<IControlPanelEntrySaver> _savers = 
-            new List<IControlPanelEntrySaver>();
+        /// <summary>
+        /// Rebuilds the cached list of saver types. By default this uses Unity's
+        /// TypeCache (fast, no need to scan every loaded assembly). A custom
+        /// <paramref name="typeProvider"/> can be supplied to make this testable
+        /// outside of a live Unity domain reload (e.g. from edit mode tests), or
+        /// to otherwise override how candidate types are discovered.
+        /// </summary>
+        public static void RefreshRegistry(Func<IEnumerable<Type>> typeProvider = null)
+        {
+            _registry.Refresh(typeProvider);
+        }
 
-        public static IReadOnlyList<IControlPanelEntrySaver> Savers => _savers;
+        /// <summary>
+        /// Pure filtering logic, isolated so it can be unit tested without
+        /// touching Unity's TypeCache or AppDomain.
+        /// </summary>
+        public static Type[] FilterSaverTypes(IEnumerable<Type> candidates)
+        {
+            return TypeRegistry<IControlPanelEntrySaver>.FilterTypes(candidates);
+        }
 
-        public static IList<IControlPanelEntrySaver> GetSaversOfType<T>() 
+        public static IEnumerable<Type> AllSaverTypes => _registry.Types;
+
+        internal static IEnumerable<IControlPanelEntrySaver> CreateAllSavers(
+            Func<Type, IControlPanelEntrySaver> instanceFactory = null)
+        {
+            return _registry.CreateAll(instanceFactory);
+        }
+
+        /// <summary>
+        /// Clears all cached state. Intended for test isolation between test
+        /// cases; not meant to be called during normal editor operation.
+        /// </summary>
+        internal static void ResetForTests()
+        {
+            _registry.Reset();
+        }
+
+        public static IReadOnlyList<IControlPanelEntrySaver> Savers => _registry.Instances;
+
+        public static IList<IControlPanelEntrySaver> GetSaversOfType<T>()
             where T : IControlPanelEntrySaver
         {
             return GetSaversOfType(typeof(T));
@@ -60,17 +86,10 @@ namespace AtMycelia.Myceliarium
 
         public static IList<IControlPanelEntrySaver> GetSaversOfType(Type saverType)
         {
-            var result = new List<IControlPanelEntrySaver>();
-            for (int i = 0; i < _savers.Count; i++)
-            {
-                var saver = _savers[i];
-                if (saverType.IsAssignableFrom(saver.GetType()))
-                {
-                    result.Add(saver);
-                }
-            }
-            return result;
+            return _registry.GetInstancesOfType(saverType);
         }
 
+        private static readonly TypeRegistry<IControlPanelEntrySaver> _registry =
+            new TypeRegistry<IControlPanelEntrySaver>();
     }
 }

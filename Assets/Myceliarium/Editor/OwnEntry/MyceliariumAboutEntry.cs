@@ -5,7 +5,7 @@ namespace AtMycelia.Myceliarium
         public override int SortingOrder => 0;
         public override bool IsTopLevel => false;
 
-        public override string MainDisplayName => "Myceliarium";
+        public override string SortingName => "Myceliarium";
 
         public override bool IsMeantToHaveSubwindow => true;
 
@@ -21,42 +21,46 @@ namespace AtMycelia.Myceliarium
             _subwindow.Init();
         }
 
-        protected override void OnTabClicked(IControlPanelTab tabClicked)
+        public override void Select()
         {
+            base.Select();
             UpdateLabels();
-            base.OnTabClicked(tabClicked);
         }
 
         private void UpdateLabels()
         {
+            if (_isDisposed)
+            {
+                return;
+            }
             VersionText = $"Version: {VersionString}";
             CopyrightText = "Copyright © 2026 Atelier Mycelia. All rights reserved.";
-            MultiLinksText = string.Join("\n", Links);
+            MultiLinksText = string.Join("\n", Links);//
+        }
+
+        private string VersionText
+        {
+            get => AboutSubwindow.VersionText;
+            set => AboutSubwindow.VersionText = value;
+        }
+
+        private MyceliariumAboutSubwindow AboutSubwindow
+        {
+            get => _subwindow as MyceliariumAboutSubwindow;
         }
 
         private string VersionString => MyceliariumRootEntry.VersionString;
 
-        private string VersionText
-        {
-            get => TypedSubwindow.VersionText;
-            set => TypedSubwindow.VersionText = value;
-        }
-
         private string CopyrightText
         {
-            get => TypedSubwindow.CopyrightText;
-            set => TypedSubwindow.CopyrightText = value;
+            get => AboutSubwindow.CopyrightText;
+            set => AboutSubwindow.CopyrightText = value;
         }
 
         private string MultiLinksText
         {
-            get => TypedSubwindow.MultiLinksText;
-            set => TypedSubwindow.MultiLinksText = value;
-        }
-
-        private MyceliariumAboutSubwindow TypedSubwindow
-        {
-            get => _subwindow as MyceliariumAboutSubwindow;
+            get => AboutSubwindow.MultiLinksText;
+            set => AboutSubwindow.MultiLinksText = value;
         }
 
         private static readonly string[] Links = new string[]
