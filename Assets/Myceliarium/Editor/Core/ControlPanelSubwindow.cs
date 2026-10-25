@@ -56,22 +56,16 @@ namespace AtMycelia.Myceliarium
         public abstract string PathToUxml { get; }
 
         #region Registration and Binding of Visual Elements
-        // These by default do nothing. Subclasses are expected to override
-        // them as appropriate.
-        protected virtual void RegisterVisualElements()
-        {
-            // Default: nothing. Subclasses override.
-        }
+        // Some of these by default do nothing. Subclasses are expected
+        // to override them as appropriate.
+        protected abstract void RegisterVisualElements();
 
         /// <summary>
         /// For when you want to change the visual elements' properties right after
         /// registration (for example: setting the objectType of an ObjectField).
         /// This is NOT for setting or removing callbacks. That's SetSubs's job.
         /// </summary>
-        protected virtual void ConfigureVisualElements()
-        {
-            // Also nothing by default.   
-        }
+        protected abstract void ConfigureVisualElements();
 
         protected bool _isDisposed;
 
