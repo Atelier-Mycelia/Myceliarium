@@ -1,0 +1,23 @@
+.header
+{
+	align-self: center;
+	font-size: 32px;
+	margin: 10px 0px 10px 0px;
+}
+
+.note-text-field
+{
+	font-size: 16px;
+	width: 100%;
+	height: 600px;
+	margin: 0px;
+	padding: 0px 10px 0px 10px;
+}
+
+.note-text-field > #unity-text-input
+{
+	width: 100%;
+	height: 100%;
+	align-self: flex-start;
+	align-items: flex-start;
+}

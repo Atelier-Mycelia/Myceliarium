@@ -1,0 +1,16 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/SimpleExample/Resources/Editor/Styling/SimpleControlPanelStyle.uss?fileID=7433441132597879392&amp;guid=cfc908e82229da24a918a0ec1d8ffb5b&amp;type=3#SimpleControlPanelStyle" />
+    <ui:VisualElement name="Root" class="root" style="flex-direction: column;">
+        <ui:VisualElement name="MainContainer" class="main-container">
+            <ui:VisualElement name="MainTabSet" class="main-tab-set" />
+            <ui:ScrollView name="CategorySubwindowDisplay" class="category-subwindow-display" />
+        </ui:VisualElement>
+        <ui:VisualElement name="BottomBar" class="bottom-bar">
+            <ui:DropdownField name="LanguageDropdown" label="Language" class="bottom-control-left" />
+            <ui:Button name="ReinitButton" text="Reinit" class="bottom-control-left reinit-button" />
+            <ui:VisualElement class="bottom-spacer" />
+            <ui:Button name="CancelButton" text="Cancel" class="bottom-control-right" />
+            <ui:Button name="SaveButton" text="Save" class="bottom-control-right" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>
