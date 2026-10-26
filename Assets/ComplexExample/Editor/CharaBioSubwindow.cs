@@ -1,0 +1,220 @@
+using AtMycelia.Myceliarium;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UIElements;
+
+namespace ComplexExample
+{
+	/// <summary>
+	/// Handles the UI for displaying and editing character bios in the control panel.
+	/// A sidebar on the left lets the user pick which bio to view/edit, and the
+	/// selected bio's details are shown in a single CharaBioView on the right.
+	/// </summary>
+	public class CharaBioSubwindow : ControlPanelSubwindow, ISimpleExampleSubwindow
+	{
+		#region Configurables
+		public override string PathToUxml => "Editor/Uxml/CharaBioSubwindow";
+		private static readonly int _minBioCount = 10;
+		private static readonly float _entryHeight = 44f; // Twice the ListView default//
+		#endregion
+		public override void Init()
+		{
+			base.Init();
+			this.name = "CharaBioSubwindow";
+		}
+
+		protected override void RegisterVisualElements()
+		{
+			_entryListView = Root.Q<ListView>("EntryListView");
+			_detailHolder = Root.Q<VisualElement>("DetailHolder");
+			_addBioButton = Root.Q<Button>("NewBioButton");
+			_deleteBioButton = Root.Q<Button>("DeleteBioButton");
+            _detailView = new CharaBioView(null);
+        }
+
+        protected override void ConfigureVisualElements()
+        {
+            _entryListView.selectionType = SelectionType.Single;
+            _entryListView.fixedItemHeight = _entryHeight;
+            _entryListView.reorderable = true;
+            _entryListView.itemsSource = (IList)_bios;
+
+            _detailView.style.flexGrow = 1;
+            _detailHolder.Add(_detailView);
+        }
+
+		private void OnEntryListSelectedIndexChanged(IEnumerable<int> enumerable)
+		{
+			int selectedIndex = -1;
+			foreach (var index in enumerable)
+			{
+				selectedIndex = index;
+				break;
+			}
+
+			bool validSelection = selectedIndex >= 0 && selectedIndex < _bios.Count;
+			if (!validSelection) // Must've been cleared after deletion
+			{
+				return;	
+			}
+
+			_lastSelectedIndex = selectedIndex;
+			_detailView.Bio = _bios[selectedIndex];
+
+			if (validSelection)
+			{
+				CharaBioViewSignals.BioSelected(_detailView);
+			}
+		}
+
+		private ListView _entryListView;
+		private VisualElement _detailHolder;
+		private CharaBioView _detailView;
+		private Button _addBioButton, _deleteBioButton;
+		public CharaBioView LastSelectedView => _detailView;
+		private int _lastSelectedIndex = 0;
+
+		protected override void SetSubs(bool wantsSubsActive)
+		{
+			base.SetSubs(wantsSubsActive);
+			if (wantsSubsActive)
+			{
+				_entryListView.makeItem = EntryListMakeItem;
+				_entryListView.bindItem = EntryListBindItem;
+				_entryListView.selectedIndicesChanged += OnEntryListSelectedIndexChanged;
+				CharaBioViewSignals.BioStateChanged += OnBioStateChanged;
+
+				_addBioButton.clicked += OnAddBioButtonClicked;
+				_deleteBioButton.clicked += OnDeleteBioButtonClicked;
+			}
+			else
+			{
+				_entryListView.makeItem = null;
+				_entryListView.bindItem = null;
+				_entryListView.selectedIndicesChanged -= OnEntryListSelectedIndexChanged;
+				
+				CharaBioViewSignals.BioStateChanged -= OnBioStateChanged;
+
+				_addBioButton.clicked -= OnAddBioButtonClicked;
+				_deleteBioButton.clicked -= OnDeleteBioButtonClicked;
+			}
+		}
+
+		private void OnBioStateChanged(CharaBio prevState, CharaBio currentState)
+		{
+			_entryListView.RefreshItems();
+		}
+
+		private VisualElement EntryListMakeItem()
+		{
+			return new CharaBioListLabel();
+		}
+
+		private void EntryListBindItem(VisualElement element, int index)
+		{
+			if (index < 0 || index >= _bios.Count)
+			{
+				Debug.LogWarning($"CharaBioSubwindow: Index {index} is out " +
+					$"of range for bios.");
+				return;
+			}
+
+			var label = (CharaBioListLabel)element;
+			var bio = _bios[index];
+			label.Text =GetDisplayNameFor(bio, index);
+		}
+
+		private string GetDisplayNameFor(CharaBio bio, int index)
+		{
+			string fullName = $"{bio.FirstName} {bio.LastName}".Trim();
+			string name = string.IsNullOrEmpty(fullName) ? "(Unnamed)" : fullName;
+			return $"{index + 1:D3}: {name}";
+		}
+
+		public void Remove(CharaBio toRemove)
+		{
+			_bios.Remove(toRemove);
+		}
+
+		public void SetBioViewList(IList<CharaBio> bios)
+		{
+			_entryListView.itemsSource = (IList)bios;
+		}
+
+		public void AddNewBioView()
+		{
+			var newBio = new CharaBio();
+			_bios.Add(newBio);
+			_entryListView.RefreshItems();
+		}
+
+		private void OnDeleteBioButtonClicked()
+		{
+			var lastSelectedBio = _bios[_lastSelectedIndex];
+			CharaBioViewSignals.BioDeletionRequested(lastSelectedBio);
+		}
+
+		private void OnAddBioButtonClicked()
+		{
+			CharaBioViewSignals.BioAddRequested();
+		}
+
+		public void RefreshFrom(CharaBioRegistry target)
+		{
+			_bios.Clear();
+			_registry = target;
+			if (_registry != null)
+			{
+				SetBiosToCopyOf(_registry.CharacterBios);//
+			}
+			
+			Refresh();
+		}
+
+        private void AutoSelectBasedOnLastSelected()
+        {
+            _lastSelectedIndex = Mathf.Min(_lastSelectedIndex, _bios.Count - 1);
+			_entryListView.ClearSelection();
+            _entryListView.SetSelection(_lastSelectedIndex);
+        }
+
+		private void EnsureMinBioCount()
+		{
+			while (_bios.Count < _minBioCount)
+			{
+				_bios.Add(new CharaBio());
+			}
+		}
+
+		private CharaBioRegistry _registry;
+		private readonly IList<CharaBio> _bios = new List<CharaBio>();
+		public IReadOnlyList<CharaBio> Bios => (IReadOnlyList<CharaBio>)_bios;
+
+		public override void Refresh()
+		{
+			base.Refresh();
+			EnsureMinBioCount();
+			_entryListView.itemsSource = (IList)_bios;
+			_entryListView.RefreshItems();
+
+            AutoSelectBasedOnLastSelected();
+		}
+
+		private void SetBiosToCopyOf(IReadOnlyList<CharaBio> source)
+		{
+			_bios.Clear();
+			foreach (var elem in source)
+			{
+				var bioCopy = new CharaBio(elem);
+				_bios.Add(bioCopy);
+			}
+		}
+
+	}
+
+	public interface ISimpleExampleSubwindow : IControlPanelSubwindow
+	{
+	}
+
+}

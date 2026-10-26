@@ -1,0 +1,20 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+	<Style src="project://database/Assets/SimpleExample/Resources/Editor/Styling/charaBioEntryStyle.uss?fileID=7433441132597879392&amp;guid=1b62a0d3618d5fe489f64feb9d91bdb9&amp;type=3#charaBioEntryStyle" />
+	<ui:VisualElement name="Root">
+		<ui:VisualElement name="MugshotHolder" class="mugshotHolder">
+			<ui:VisualElement name="Mugshot" class="mugshot" style="flex-grow: 1;">
+				<uie:ObjectField name="MugshotPicker" type="UnityEngine.Sprite, UnityEngine.CoreModule" class="mugshot-picker" />
+			</ui:VisualElement>
+		</ui:VisualElement>
+		<ui:VisualElement name="FirstInfoRow" class="info-row">
+			<ui:TextField picking-mode="Ignore" label="First Name" value="Alexandreus" name="FirstName" class="first-row-entry" />
+			<ui:TextField picking-mode="Ignore" label="Last Name" value="filler text" name="LastName" class="first-row-entry" />
+			<ui:TextField picking-mode="Ignore" label="Nickname" value="filler text" name="Nickname" class="first-row-entry" />
+		</ui:VisualElement>
+		<ui:VisualElement name="SecondInfoRow" class="info-row">
+			<ui:IntegerField label="Age" value="42" name="Age" class="first-row-entry" />
+		</ui:VisualElement>
+		<ui:TextField label="Summary" value="Insert summary here" name="Summary" is-delayed="true" multiline="true" class="summary" />
+		<ui:TextField label="Sexual &#10;History" value="Depraved secrets go here" name="SexualHistory" is-delayed="true" multiline="true" class="sexual-history" />
+	</ui:VisualElement>
+</ui:UXML>

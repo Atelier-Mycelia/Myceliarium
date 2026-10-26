@@ -1,0 +1,13 @@
+.chara-bio-list-label {
+	flex-grow: 1;
+	justify-content: center;
+	border-color: black;
+	border-width: 2px;
+	border-radius: 5px;
+	margin: 0px 0px 1px 0px;
+}
+
+.chara-bio-list-label__text {
+	font-size: 16px;
+	-unity-text-align: middle-left;
+}
