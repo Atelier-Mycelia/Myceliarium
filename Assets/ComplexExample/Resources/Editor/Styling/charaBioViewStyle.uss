@@ -1,0 +1,153 @@
+:root
+{
+	--sexual-history-section-height: 200px;
+
+	--mugshot-section-width: 300px;
+	--mugshot-section-height: 200px;
+
+	--mugshot-section-padding: 0px 0px 0px 0px;
+	--mugshot-section-margin: 3px 0px 0px 0px;
+
+	--first-row-entry-width: 150px;
+	--first-row-entry-height: 40px;
+
+	--little-to-the-sides: 0px 5px 0px 5px;
+	--closer-to-name-label: -45px;
+	--summary-and-history-margin-left: -47px;
+
+	padding: 5px 5px 5px 5px;
+	margin: 10px 0px 10px 0px;
+}
+
+.mugshotHolder
+{
+	padding: var(--mugshot-section-padding);
+	margin: var(--mugshot-section-margin);
+	width: var(--mugshot-section-width);
+	height: var(--mugshot-section-height);
+	align-self: center;
+	border-color: black;
+	border-width: 3px;
+	border-radius: 10px;
+}
+
+.mugshot
+{
+	/* 
+	The setup below is because we want the mugshot to take just as much space as holder. 
+	The reason we even have the latter is because adding padding or a margin to the
+	former directly gets weird results. By using a holder as a proxy, however, we 
+	can get around that.
+	*/
+	width: 100%;
+	height: 100%;
+	padding: 0px;
+	margin: 0px;
+
+	-unity-background-scale-mode: scale-to-fit;
+	background-position-y: bottom; 
+	/* ^Prevents empty space below the icon that wasn't in the source image. */
+	cursor: link;
+}
+
+/*
+Invisible ObjectField laid over the mugshot. Its selector button is stretched to cover
+the whole portrait, so clicking anywhere on it opens the sprite picker. 
+Opacity (not display) is used to hide it, since display: none would also stop 
+it from receiving clicks.
+*/
+.mugshot-picker
+{
+	position: absolute;
+	left: 0px;
+	right: 0px;
+	top: 0px;
+	bottom: 0px;
+	margin: 0px;
+	opacity: 0;
+}
+
+.mugshot-picker > .unity-object-field__input
+{
+	flex-grow: 1;
+	margin: 0px;
+}
+
+.mugshot-picker .unity-object-field-display
+{
+	display: none;
+}
+
+.mugshot-picker .unity-object-field__selector
+{
+	position: absolute;
+	left: 0px;
+	right: 0px;
+	top: 0px;
+	bottom: 0px;
+	width: auto;
+	height: auto;
+}
+
+.info-row 
+{
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	margin: 0px 5px 0px 0px;
+	justify-content: flex-start;
+	flex-grow: 1;
+	height: 50px;
+}
+
+.first-row-entry > #unity-text-input
+{
+	width: var(--first-row-entry-width);
+	height: var(--first-row-entry-height);
+	margin-left: var(--closer-to-name-label);
+}
+
+.first-row-entry > Label
+{
+	width: 20px;
+	align-self: center;
+}
+
+.summary
+{
+	height: 80px;
+	margin: 0px 5px 5px 5px;
+}
+
+.summary > #unity-text-input
+{
+	width: var(--first-row-entry-width);
+	height: 100%;
+	margin-left: var(--closer-to-name-label);
+	margin-right: 22px;
+	-unity-text-align: upper-left;
+}
+
+.summary > #unity-text-input
+{
+	width: var(--first-row-entry-width);
+	height: 100%;
+	margin-left: var(--summary-and-history-margin-left); 
+	margin-right: 22px;
+	-unity-text-align: upper-left;
+}
+
+.sexual-history
+{
+	height: var(--sexual-history-section-height);
+	margin: var(--little-to-the-sides);
+}
+
+.sexual-history > #unity-text-input
+{
+	width: var(--first-row-entry-width);
+	height: 100%;
+	margin-left: var(--summary-and-history-margin-left); 
+	margin-right: 22px;
+	-unity-text-align: upper-left;
+}

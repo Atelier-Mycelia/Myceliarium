@@ -4,7 +4,8 @@
     --tab-normal-text-color: rgb(222, 222, 222);
     --tab-normal-bg-color: rgb(60, 60, 60);
     --default-icon: resource('Editor/Icons/defaultTabIcon');
-    --mascot-icon: resource('Editor/Icons/nelSideMugshotIcon_01');
+    --mascot-icon: resource('Editor/Icons/nelSideMugshotIcon_01_aiGen');
+    --logo-icon: resource('Editor/Icons/myceliariumLogo_aiGen');
     --default-icon-left-offset: 10px;
     --default-icon-width: 60px;
 }
@@ -53,10 +54,12 @@
 }
 
 .tabIcon {
-    background-image: var(--mascot-icon);
+    /* background-image: var(--mascot-icon); */
+    background-image: var(--logo-icon);
     -unity-background-scale-mode: scale-to-fit;
-    background-position-y: bottom; 
-    /* ^Prevents empty space below the icon that wasn't in the source image. */
+    background-position-y: center; 
+    /* If the icon is a mascot, best set this to bottom. The idea is to prevent
+     empty space below the icon that wasn't in the source image. */
 
     height: 100%;
     width: 100%;
@@ -64,7 +67,7 @@
 
 .tabIconHolder
 {
-    padding: 5px 0px 2px 0px;
+    padding: 5px 5px 2px 5px;
     margin: 0px 0px 0px 3px;
     width: 60px;
 }
