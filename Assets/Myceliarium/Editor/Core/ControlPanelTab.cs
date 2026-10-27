@@ -40,7 +40,47 @@ namespace AtMycelia.Myceliarium
             _subtabs.Add(subtab);
             _mainClickable.Add(subtab.Root);
             ApplyOverridesTo(subtab);
+            MarkRootAsHavingSubtabs();
         }
+
+        /// <summary>
+        /// The tab styles give the root and its Foldout a fixed height, so expanded
+        /// subtabs would overflow onto whatever sits below. This lets them size to their
+        /// content, keeping the header at its original height. The class is a hook for
+        /// the padding rules in the stylesheets.
+        /// </summary>
+        /// </summary>
+        private void MarkRootAsHavingSubtabs()
+        {
+            if (_mainClickable is not Foldout foldout)
+            {
+                return;
+            }
+
+            var tabRoot = this.Q("Root");
+            tabRoot?.AddToClassList("tab-foldout-root");
+
+            foldout.style.height = StyleKeyword.Auto;
+            if (tabRoot != null)
+            {
+                tabRoot.style.height = StyleKeyword.Auto;
+            }
+
+            var toggle = foldout.Q<Toggle>();
+            if (toggle != null)
+            {
+                toggle.style.height = FoldoutHeaderHeight;
+                toggle.style.flexShrink = 0;
+            }
+
+            // The icon holder is 100% of the root's height, which now includes subtabs.
+            if (_iconHolder != null && _iconHolder.visible)
+            {
+                _iconHolder.style.height = FoldoutHeaderHeight;
+            }
+        }
+
+        private const float FoldoutHeaderHeight = 60f; 
 
         private void ValidateSubtabPreRegistration(IControlPanelTab subtab)
         {

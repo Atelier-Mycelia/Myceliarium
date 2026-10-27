@@ -56,5 +56,6 @@
         "temp/": true,
         "Temp/": true
     },
-    "dotnet.defaultSolution": "Myceliarium.slnx"
+    "dotnet.defaultSolution": "Myceliarium.slnx",
+    "dotnet.preferCSharpExtension": true
 }
