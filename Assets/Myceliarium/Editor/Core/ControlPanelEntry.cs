@@ -11,7 +11,7 @@ namespace AtMycelia.Myceliarium
     /// These should be automatically found through reflection and added to the 
     /// CP when appropriate.
     /// </summary>
-    public abstract class ControlPanelEntry : IControlPanelEntry, IDisposable
+    public abstract class ControlPanelEntry : IControlPanelEntry, IUndoableEntry, IDisposable
     {
         public virtual bool IsTestOnly => false;
 
@@ -68,6 +68,7 @@ namespace AtMycelia.Myceliarium
 
         private void ResetState()
         {
+            UndoHistory.Clear(); // The state it refers to is about to be rebuilt
             Dispose();
             _isDisposed = false;
             _isInitted = false;
@@ -219,6 +220,10 @@ namespace AtMycelia.Myceliarium
                 {
                     _tab.Clicked += OnTabClicked;
                 }
+                if (_subwindow is IEditReportingSubwindow reporter)
+                {
+                    reporter.EditCommitted += OnSubwindowEdit;
+                }
             }
             else
             {
@@ -227,6 +232,10 @@ namespace AtMycelia.Myceliarium
                 if (_tab != null)
                 {
                     _tab.Clicked -= OnTabClicked;
+                }
+                if (_subwindow is IEditReportingSubwindow reporter)
+                {
+                    reporter.EditCommitted -= OnSubwindowEdit;
                 }
             }
         }
@@ -313,8 +322,74 @@ namespace AtMycelia.Myceliarium
             }
 
             _tab.IsSelected = true;
+            UndoHistory.Clear(); // Loading replaces the working state the history refers to
             HandleLoading();
         }
+
+        #region Undo
+        /// <summary>
+        /// This entry's own undo/redo history. Ctrl+Z / Ctrl+Y while the Control Panel is
+        /// focused act on the displayed entry's history only, never on Unity's global Undo.
+        /// </summary>
+        protected UndoStack UndoHistory { get; } = new UndoStack();
+
+        /// <summary>
+        /// Executes the command and records it in UndoHistory. Entries (or their
+        /// subwindows, through the entry) should route undoable edits through this.
+        /// </summary>
+        protected void ExecuteUndoable(IUndoableCommand command)
+        {
+            UndoHistory.Push(command);
+        }
+
+        /// <summary>
+        /// Like ExecuteUndoable, but for changes that have already happened (such as an
+        /// edit the user made in the subwindow), so the command isn't executed.
+        /// </summary>
+        protected void RecordUndoable(IUndoableCommand command)
+        {
+            UndoHistory.Record(command);
+        }
+
+        /// <summary>
+        /// Called when the subwindow reports an edit the user finished making. Does
+        /// nothing by default; override to make it undoable, usually with
+        /// RecordUndoable(edit.ToCommand(apply)). Needs the base SetSubs to have run.
+        /// </summary>
+        protected virtual void OnSubwindowEdit(FieldEdit edit)
+        {
+        }
+
+        public void CommitPendingEdits()
+        {
+            (_subwindow as IEditReportingSubwindow)?.CommitPendingEdits();
+        }
+
+        /// <summary>
+        /// Entries with no state worth undoing can leave these as they are: the history
+        /// stays empty, so CanUndo/CanRedo are false. Override all four to take over.
+        /// </summary>
+        public virtual bool CanUndo => UndoHistory.CanUndo;
+        public virtual bool CanRedo => UndoHistory.CanRedo;
+
+        public virtual void Undo()
+        {
+            if (!UndoHistory.Undo())
+            {
+                UnityEngine.Debug.LogWarning($"{GetType().Name} was asked to undo, " +
+                    $"but it has nothing to undo. Check CanUndo first.");
+            }
+        }
+
+        public virtual void Redo()
+        {
+            if (!UndoHistory.Redo())
+            {
+                UnityEngine.Debug.LogWarning($"{GetType().Name} was asked to redo, " +
+                    $"but it has nothing to redo. Check CanRedo first.");
+            }
+        }
+        #endregion
 
         /// <summary>
         /// Meant to be overridden by subclasses that need to do some loading 

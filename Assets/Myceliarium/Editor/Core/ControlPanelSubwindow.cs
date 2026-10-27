@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace AtMycelia.Myceliarium
 {
-    public abstract class ControlPanelSubwindow : VisualElement, IControlPanelSubwindow, IDisposable
+    public abstract class ControlPanelSubwindow : VisualElement, IControlPanelSubwindow,
+        IEditReportingSubwindow, IDisposable
     {
         public virtual void Init()
         {
@@ -16,8 +18,9 @@ namespace AtMycelia.Myceliarium
             LoadUxml();
             RegisterVisualElements();
             ConfigureVisualElements();
-            SetSubs(false); 
+            SetSubs(false);
             SetSubs(true);
+            AttachEditTrackers();
             _isInitted = true;
             _isDisposed = false;
         }
@@ -89,6 +92,63 @@ namespace AtMycelia.Myceliarium
         } 
         #endregion
 
+        #region Edit Tracking (for undo/redo)
+        /// <summary>
+        /// Raised when the user finishes an edit to one of the controls the trackers
+        /// cover. The entry listens to this to make the edit undoable.
+        /// </summary>
+        public event Action<FieldEdit> EditCommitted = delegate { };
+
+        /// <summary>
+        /// Which control types get their edits reported. The default covers text
+        /// fields; override to add trackers for other types (call the base to keep
+        /// the default ones). Called once, when this is initialized.
+        /// </summary>
+        protected virtual IEnumerable<IFieldEditTracker> CreateEditTrackers()
+        {
+            yield return new TextFieldEditTracker();
+        }
+
+        /// <summary>
+        /// What the given control is editing, asked when the user starts editing it
+        /// and handed back in the resulting FieldEdit.Context. Override to return, say,
+        /// the item currently shown. Null by default.
+        /// </summary>
+        protected virtual object GetEditContext(VisualElement field)
+        {
+            return null;
+        }
+
+        public void CommitPendingEdits()
+        {
+            for (int i = 0; i < _editTrackers.Count; i++)
+            {
+                _editTrackers[i].CommitPending();
+            }
+        }
+
+        private void AttachEditTrackers()
+        {
+            DisposeEditTrackers();
+            _editTrackers.AddRange(CreateEditTrackers());
+            for (int i = 0; i < _editTrackers.Count; i++)
+            {
+                _editTrackers[i].Attach(this, GetEditContext, edit => EditCommitted(edit));
+            }
+        }
+
+        private void DisposeEditTrackers()
+        {
+            for (int i = 0; i < _editTrackers.Count; i++)
+            {
+                _editTrackers[i].Dispose();
+            }
+            _editTrackers.Clear();
+        }
+
+        private readonly List<IFieldEditTracker> _editTrackers = new List<IFieldEditTracker>();
+        #endregion
+
         public virtual void Dispose()
         {
             if (_isDisposed)
@@ -96,6 +156,7 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
+            DisposeEditTrackers();
             Unbind();
             RemoveFromHierarchy();
             _isDisposed = true;

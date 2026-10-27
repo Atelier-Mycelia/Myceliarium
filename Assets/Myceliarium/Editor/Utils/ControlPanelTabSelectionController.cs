@@ -86,6 +86,11 @@ namespace AtMycelia.Myceliarium
         private IControlPanelEntry LastSelected { get; set; }
 
         /// <summary>
+        /// The entry whose subwindow is currently displayed, if any.
+        /// </summary>
+        public IControlPanelEntry DisplayedEntry => _entryBeingDisplayed;
+
+        /// <summary>
         /// Entries keep their identity when reinitted, but their tabs are rebuilt, so
         /// whichever was selected last has to be selected again.
         /// </summary>
