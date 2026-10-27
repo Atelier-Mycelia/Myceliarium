@@ -1,46 +1,57 @@
 :root {
-    --tab-selected-color: rgb(44, 93, 135);
-    --tab-selected-text-color: rgb(222, 222, 222);
-    --tab-normal-text-color: rgb(222, 222, 222);
-    --tab-normal-bg-color: rgb(60, 60, 60);
+    --base-color: rgb(222, 222, 222);
+    --border-color: rgb(30, 30, 30);
+    --hover-color: rgb(70, 70, 70);
+    --active-color: rgb(50, 50, 50);
+    --selected-color: rgb(80, 120, 180);
+    --selected-border-color: black;
+    --selected-text-color: rgb(222, 222, 222);
+    --normal-text-color: rgb(222, 222, 222);
+    --normal-bg-color: rgb(60, 60, 60);
     --default-icon: resource('Editor/Icons/defaultTabIcon');
     --default-icon-left-offset: 10px;
     --default-icon-width: 60px;
+    --border-width: 1px;
+    --border-radius: 5px;
+    --font-size: 24px;
+    --padding: 0px;
+    /* --padding: 3px 5px 3px 72px; */
 }
 
 .tabRoot {
-    height: 60px;
-    width: 180px;
+    height: 50px;
+    flex-shrink: 0;
+    width: 100%;
     flex-direction: row;
-    margin: 5px 0px 5px 0px;
+    margin: 0px 0px 0px 0px;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
 }
 
 .tabButton {
     flex-direction: row;
     width: 100%;
+    height: auto;
     justify-content: flex-start;
     align-items: center;
-    border-radius: 5px;
+    border-radius: var(--border-radius);
     -unity-text-align: middle-left;
-    padding: 3px 5px 3px 72px;
+    padding: var(--padding);
     margin: 0;
-    font-size: 32px;
     padding-left: 60px;
-    color: var(--tab-normal-text-color);
-    background-color: var(--tab-normal-bg-color);
+    border-width: var(--border-width);
+    color: var(--normal-text-color);
+    background-color: var(--normal-bg-color);
+    font-size: var(--font-size);
 }
 
 .tabIcon {
     background-image: none;
     -unity-background-scale-mode: stretch-to-fill;
-    padding-top: 0;
-    padding-bottom: 0;
-    padding-right: 0;
-    padding-left: 0;
+    padding-top: 0px;
     position: relative;
-    height: 100%;
-    width: 100%;
-    margin: 0;
 }
 
 .tabIconHolder {
@@ -54,6 +65,21 @@
 }
 
 .selected {
-    background-color: var(--tab-selected-color);
-    color: var(--tab-selected-text-color);
+    background-color: var(--selected-color);
+    color: var(--selected-text-color);
+}
+
+/* The button paints over the root, so hover/active must target the button itself. */
+.tabButton:hover {
+    background-color: var(--hover-color);
+}
+
+.tabButton:active {
+    background-color: var(--active-color);
+}
+
+/* Declared after the states above so a selected tab keeps its color while hovered. */
+.tabButton.selected {
+    background-color: var(--selected-color);
+    border-color: var(--selected-border-color);
 }
