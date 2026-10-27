@@ -373,6 +373,33 @@ namespace AtMycelia.Myceliarium
             return _entries.Contains(entry);
         }
 
+        /// <summary>
+        /// Sends an undo/redo request (from Ctrl+Z and friends while this panel is
+        /// focused) to the displayed entry only; Unity's global Undo is not involved.
+        /// </summary>
+        internal void HandleUndoRequest(bool redo)
+        {
+            // Ending the typing session first puts it on the entry's history, so the
+            // undo below takes back what was just typed. It also means the next
+            // keystroke starts a fresh edit instead of continuing a stale one.
+            bool nothingToWorkWith = rootVisualElement == null || 
+            rootVisualElement.panel == null ||
+            rootVisualElement.panel.focusController == null;
+            if (nothingToWorkWith)
+            {
+                return;
+            }
+
+            var panel = rootVisualElement.panel;
+            var focusController = panel.focusController;
+			if (focusController.focusedElement is VisualElement focusedElem)
+			{
+				focusedElem.Blur();
+			}
+
+			ControlPanelUndoRouter.Route(_selectionController.DisplayedEntry, redo);
+        }
+
     }
 
     public interface IControlPanel
