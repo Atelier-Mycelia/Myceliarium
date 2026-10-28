@@ -27,7 +27,7 @@ Core code is in `Assets/Myceliarium/Editor` (namespace `AtMycelia.Myceliarium`);
 - **Discovery is reflection-based**: `ControlPanelEntryRegistry` (`[InitializeOnLoadMethod]`, re-run after assembly reload) uses `TypeCache` to find all `IControlPanelEntry` types; `ControlPanelEntryAttacher` attaches them to compatible panels. Adding a new entry class is enough; no manual registration.
 - **Save/load**: `SaveLoad/` holds loaders, savers and `CpEntrySaverReg`. Panels keep `_savers`/`_loaders` dictionaries mapping each saver/loader to its compatible entries; `ControlPanelSignals.SaveRequested` triggers `OnSaveRequested` on the matching panel only.
 - **`ControlPanelSignals`** is a static event bus (save/close requests, tab clicked) used to decouple entries from panels; `ControlPanelTabSelectionController` handles which tab is selected.
-- **`OwnEntry/`** is Myceliarium's own built-in entry (root + About), a reference implementation. `Resources/Editor/Templates/*.cs.txt` are templates for generating new entry/tab/subwindow classes.
+- **`OwnEntry/`** is Myceliarium's own built-in entry (root + About), a reference implementation.
 - `Assets/MyceliariumDemos/RpgStats` is a demo consumer (own Core/Editor asmdefs, Actor/Trait). `Assets/Resources/AtMycelia/Myceliarium/Editor` holds the `UserExt` asmdef for user extensions. `Assets/TutorialInfo` is Unity template leftovers.
 
 Assemblies: `AtMycelia.Myceliarium.Core` (runtime-only, currently empty) and `AtMycelia.Myceliarium.Editor` (Editor-only).

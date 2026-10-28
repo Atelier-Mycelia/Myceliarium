@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace AtMycelia.Myceliarium
@@ -12,11 +13,7 @@ namespace AtMycelia.Myceliarium
 
         public override bool IsMeantToHaveSubwindow => false;
 
-        protected override void PrepareLeftSidebarTab()
-        {
-            Tab = new MyceliariumRootTab();
-            Tab.Init();
-        }
+        protected override Type SidebarTabType => typeof(MyceliariumRootTab);
 
         protected override IEnumerable<IControlPanelEntry> CreateSubentries()
         {

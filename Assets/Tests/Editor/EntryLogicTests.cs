@@ -1,4 +1,8 @@
+using System;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
 using UnityEngine.UIElements;
 
 namespace AtMycelia.Myceliarium.Tests
@@ -32,18 +36,23 @@ namespace AtMycelia.Myceliarium.Tests
                 }
                 return edit.ToCommand((e, value) => Value = (int)value);
             }
+
+            public void RaiseEdit(FieldEdit edit) => OnSubwindowEdit(edit);
         }
 
         private sealed class LogicEntry : ControlPanelEntry
         {
             public override string SortingName => "Logic";
-            protected override void PrepareLeftSidebarTab() { }
-            protected override void PrepareLogic() => Logic = new CounterLogic();
+            public override bool IsMeantToHaveSubwindow => false;
+            protected override Type SidebarTabType => null;
+            protected override void PrepareMainSidebarTab() { }
+            protected override Type LogicType => typeof(CounterLogic);
 
             public CounterLogic CounterLogic => (CounterLogic)Logic;
-            public void Do(IUndoableCommand command) => ExecuteUndoable(command);
-            public void RaiseEdit(FieldEdit edit) => OnSubwindowEdit(edit);
+            public void Do(IUndoableCommand command) => Logic.History.Push(command);
         }
+
+        private sealed class NotALogic { }
 
         #region UndoStack clean point
         [Test]
@@ -187,11 +196,11 @@ namespace AtMycelia.Myceliarium.Tests
 
             entry.Do(counter.Add(2));
 
-            Assert.That(entry.CanUndo, Is.True);
+            Assert.That(entry.Logic.CanUndo, Is.True);
             Assert.That(entry.HasUnsavedChanges, Is.True);
             Assert.That(entry.CounterLogic.History.CanUndo, Is.True);
 
-            entry.Undo();
+            entry.Logic.Undo();
 
             Assert.That(counter.Value, Is.EqualTo(0));
             Assert.That(entry.HasUnsavedChanges, Is.False); // Back at the saved state
@@ -226,11 +235,11 @@ namespace AtMycelia.Myceliarium.Tests
             entry.CounterLogic.Value = 5; // As if the user already changed it to 5
             var field = new IntegerField { name = "Counter" };
 
-            entry.RaiseEdit(new FieldEdit(field, null, 1, 5));
-            entry.Undo();
+            entry.CounterLogic.RaiseEdit(new FieldEdit(field, null, 1, 5));
+            entry.Logic.Undo();
 
             Assert.That(entry.CounterLogic.Value, Is.EqualTo(1));
-            entry.Redo();
+            entry.Logic.Redo();
             Assert.That(entry.CounterLogic.Value, Is.EqualTo(5));
         }
 
@@ -240,9 +249,10 @@ namespace AtMycelia.Myceliarium.Tests
             var entry = new LogicEntry();
             entry.Init();
 
-            entry.RaiseEdit(new FieldEdit(new IntegerField { name = "Other" }, null, 1, 5));
+            entry.CounterLogic.RaiseEdit(
+                new FieldEdit(new IntegerField { name = "Other" }, null, 1, 5));
 
-            Assert.That(entry.CanUndo, Is.False);
+            Assert.That(entry.Logic.CanUndo, Is.False);
         }
 
         [Test]
@@ -256,8 +266,101 @@ namespace AtMycelia.Myceliarium.Tests
             entry.Init(forceReinit: true);
 
             Assert.That(entry.CounterLogic, Is.Not.SameAs(logicBefore));
-            Assert.That(entry.CanUndo, Is.False);
+            Assert.That(entry.Logic.CanUndo, Is.False);
             Assert.That(entry.HasUnsavedChanges, Is.False);
+        }
+
+        [Test]
+        public void Entry_Dispose_DisposesItsLogic_SoItStopsReactingToSignals()
+        {
+            var entry = new LogicEntry();
+            entry.Init();
+            var logic = entry.CounterLogic;
+            entry.Do(new Counter().Add(1));
+            Assert.That(logic.HasUnsavedChanges, Is.True);
+
+            entry.Dispose();
+            logic.History.Record(new Counter().Add(1)); // Dirty again, as far as it knows
+            ControlPanelSignals.SaveCompleted(entry);
+
+            Assert.That(logic.HasUnsavedChanges, Is.True); // Didn't hear about the save
+            Assert.That(entry.HasUnsavedChanges, Is.False); // And the entry has no logic now
+        }
+
+        [Test]
+        public void Entry_SaveCompleted_MarksItsLogicSaved()
+        {
+            var entry = new LogicEntry();
+            entry.Init();
+            entry.Do(new Counter().Add(1));
+
+            ControlPanelSignals.SaveCompleted(entry);
+
+            Assert.That(entry.HasUnsavedChanges, Is.False);
+            entry.Dispose();
+        }
+
+        [Test]
+        public void Entry_WithAnInvalidLogicType_FallsBackToTheDefaultLogic()
+        {
+            var entry = new BadLogicEntry();
+            LogAssert.Expect(LogType.Error, new Regex("NotALogic"));
+
+            entry.Init();
+
+            Assert.That(entry.Logic, Is.InstanceOf<DefaultControlPanelEntryLogic>());
+        }
+
+        private sealed class BadLogicEntry : ControlPanelEntry
+        {
+            public override string SortingName => "BadLogic";
+            public override bool IsMeantToHaveSubwindow => false;
+            protected override Type SidebarTabType => null;
+            protected override void PrepareMainSidebarTab() { }
+            protected override Type LogicType => typeof(NotALogic);
+        }
+        #endregion
+
+        #region ControlPanelModuleFactory
+        [Test]
+        public void Factory_ValidType_CreatesAnInstance()
+        {
+            var created = ControlPanelModuleFactory.Create<IControlPanelEntryLogic>(
+                typeof(DefaultControlPanelEntryLogic), "logic");
+
+            Assert.That(created, Is.InstanceOf<DefaultControlPanelEntryLogic>());
+        }
+
+        [Test]
+        public void Factory_NullType_LogsAndReturnsNull()
+        {
+            LogAssert.Expect(LogType.Error, new Regex("logic"));
+
+            var created = ControlPanelModuleFactory.Create<IControlPanelEntryLogic>(null, "logic");
+
+            Assert.That(created, Is.Null);
+        }
+
+        [Test]
+        public void Factory_TypeOfTheWrongKind_LogsAndReturnsNull()
+        {
+            LogAssert.Expect(LogType.Error, new Regex("NotALogic"));
+
+            var created = ControlPanelModuleFactory.Create<IControlPanelEntryLogic>(
+                typeof(NotALogic), "logic");
+
+            Assert.That(created, Is.Null);
+        }
+
+        [Test]
+        public void Factory_TypeThatCantBeInstantiated_LogsAndReturnsNull()
+        {
+            LogAssert.Expect(LogType.Error, new Regex("logic"));
+
+            var created = ControlPanelModuleFactory.Create<IControlPanelEntryLogic>(
+                typeof(ControlPanelEntryLogic), "logic"); // Abstract
+
+            Assert.That(created, Is.Null);
         }
         #endregion
     }

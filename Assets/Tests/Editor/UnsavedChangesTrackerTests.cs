@@ -175,6 +175,7 @@ namespace AtMycelia.Myceliarium.Tests
             public bool IsInitted => false;
             public bool HasSubentries => _subentries.Count > 0;
             public bool HasUnsavedChanges => Dirty;
+            public IControlPanelEntryLoader Loader => null;
 
             public void Dispose() { }
             public void Init(bool forceReinit = false) { }

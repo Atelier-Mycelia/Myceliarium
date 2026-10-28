@@ -1,21 +1,20 @@
 namespace AtMycelia.Myceliarium
 {
     /// <summary>
-    /// Entries that can respond to Ctrl+Z / Ctrl+Y while their ControlPanel is focused.
-    /// ControlPanelEntry implements this, so entries get it by default.
+    /// Implemented by entries that carry a logic module (ControlPanelEntry does). This is
+    /// what undo requests and the logic itself go through, rather than IControlPanelEntry,
+    /// so that the many lightweight implementations of that don't all need to provide
+    /// these members.
     /// </summary>
-    public interface IUndoableEntry
+    public interface IEntryLogicOwner
     {
-        /// <summary>
-        /// Finishes any edit still in progress in the entry's subwindow, so it's on the
-        /// undo history before an undo or redo happens.
-        /// </summary>
-        void CommitPendingEdits();
+        IControlPanelEntryLogic Logic { get; }
 
-        bool CanUndo { get; }
-        bool CanRedo { get; }
-        void Undo();
-        void Redo();
+        /// <summary>
+        /// The entry's subwindow, or null if it doesn't have one (yet). Unlike
+        /// IControlPanelEntry.Subwindow, never throws.
+        /// </summary>
+        IControlPanelSubwindow SubwindowIfAny { get; }
     }
 
     /// <summary>
@@ -25,31 +24,32 @@ namespace AtMycelia.Myceliarium
     public static class ControlPanelUndoRouter
     {
         /// <param name="displayedEntry">The entry the panel is currently showing, if any.</param>
-        /// <returns>Whether the entry actually undid/redid something.</returns>
+        /// <returns>Whether the entry's logic actually undid/redid something.</returns>
         public static bool Route(IControlPanelEntry displayedEntry, bool redo)
         {
-            if (!(displayedEntry is IUndoableEntry undoable))
+            var logic = (displayedEntry as IEntryLogicOwner)?.Logic;
+            if (logic == null)
             {
                 return false;
             }
 
-            undoable.CommitPendingEdits();
+            logic.CommitPendingEdits();
 
             if (redo)
             {
-                if (!undoable.CanRedo)
+                if (!logic.CanRedo)
                 {
                     return false;
                 }
-                undoable.Redo();
+                logic.Redo();
                 return true;
             }
 
-            if (!undoable.CanUndo)
+            if (!logic.CanUndo)
             {
                 return false;
             }
-            undoable.Undo();
+            logic.Undo();
             return true;
         }
     }

@@ -85,6 +85,7 @@ namespace AtMycelia.Myceliarium
         {
             if (field == _field)
             {
+                _endPending = false; // Got focus back before the edit was finished
                 return;
             }
 
@@ -129,11 +130,30 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
-            CommitPending();
+            // Fields that commit their value when they lose focus (a delayed text field,
+            // say) do it in their own default action for this event, and those run only
+            // after all the callbacks, this one included. So the value isn't final yet.
+            // The edit gets finished on the next scheduler tick instead, or sooner if
+            // something asks for it (CommitPending, or another edit beginning), which
+            // would be after this event is done with.
+            _endPending = true;
+            _root.schedule.Execute(CommitIfEndPending);
         }
+
+        private void CommitIfEndPending()
+        {
+            if (_endPending)
+            {
+                CommitPending();
+            }
+        }
+
+        // Set when the field lost focus but the edit hasn't been finished yet
+        private bool _endPending;
 
         private void ClearEdit()
         {
+            _endPending = false;
             _field = null;
             _context = null;
             _originalValue = default;

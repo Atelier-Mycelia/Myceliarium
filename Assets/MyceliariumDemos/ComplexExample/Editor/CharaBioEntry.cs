@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using AtMycelia.Myceliarium;
 
@@ -8,27 +9,11 @@ namespace ComplexExample
 		public override string SortingName => "Chara Bios";
 		public override bool IsTopLevel => true;
 
-		protected override void PrepareLoader()
-		{
-			Loader = new CharaBioLoader();
-		}
-
-		protected override void PrepareLeftSidebarTab()
-		{
-			Tab = new CharaBioTab();
-			Tab.Init();
-		}
-
-		protected override void PrepareSubwindow()
-		{
-			_subwindow = new CharaBioSubwindow();
-			_subwindow.Init();
-		}
-
-		protected override void PrepareLogic()
-		{
-			Logic = new CharaBioLogic();
-		}
+		// The entry makes an instance of each of these (and calls Init on it).
+		protected override Type SidebarTabType => typeof(CharaBioTab);
+		protected override Type SubwindowType => typeof(CharaBioSubwindow);
+		protected override Type LoaderType => typeof(CharaBioLoader);
+		protected override Type LogicType => typeof(CharaBioLogic);
 
 		private CharaBioLogic BioLogic => Logic as CharaBioLogic;
 		

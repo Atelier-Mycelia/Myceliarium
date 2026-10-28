@@ -20,10 +20,17 @@ namespace AtMycelia.Myceliarium.Tests
 
         private sealed class UndoTestEntry : ControlPanelEntry
         {
-            public override string SortingName => "UndoTest";
-            protected override void PrepareLeftSidebarTab() { }
+            public UndoTestEntry()
+            {
+                Init(); // Which is when its logic gets made
+            }
 
-            public void Do(IUndoableCommand command) => ExecuteUndoable(command);
+            public override string SortingName => "UndoTest";
+            public override bool IsMeantToHaveSubwindow => false;
+            protected override System.Type SidebarTabType => null;
+            protected override void PrepareMainSidebarTab() { }
+
+            public void Do(IUndoableCommand command) => Logic.History.Push(command);
         }
 
         #region UndoStack
@@ -123,14 +130,14 @@ namespace AtMycelia.Myceliarium.Tests
         }
         #endregion
 
-        #region ControlPanelEntry defaults
+        #region Default entry logic
         [Test]
         public void Entry_WithNoUndoableState_CannotUndoOrRedo()
         {
             var entry = new UndoTestEntry();
 
-            Assert.That(entry.CanUndo, Is.False);
-            Assert.That(entry.CanRedo, Is.False);
+            Assert.That(entry.Logic.CanUndo, Is.False);
+            Assert.That(entry.Logic.CanRedo, Is.False);
         }
 
         [Test]
@@ -141,21 +148,21 @@ namespace AtMycelia.Myceliarium.Tests
             LogAssert.Expect(UnityEngine.LogType.Warning, new System.Text.RegularExpressions.Regex("undo"));
             LogAssert.Expect(UnityEngine.LogType.Warning, new System.Text.RegularExpressions.Regex("redo"));
 
-            entry.Undo();
-            entry.Redo();
+            entry.Logic.Undo();
+            entry.Logic.Redo();
         }
 
         [Test]
-        public void Entry_ExecuteUndoable_MakesItUndoable()
+        public void Entry_CommandPushedOnTheLogicsHistory_IsUndoable()
         {
             var entry = new UndoTestEntry();
             var counter = new Counter();
 
             entry.Do(counter.Add(3));
-            entry.Undo();
+            entry.Logic.Undo();
 
             Assert.That(counter.Value, Is.EqualTo(0));
-            Assert.That(entry.CanRedo, Is.True);
+            Assert.That(entry.Logic.CanRedo, Is.True);
         }
         #endregion
 
@@ -420,7 +427,7 @@ namespace AtMycelia.Myceliarium.Tests
             var entry = new UndoTestEntry();
             var counter = new Counter();
             entry.Do(counter.Add(1));
-            entry.Undo();
+            entry.Logic.Undo();
 
             bool handled = ControlPanelUndoRouter.Route(entry, redo: true);
 
