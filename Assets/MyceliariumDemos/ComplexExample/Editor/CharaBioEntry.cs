@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using AtMycelia.Myceliarium;
-using UnityObj = UnityEngine.Object;
 
 namespace ComplexExample
 {
@@ -26,6 +25,13 @@ namespace ComplexExample
 			_subwindow.Init();
 		}
 
+		protected override void PrepareLogic()
+		{
+			Logic = new CharaBioLogic();
+		}
+
+		private CharaBioLogic BioLogic => Logic as CharaBioLogic;
+		
 		protected override void SetSubs(bool wantsSubsActive)
 		{
 			base.SetSubs(wantsSubsActive);
@@ -33,138 +39,71 @@ namespace ComplexExample
 			{
 				CharaBioViewSignals.BioAddRequested += OnBioAddRequested;
 				CharaBioViewSignals.BioDeletionRequested += OnDeleteBioRequested;
-				CharaBioViewSignals.BioStateChanged += OnBioStateChanged;
+				if (BioLogic != null)
+				{
+					BioLogic.MultiBiosChanged += OnMultiBiosChanged;
+					BioLogic.BioChanged += OnBioChanged;
+				}
 			}
 			else
 			{
 				CharaBioViewSignals.BioAddRequested -= OnBioAddRequested;
 				CharaBioViewSignals.BioDeletionRequested -= OnDeleteBioRequested;
-				CharaBioViewSignals.BioStateChanged -= OnBioStateChanged;
+				if (BioLogic != null)
+				{
+					BioLogic.MultiBiosChanged -= OnMultiBiosChanged;
+					BioLogic.BioChanged -= OnBioChanged;
+				}
 			}
 		}
 
+		// The signals are the UI asking for something; the logic does it and says what
+		// changed, which gets shown through the events below.
 		private void OnBioAddRequested()
 		{
-			var newBio = new CharaBio(); // Kept, so redoing brings back this same one
-			var command = new DelegateCommand(RegisterBio, UndoBioRegistration);
-			ExecuteUndoable(command);
+			BioLogic.AddBio();
+		}
 
-			void RegisterBio()
-			{
-				BioSubwindow.AddBio(newBio);
-				HasUnsavedChanges = true;
-			}
+		private void OnDeleteBioRequested(CharaBio bio)
+		{
+			BioLogic.DeleteBio(bio);
+		}
 
-			void UndoBioRegistration()
-			{
-				BioSubwindow.Remove(newBio);
-				BioSubwindow.Refresh();
-				HasUnsavedChanges = true;
-			}
+		private void OnMultiBiosChanged(CharaBio bioToShow)
+		{
+			BioSubwindow.ShowMultiBios(BioLogic.Bios, bioToShow);
 		}
 
 		private CharaBioSubwindow BioSubwindow => _subwindow as CharaBioSubwindow;
 
-		private void OnBioStateChanged(CharaBio baseState, CharaBio currentState)
+		private void OnBioChanged(CharaBio bio)
 		{
-			if (!baseState.Equals(currentState))
-			{
-				HasUnsavedChanges = true;
-			}
-
-			// We won't set it to false here; it's possible that another bio in the
-			// temp registry is still different from the last saved one.
+			BioSubwindow.ShowBio(bio);
 		}
 
 		protected override void OnControlPanelOpened(IControlPanel panel)
 		{
 			base.OnControlPanelOpened(panel);
-			HandleLoading();
-		}
-
-		private void OnDeleteBioRequested(CharaBio bio)
-		{
-			int index = BioSubwindow.IndexOf(bio);
-			if (index < 0)
+			if (!BioLogic.HasUnsavedChanges) // Otherwise loading would discard them
 			{
-				return;
+				HandleLoading();
 			}
-
-			List<CharaBio> padding = null; // Blanks added to keep the minimum count
-			void DeleteBio()
-			{
-				padding = BioSubwindow.RemoveBio(bio);
-				HasUnsavedChanges = true;
-			}
-
-			void UndoBioDeletion()
-			{
-				BioSubwindow.RestoreBio(index, bio, padding);
-				HasUnsavedChanges = true;
-			}
-			var command = new DelegateCommand(DeleteBio, UndoBioDeletion);
-			ExecuteUndoable(command);
-		}
-
-		/// <summary>
-		/// The user finished typing in one of the detail view's text, integer or object fields.
-		/// The view has already put the value into the bio, so this just records how to
-		/// switch between the old and new value.
-		/// </summary>
-		protected override void OnSubwindowEdit(FieldEdit edit)
-		{
-			if (!(edit.Context is CharaBio))
-			{
-				return;
-			}
-
-			var command = edit.ToCommand(ApplyFieldEdit);
-			RecordUndoable(command);
-		}
-
-		private void ApplyFieldEdit(FieldEdit edit, object value)
-		{
-			var bio = (CharaBio)edit.Context;
-			BioSubwindow.ApplyEdit(bio, edit.Field.name, value);
-			HasUnsavedChanges = true;
 		}
 
 		protected override void OnLoadingDone()
 		{
-			var bioLoader = Loader as CharaBioLoader;
-			BioRegistry = bioLoader.GetLoadResult<CharaBioRegistry>();
-			SetCurrentStateAsBase();
-			Subwindow.RefreshFrom(BioRegistry);
-			Subwindow.Show();
+			var loadResult = Loader.GetLoadResult<CharaBioRegistry>();
+			BioLogic.Load(loadResult);
+			BioSubwindow.ShowMultiBios(BioLogic.Bios);
+			BioSubwindow.Show();
 		}
 
 		/// <summary>
 		/// Reference to the registry on disk.
 		/// </summary>
-		public CharaBioRegistry BioRegistry { get; private set; }
+		public CharaBioRegistry BioRegistry => BioLogic?.Registry;
 
-		protected override void SetCurrentStateAsBase()
-		{
-			if (BioRegistry == null) // Suggests that loading hasn't happened yet,
-									 // and thus we'll want to skip this until then.
-			{
-				return;
-			}
-			if (_initState != null)
-			{
-				UnityObj.DestroyImmediate(_initState);
-			}
-
-			_initState = UnityObj.Instantiate(BioRegistry);
-			base.SetCurrentStateAsBase();
-		}
-
-		private CharaBioRegistry _initState;
-
-		private new CharaBioSubwindow Subwindow => _subwindow as CharaBioSubwindow;
-
-		public IReadOnlyList<CharaBio> CharaBiosInUi => Subwindow.Bios;
-
+		public IReadOnlyList<CharaBio> CharaBiosInUi => BioLogic.Bios;
 	}
 
 	public interface ICustomExampleEntry : IControlPanelEntry

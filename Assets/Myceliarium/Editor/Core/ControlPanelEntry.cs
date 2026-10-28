@@ -45,6 +45,7 @@ namespace AtMycelia.Myceliarium
                 PrepareSubentries();
                 PrepareSubwindow();
                 PrepareLoader();
+                PrepareLogic();
                 _subwindow?.Hide();
                 if (ShouldPreloadOnInit)
                 {
@@ -95,6 +96,7 @@ namespace AtMycelia.Myceliarium
             _subwindow?.Dispose();
             _tab = null;
             _subwindow = null;
+            Logic = null; // Its state is rebuilt (and its history dropped) by a reinit
 
             RemoveFromHierarchy();
             _isDisposed = true;
@@ -103,17 +105,6 @@ namespace AtMycelia.Myceliarium
         protected abstract void PrepareLeftSidebarTab();
 
         protected IControlPanelTab _tab;
-
-        /// <summary>
-        /// Override this to give the entry subentries. It's called only once, the first
-        /// time the entry is initialized, and the instances it returns are kept for the
-        /// entry's lifetime: reinitializing the entry reinitializes those same instances
-        /// instead of creating new ones. The default has none.
-        /// </summary>
-        protected virtual IEnumerable<IControlPanelEntry> CreateSubentries()
-        {
-            return Array.Empty<IControlPanelEntry>();
-        }
 
         /// <summary>
         /// Creates the subentries if that hasn't happened yet, (re)initializes them, and
@@ -131,18 +122,29 @@ namespace AtMycelia.Myceliarium
 
             for (int i = 0; i < _subentries.Count; i++)
             {
-                var subentry = _subentries[i];
+                var elem = _subentries[i];
                 // Subentries that have been initialized before (and so maybe disposed
                 // along with this entry) need the forced reinit to come back up.
-                subentry.Init(forceReinit: subentry.IsInitted);
-                if (subentry.Tab != null)
+                elem.Init(forceReinit: elem.IsInitted);
+                if (elem.Tab != null)
                 {
-                    Tab.Register(subentry.Tab);
+                    Tab.Register(elem.Tab);
                 }
             }
         }
 
         private bool _subentriesCreated;
+
+        /// <summary>
+        /// Override this to give the entry subentries. It's called only once: the first
+        /// time the entry is initialized. The instances it returns are kept for the
+        /// entry's lifetime, meaning that reinitializing the entry reinitializes
+        /// those same instances instead of creating new ones. The default has none.
+        /// </summary>
+        protected virtual IEnumerable<IControlPanelEntry> CreateSubentries()
+        {
+            return Array.Empty<IControlPanelEntry>();
+        }
 
         public virtual IReadOnlyList<IControlPanelEntry> GetSubentries(bool recursive = false)
         {
@@ -179,12 +181,14 @@ namespace AtMycelia.Myceliarium
         }
         private readonly List<IControlPanelEntry> _subentries = new List<IControlPanelEntry>();
 
+        // Virtual because not all entries have subwindows tied to them. Such subwindowless
+        // ones are usually those meant to have other entries nested under them.
         protected virtual void PrepareSubwindow() { }
 
         /// <summary>
-        /// Initializes the loader for the control panel entry. The base implementation goes
-        /// with the default loader, which does nothing but trigger the callback. Subclasses
-        /// can override this to provide a custom loader if needed.
+        /// Initializes this instance's loader. The base implementation goes
+        /// with the default one, which does nothing but trigger the onLoadComplete 
+        /// callback. Subclasses can override this to provide a custom loader if needed.
         /// </summary>
         protected virtual void PrepareLoader()
         {
@@ -194,9 +198,20 @@ namespace AtMycelia.Myceliarium
         protected IControlPanelEntryLoader Loader { get; set; }
 
         /// <summary>
+        /// Opt-in. Override to give the entry a logic module: the part that owns the
+        /// working state the user edits, its undo history and its unsaved changes flag.
+        /// Why have such a module? So that this class can stay an orchestrator. <br>
+        /// This func gets called on every (re)initialization, so a reinit starts with
+        /// fresh state. Entries that don't override this keep the older behavior
+        /// (HasUnsavedChanges and so on handled by the entry itself).
+        /// </summary>
+        protected virtual void PrepareLogic() { }
+
+        protected IControlPanelEntryLogic Logic { get; set; }
+
+        /// <summary>
         /// For entries that have state that the user is meant to be able to edit. 
-        /// This is to help decide when to show a "Save" button, and when to warn
-        /// the user about unsaved changes.
+        /// This is to help decide when to warn the user about unsaved changes.
         /// </summary>
         protected virtual void SetCurrentStateAsBase()
         {
@@ -211,7 +226,7 @@ namespace AtMycelia.Myceliarium
         protected virtual void SetSubs(bool on)
         {
             // The tab is null if this was never initialized (or already disposed), in
-            // which case there's nothing of its to (un)subscribe from.
+            // which case there's nothing for it to (un)subscribe from.
             if (on)
             {
                 ControlPanelSignals.ControlPanelOpened += OnControlPanelOpened;
@@ -223,6 +238,10 @@ namespace AtMycelia.Myceliarium
                 if (_subwindow is IEditReportingSubwindow reporter)
                 {
                     reporter.EditCommitted += OnSubwindowEdit;
+                }
+                if (Logic != null)
+                {
+                    Logic.UnsavedChangesMayHaveChanged += NotifyUnsavedChangesChanged;
                 }
             }
             else
@@ -237,6 +256,10 @@ namespace AtMycelia.Myceliarium
                 {
                     reporter.EditCommitted -= OnSubwindowEdit;
                 }
+                if (Logic != null)
+                {
+                    Logic.UnsavedChangesMayHaveChanged -= NotifyUnsavedChangesChanged;
+                }
             }
         }
 
@@ -250,6 +273,7 @@ namespace AtMycelia.Myceliarium
         {
             if (entry == this)
             {
+                Logic?.MarkSaved();
                 SetCurrentStateAsBase();
                 HasUnsavedChanges = false;
             }
@@ -322,7 +346,20 @@ namespace AtMycelia.Myceliarium
             }
 
             _tab.IsSelected = true;
-            UndoHistory.Clear(); // Loading replaces the working state the history refers to
+
+            bool keepWorkingState = Logic != null && Logic.HasUnsavedChanges;
+            if (keepWorkingState)
+            {
+                // Loading would replace the user's unsaved edits (and the history that
+                // goes with them), so the subwindow is just shown as it was left.
+                _subwindow?.Show();
+                return;
+            }
+
+            if (Logic == null)
+            {
+                UndoHistory.Clear(); // Loading replaces the state the history refers to
+            }
             HandleLoading();
         }
 
@@ -331,7 +368,8 @@ namespace AtMycelia.Myceliarium
         /// This entry's own undo/redo history. Ctrl+Z / Ctrl+Y while the Control Panel is
         /// focused act on the displayed entry's history only, never on Unity's global Undo.
         /// </summary>
-        protected UndoStack UndoHistory { get; } = new UndoStack();
+        protected UndoStack UndoHistory => Logic?.History ?? _ownUndoHistory;
+        private readonly UndoStack _ownUndoHistory = new UndoStack();
 
         /// <summary>
         /// Executes the command and records it in UndoHistory. Entries (or their
@@ -355,9 +393,16 @@ namespace AtMycelia.Myceliarium
         /// Called when the subwindow reports an edit the user finished making. Does
         /// nothing by default; override to make it undoable, usually with
         /// RecordUndoable(edit.ToCommand(apply)). Needs the base SetSubs to have run.
+        /// By default, hands the edit to the logic module (if there is one), which
+        /// records the command it makes.
         /// </summary>
         protected virtual void OnSubwindowEdit(FieldEdit edit)
         {
+            var command = Logic?.CreateEditCommand(edit);
+            if (command != null)
+            {
+                RecordUndoable(command);
+            }
         }
 
         public void CommitPendingEdits()
@@ -416,6 +461,11 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         protected virtual void OnLoadingDone()
         {
+            if (Logic != null && Loader != null)
+            {
+                var loadResult = Loader.GetLoadResult<object>();
+                Logic.Load(loadResult);
+            }
             _subwindow?.Refresh();
             _subwindow?.Show();
             SetCurrentStateAsBase();
@@ -440,7 +490,11 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         public virtual bool HasUnsavedChanges
         {
-            get => _hasUnsavedChanges;
+            // With a logic module, that's what knows (derived from its history); setting
+            // this then has no effect on what's reported.
+            get => Logic != null ? 
+            Logic.HasUnsavedChanges : 
+            _hasUnsavedChanges;
             protected set
             {
                 if (_hasUnsavedChanges == value)
