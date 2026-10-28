@@ -16,18 +16,57 @@ NUnit EditMode tests live in `Assets/Tests/Editor` (assembly `AtMycelia.Myceliar
 Unity.exe -batchmode -projectPath . -runTests -testPlatform EditMode -testResults results.xml -testFilter "<TestClassOrName>"
 ```
 
+The test assembly also references the ComplexExample assemblies, for `CharaBioLogicTests`. Undo is covered by `UndoTests`, `EntryLogicTests` and `CharaBioLogicTests`; the parts that need live focus events or the real shortcut (focus-out timing, `ControlPanelUndoShortcuts`) have no automated tests and are checked by hand in the editor.
+
 Tests deliberately target "pure logic" seams (e.g. `ControlPanelEntryRegistry.RefreshRegistry(typeProvider)` accepts a custom type provider, `ControlPanelEntryTypeValidator.FindDuplicateEntryTypes`, `ControlPanelTabSelectionController`) so they run without a live `EditorWindow`. Keep new logic testable in that style.
 
 ## Architecture
 
-Core code is in `Assets/Myceliarium/Editor` (namespace `AtMycelia.Myceliarium`); UXML/USS/icons/code templates are under `Assets/Myceliarium/Resources/Editor` and loaded via `Resources` paths (e.g. `PathToUxml => "Editor/Uxml/ControlPanel"`).
+Core code is in `Assets/Myceliarium/Editor` (namespace `AtMycelia.Myceliarium`); UXML/USS/icons are under `Assets/Myceliarium/Resources/Editor` and loaded via `Resources` paths (e.g. `PathToUxml => "Editor/Uxml/ControlPanel"`).
 
 - **`ControlPanel`** (abstract `EditorWindow`) is the hub. Concrete panels (e.g. `AtMyceliaControlPanel`) declare their UXML path and three "super types": `EntrySuperType`, `LoaderSuperType`, `SaverSuperType`. Only entries/loaders/savers implementing that panel's marker interfaces (e.g. `IAtMyceliaControlPanelEntry`) get attached to it, which is how multiple panels coexist.
-- **`ControlPanelEntry`** (abstract, implements `IControlPanelEntry`) owns one tab + one subwindow + optional subentries (a tree). Subentries are declared by overriding `CreateSubentries()`, which runs once; the instances are kept for the entry's lifetime and reinitialized in place on reinit (identity is stable). Lifecycle: `Init()` → `PrepareLeftSidebarTab/PrepareSubentries/PrepareSubwindow/PrepareLoader` → `Select()` → `HandleLoading()` (via an `IControlPanelEntryLoader`) → `OnLoadingDone()` shows the subwindow. `Tab`/`Subwindow` getters throw if accessed before `Init()`. Duplicate concrete entry types across the tree are rejected by `ControlPanelEntryTypeValidator`.
+- **`ControlPanelEntry`** (abstract, implements `IControlPanelEntry`) is an orchestrator: it owns one tab + one subwindow + a loader + a logic module + optional subentries (a tree), and drives their lifecycle. Subclasses don't construct the modules; they name the types:
+  - `SidebarTabType` (abstract), `SubwindowType` (null = none; if `IsMeantToHaveSubwindow`, the default `true`, is left on without one, the `Subwindow` getter throws), `LoaderType` (default `DefaultControlPanelEntryLoader`), `LogicType` (default `DefaultControlPanelEntryLogic`).
+  - `ControlPanelModuleFactory` makes one instance of each type with `Activator` (public parameterless constructor), logs an error and returns null if that fails, and the entry calls `Init` on a valid instance. An invalid logic type falls back to the default logic, so an entry always has a `Logic`.
+  - Subentries are declared by overriding `CreateSubentries()`, which runs once; `SubentryGroup` keeps the instances for the entry's lifetime and reinitializes them in place on reinit (identity is stable).
+  - Lifecycle: `Init()` → `PrepareLeftSidebarTab` → subentries → `PrepareSubwindow` → `PrepareLoader` → `PrepareLogic` (which calls `Logic.Init(this)`, so the logic is created last) → `Select()` → `HandleLoading()` (via the `IControlPanelEntryLoader`; skipped if `Logic.HasUnsavedChanges`, so loading never discards the user's edits) → `OnLoadingDone()` hands the loader's result to `Logic.Load` and shows the subwindow. `Dispose()` disposes the logic before the tab/subwindow it unsubscribes from. The `Prepare*` methods stay virtual for tests and special cases.
+  - The entry owns navigation (`ControlPanelOpened`, tab clicks → `EntryTabClicked`); its logic owns the state. `Tab`/`Subwindow` getters throw if accessed before `Init()`. Duplicate concrete entry types across the tree are rejected by `ControlPanelEntryTypeValidator`.
+- **Entry logic** (`Undo/ControlPanelEntryLogic.cs`, `IControlPanelEntryLogic`) owns the working state the user edits: subclass `ControlPanelEntryLogic` and implement `AdoptState(loadResult)` (copy what you need out of the loaded data so edits don't touch the saved data until the user saves). The base class provides `History` (an `UndoStack`), `HasUnsavedChanges` (derived: `!History.IsClean`, so undoing back to the saved state clears it), `Load` (adopts state, clears history, marks clean), `MarkSaved` (called on `ControlPanelSignals.SaveCompleted` for its entry), `CanUndo/CanRedo/Undo/Redo/CommitPendingEdits`, and `CreateEditCommand(FieldEdit)` (override to turn a user edit into a command; return null if it isn't yours). Only changes that go through `History` (`Push` executes the command, `Record` doesn't, for edits the UI already applied) count as changes. Logics raise their own events for the entry to route to the subwindow; they know nothing about UI types. `CharaBioLogic` (ComplexExample) is the reference implementation, `NotepadLogic` (SimpleExample) the minimal one.
+- **Undo/redo** lives in `Assets/Myceliarium/Editor/Undo`. It's per entry and independent of Unity's global Undo:
+  - `UndoStack` is plain C#: commands (`IUndoableCommand`, `DelegateCommand`), a capacity limit, and a clean point (`MarkClean`/`IsClean`, like Qt's `cleanIndex`; it becomes unreachable, so stays dirty, if a new command discards the redo branch holding it or the capacity trims it).
+  - `ControlPanelUndoShortcuts` registers Ctrl+Z, Ctrl+Shift+Z (and Ctrl+Y on Windows) with `[Shortcut]` using `typeof(ControlPanel)` as the context, so they take priority over Unity's global undo only while a panel is focused (`IShortcutContext` isn't public in 2022.3). `ControlPanel.HandleUndoRequest` blurs the focused element (which ends a typing session so it's on the history), then `ControlPanelUndoRouter.Route` sends the request to the displayed entry's logic, found through `IEntryLogicOwner` (which `ControlPanelEntry` implements, so lightweight `IControlPanelEntry` fakes needn't carry a logic). The shortcut is consumed even when there's nothing to undo.
+- **Edit tracking** (how user edits get onto the history): `ControlPanelSubwindow` implements `IEditReportingSubwindow` and attaches `IFieldEditTracker`s to its root (one class per control type, so the subwindow doesn't grow with each one). It raises `EditCommitted(FieldEdit)` with the old/new value and a `Context` object (`GetEditContext(field)`, asked when an edit starts, so undo still reaches the right object after the selection changes); the entry's logic gets it through `CreateEditCommand` and records the command. Two tracker bases:
+  - `FocusSessionEditTracker<TField, TValue>` for typing controls: everything between focus-in and focus-out is one edit. The edit finishes on a scheduler tick after focus-out, because delayed fields (`isDelayed`) commit their value in a default action that runs after the callbacks. `CommitPending` (used by undo) finishes it immediately. `TextField`, `IntegerField`, `LongField`, `FloatField`, `DoubleField`.
+  - `ImmediateChangeEditTracker<TField, TValue>` for controls where each user action is one edit, reported from the `ChangeEvent`: `ObjectField`, `Toggle`, `EnumField`, `DropdownField`.
+  - `CreateEditTrackers()` lists the defaults; override it (and call the base) to add more. Applying an undo/redo must use `SetValueWithoutNotify`, since a notifying change would be recorded as a new edit. Not covered yet: sliders, vector/rect/bounds fields, color/curve/gradient fields, and structural changes (list reorder, foldouts), which need explicit commands through `History.Push`.
 - **Discovery is reflection-based**: `ControlPanelEntryRegistry` (`[InitializeOnLoadMethod]`, re-run after assembly reload) uses `TypeCache` to find all `IControlPanelEntry` types; `ControlPanelEntryAttacher` attaches them to compatible panels. Adding a new entry class is enough; no manual registration.
 - **Save/load**: `SaveLoad/` holds loaders, savers and `CpEntrySaverReg`. Panels keep `_savers`/`_loaders` dictionaries mapping each saver/loader to its compatible entries; `ControlPanelSignals.SaveRequested` triggers `OnSaveRequested` on the matching panel only.
 - **`ControlPanelSignals`** is a static event bus (save/close requests, tab clicked) used to decouple entries from panels; `ControlPanelTabSelectionController` handles which tab is selected.
 - **`OwnEntry/`** is Myceliarium's own built-in entry (root + About), a reference implementation.
-- `Assets/MyceliariumDemos/RpgStats` is a demo consumer (own Core/Editor asmdefs, Actor/Trait). `Assets/Resources/AtMycelia/Myceliarium/Editor` holds the `UserExt` asmdef for user extensions. `Assets/TutorialInfo` is Unity template leftovers.
+- `Assets/MyceliariumDemos/SimpleExample` (a notepad entry) and `Assets/MyceliariumDemos/ComplexExample` (character bios: list, detail view, add/delete/edit with undo) are demo consumers of the module/logic/undo architecture. `Assets/MyceliariumDemos/RpgStats` is another demo consumer (own Core/Editor asmdefs, Actor/Trait). `Assets/Resources/AtMycelia/Myceliarium/Editor` holds the `UserExt` asmdef for user extensions. `Assets/TutorialInfo` is Unity template leftovers.
 
 Assemblies: `AtMycelia.Myceliarium.Core` (runtime-only, currently empty) and `AtMycelia.Myceliarium.Editor` (Editor-only).
+
+## Code Style
+- Adhere to the Law of Demeter
+- Consider the Single Responsibility Principle for refactors
+- When using ternary operators, have the condition, trueExpression and falseExpression be on separate lines
+  - Example: 
+  "_cleanPosition = _cleanPosition > 0 ? 
+                _cleanPosition - 1 : 
+                Unreachable;"
+  as opposed to 
+  "_cleanPosition = _cleanPosition > 0 ? _cleanPosition - 1 : Unreachable;"
+- Organization within source code
+  - Variables and properties that satisfy any of these criteria should be at or near the top of the source file:
+    - Marked with [SerializeField]
+    - Meant to be configurable in the code editor (such as constants or things like VersionText or LoaderType) 
+  - The purpose of the above point is to make config easier for designers and programmers alike
+  - As for variables, properties and functions that don't fulfill any of those criteria...
+    - Declare those right after they would first be used in their source file
+      - The idea is to make the code read more like a newspaper
+  - If a variable, property or function is not used within its owning class, put it at the bottom of the class's definition
+- Naming
+  - PascalCase for class/function/property/enum/enum-member names
+  - camelCase for public variables, local func variables, and func args
+  - camelCase (preceded by underscore) for private, protected, or internal variables

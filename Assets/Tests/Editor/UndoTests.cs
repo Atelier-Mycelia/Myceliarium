@@ -306,6 +306,73 @@ namespace AtMycelia.Myceliarium.Tests
         }
 
         [Test]
+        public void LongTracker_ChangedValue_ReportsBoxedLongs()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new LongFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+            var field = new LongField { value = 5_000_000_000L };
+
+            tracker.BeginEdit(field);
+            field.value = 6_000_000_000L;
+            tracker.CommitPending();
+
+            Assert.That(reported.Count, Is.EqualTo(1));
+            Assert.That(reported[0].OldValue, Is.EqualTo(5_000_000_000L));
+            Assert.That(reported[0].NewValue, Is.EqualTo(6_000_000_000L));
+        }
+
+        [Test]
+        public void FloatTracker_ChangedValue_ReportsBoxedFloats()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new FloatFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+            var field = new FloatField { value = 1.5f };
+
+            tracker.BeginEdit(field);
+            field.value = 2.25f;
+            tracker.CommitPending();
+
+            Assert.That(reported.Count, Is.EqualTo(1));
+            Assert.That(reported[0].OldValue, Is.EqualTo(1.5f));
+            Assert.That(reported[0].NewValue, Is.EqualTo(2.25f));
+        }
+
+        [Test]
+        public void DoubleTracker_ChangedValue_ReportsBoxedDoubles()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new DoubleFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+            var field = new DoubleField { value = 0.1 };
+
+            tracker.BeginEdit(field);
+            field.value = 0.2;
+            tracker.CommitPending();
+
+            Assert.That(reported.Count, Is.EqualTo(1));
+            Assert.That(reported[0].OldValue, Is.EqualTo(0.1));
+            Assert.That(reported[0].NewValue, Is.EqualTo(0.2));
+        }
+
+        [Test]
+        public void FloatTracker_ValueBackToOriginal_ReportsNothing()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new FloatFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+            var field = new FloatField { value = 1.5f };
+
+            tracker.BeginEdit(field);
+            field.value = 3f;
+            field.value = 1.5f;
+            tracker.CommitPending();
+
+            Assert.That(reported, Is.Empty);
+        }
+
+        [Test]
         public void ObjectTracker_Change_ReportsEditWithContext()
         {
             var reported = new List<FieldEdit>();
