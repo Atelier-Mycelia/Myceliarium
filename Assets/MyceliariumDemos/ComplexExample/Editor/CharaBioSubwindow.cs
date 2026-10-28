@@ -205,6 +205,7 @@ namespace ComplexExample
 				case "LastName": bio.LastName = (string)value; break;
 				case "Nickname": bio.NickName = (string)value; break;
 				case "Age": bio.Age = (int)value; break;
+				case "MugshotPicker": bio.Mugshot = value as Sprite; break;
 				case "Summary": bio.Summary = (string)value; break;
 				case "SexualHistory": bio.SexualHistory = (string)value; break;
 				default:

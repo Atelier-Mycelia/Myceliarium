@@ -382,7 +382,7 @@ namespace AtMycelia.Myceliarium
             // Ending the typing session first puts it on the entry's history, so the
             // undo below takes back what was just typed. It also means the next
             // keystroke starts a fresh edit instead of continuing a stale one.
-            bool nothingToWorkWith = rootVisualElement == null || 
+            bool nothingToWorkWith = rootVisualElement == null ||
             rootVisualElement.panel == null ||
             rootVisualElement.panel.focusController == null;
             if (nothingToWorkWith)

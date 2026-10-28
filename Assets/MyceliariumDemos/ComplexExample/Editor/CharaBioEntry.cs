@@ -107,7 +107,7 @@ namespace ComplexExample
 		}
 
 		/// <summary>
-		/// The user finished typing in one of the detail view's text or integer fields.
+		/// The user finished typing in one of the detail view's text, integer or object fields.
 		/// The view has already put the value into the bio, so this just records how to
 		/// switch between the old and new value.
 		/// </summary>

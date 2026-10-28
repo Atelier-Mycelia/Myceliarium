@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine.TestTools;
+using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
 namespace AtMycelia.Myceliarium.Tests
@@ -293,6 +294,42 @@ namespace AtMycelia.Myceliarium.Tests
             field.value = 21;
             field.value = 20;
             tracker.CommitPending();
+
+            Assert.That(reported, Is.Empty);
+        }
+
+        [Test]
+        public void ObjectTracker_Change_ReportsEditWithContext()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new ObjectFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => "the bio", reported.Add);
+            var field = new ObjectField();
+            var picked = UnityEngine.ScriptableObject.CreateInstance<UnityEngine.ScriptableObject>();
+
+            try
+            {
+                tracker.ReportChange(field, null, picked);
+
+                Assert.That(reported.Count, Is.EqualTo(1));
+                Assert.That(reported[0].OldValue, Is.Null);
+                Assert.That(reported[0].NewValue, Is.SameAs(picked));
+                Assert.That(reported[0].Context, Is.EqualTo("the bio"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(picked);
+            }
+        }
+
+        [Test]
+        public void ObjectTracker_SameObject_ReportsNothing()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new ObjectFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+
+            tracker.ReportChange(new ObjectField(), null, null);
 
             Assert.That(reported, Is.Empty);
         }
