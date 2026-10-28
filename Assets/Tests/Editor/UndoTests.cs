@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine.TestTools;
+using UnityEditor.UIElements;
 using UnityEngine.UIElements;
 
 namespace AtMycelia.Myceliarium.Tests
@@ -261,6 +262,116 @@ namespace AtMycelia.Myceliarium.Tests
             tracker.CommitPending();
 
             Assert.That(reported[0].Context, Is.EqualTo("first target"));
+        }
+
+        [Test]
+        public void IntegerTracker_ChangedValue_ReportsBoxedInts()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new IntegerFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+            var field = new IntegerField { value = 20 };
+
+            tracker.BeginEdit(field);
+            field.value = 2;
+            field.value = 25; // Several keystrokes, still one edit
+            tracker.CommitPending();
+
+            Assert.That(reported.Count, Is.EqualTo(1));
+            Assert.That(reported[0].OldValue, Is.EqualTo(20));
+            Assert.That(reported[0].NewValue, Is.EqualTo(25));
+        }
+
+        [Test]
+        public void IntegerTracker_ValueBackToOriginal_ReportsNothing()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new IntegerFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+            var field = new IntegerField { value = 20 };
+
+            tracker.BeginEdit(field);
+            field.value = 21;
+            field.value = 20;
+            tracker.CommitPending();
+
+            Assert.That(reported, Is.Empty);
+        }
+
+        [Test]
+        public void ObjectTracker_Change_ReportsEditWithContext()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new ObjectFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => "the bio", reported.Add);
+            var field = new ObjectField();
+            var picked = UnityEngine.ScriptableObject.CreateInstance<UnityEngine.ScriptableObject>();
+
+            try
+            {
+                tracker.ReportChange(field, null, picked);
+
+                Assert.That(reported.Count, Is.EqualTo(1));
+                Assert.That(reported[0].OldValue, Is.Null);
+                Assert.That(reported[0].NewValue, Is.SameAs(picked));
+                Assert.That(reported[0].Context, Is.EqualTo("the bio"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(picked);
+            }
+        }
+
+        [Test]
+        public void ToggleTracker_Change_ReportsBoxedBools()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new ToggleEditTracker();
+            tracker.Attach(new VisualElement(), field => "ctx", reported.Add);
+
+            tracker.ReportChange(new Toggle(), false, true);
+
+            Assert.That(reported.Count, Is.EqualTo(1));
+            Assert.That(reported[0].OldValue, Is.EqualTo(false));
+            Assert.That(reported[0].NewValue, Is.EqualTo(true));
+            Assert.That(reported[0].Context, Is.EqualTo("ctx"));
+        }
+
+        [Test]
+        public void ToggleTracker_SameValue_ReportsNothing()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new ToggleEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+
+            tracker.ReportChange(new Toggle(), true, true);
+
+            Assert.That(reported, Is.Empty);
+        }
+
+        [Test]
+        public void DropdownTracker_Change_ReportsStrings()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new DropdownFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+
+            tracker.ReportChange(new DropdownField(), "Red", "Blue");
+
+            Assert.That(reported[0].OldValue, Is.EqualTo("Red"));
+            Assert.That(reported[0].NewValue, Is.EqualTo("Blue"));
+        }
+
+        [Test]
+        public void ObjectTracker_SameObject_ReportsNothing()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new ObjectFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+
+            tracker.ReportChange(new ObjectField(), null, null);
+
+            Assert.That(reported, Is.Empty);
         }
 
         [Test]

@@ -107,6 +107,11 @@ namespace AtMycelia.Myceliarium
         protected virtual IEnumerable<IFieldEditTracker> CreateEditTrackers()
         {
             yield return new TextFieldEditTracker();
+            yield return new IntegerFieldEditTracker();
+            yield return new ObjectFieldEditTracker();
+            yield return new ToggleEditTracker();
+            yield return new EnumFieldEditTracker();
+            yield return new DropdownFieldEditTracker();
         }
 
         /// <summary>
@@ -131,10 +136,17 @@ namespace AtMycelia.Myceliarium
         {
             DisposeEditTrackers();
             _editTrackers.AddRange(CreateEditTrackers());
+            
             for (int i = 0; i < _editTrackers.Count; i++)
             {
-                _editTrackers[i].Attach(this, GetEditContext, edit => EditCommitted(edit));
+                var tracker = _editTrackers[i];
+                tracker.Attach(this, GetEditContext, RaiseEditCommitted);
             }
+        }
+
+        private void RaiseEditCommitted(FieldEdit edit)
+        {
+            EditCommitted(edit);
         }
 
         private void DisposeEditTrackers()
