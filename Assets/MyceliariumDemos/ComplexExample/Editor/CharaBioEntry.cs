@@ -9,13 +9,6 @@ namespace ComplexExample
 		public override string SortingName => "Chara Bios";
 		public override bool IsTopLevel => true;
 
-		private CharaBioSubwindow BioSubwindow => _subwindow as CharaBioSubwindow;
-
-		/// <summary>
-		/// Reference to the registry on disk.
-		/// </summary>
-		public CharaBioRegistry BioRegistry { get; private set; }
-
 		protected override void PrepareLoader()
 		{
 			Loader = new CharaBioLoader();
@@ -50,6 +43,28 @@ namespace ComplexExample
 			}
 		}
 
+		private void OnBioAddRequested()
+		{
+			var newBio = new CharaBio(); // Kept, so redoing brings back this same one
+			var command = new DelegateCommand(RegisterBio, UndoBioRegistration);
+			ExecuteUndoable(command);
+
+			void RegisterBio()
+			{
+				BioSubwindow.AddBio(newBio);
+				HasUnsavedChanges = true;
+			}
+
+			void UndoBioRegistration()
+			{
+				BioSubwindow.Remove(newBio);
+				BioSubwindow.Refresh();
+				HasUnsavedChanges = true;
+			}
+		}
+
+		private CharaBioSubwindow BioSubwindow => _subwindow as CharaBioSubwindow;
+
 		private void OnBioStateChanged(CharaBio baseState, CharaBio currentState)
 		{
 			if (!baseState.Equals(currentState))
@@ -63,21 +78,54 @@ namespace ComplexExample
 
 		protected override void OnControlPanelOpened(IControlPanel panel)
 		{
-			// This is a solution to a challenge. Best omit this code in the tutorial doc.
 			base.OnControlPanelOpened(panel);
 			HandleLoading();
 		}
 
 		private void OnDeleteBioRequested(CharaBio bio)
 		{
-			BioSubwindow.Remove(bio);
-			BioSubwindow.Refresh();
-			HasUnsavedChanges = true;
+			int index = BioSubwindow.IndexOf(bio);
+			if (index < 0)
+			{
+				return;
+			}
+
+			List<CharaBio> padding = null; // Blanks added to keep the minimum count
+			void DeleteBio()
+			{
+				padding = BioSubwindow.RemoveBio(bio);
+				HasUnsavedChanges = true;
+			}
+
+			void UndoBioDeletion()
+			{
+				BioSubwindow.RestoreBio(index, bio, padding);
+				HasUnsavedChanges = true;
+			}
+			var command = new DelegateCommand(DeleteBio, UndoBioDeletion);
+			ExecuteUndoable(command);
 		}
 
-		private void OnBioAddRequested()
+		/// <summary>
+		/// The user finished typing in one of the detail view's text fields. The
+		/// view has already put the text into the bio, so this just records how to
+		/// switch between the old and new text.
+		/// </summary>
+		protected override void OnSubwindowEdit(FieldEdit edit)
 		{
-			BioSubwindow.AddNewBioView();
+			if (!(edit.Context is CharaBio))
+			{
+				return;
+			}
+
+			var command = edit.ToCommand(ApplyTextEdit);
+			RecordUndoable(command);
+		}
+
+		private void ApplyTextEdit(FieldEdit edit, object value)
+		{
+			var bio = (CharaBio)edit.Context;
+			BioSubwindow.ApplyTextEdit(bio, edit.Field.name, (string)value);
 			HasUnsavedChanges = true;
 		}
 
@@ -89,6 +137,11 @@ namespace ComplexExample
 			Subwindow.RefreshFrom(BioRegistry);
 			Subwindow.Show();
 		}
+
+		/// <summary>
+		/// Reference to the registry on disk.
+		/// </summary>
+		public CharaBioRegistry BioRegistry { get; private set; }
 
 		protected override void SetCurrentStateAsBase()
 		{

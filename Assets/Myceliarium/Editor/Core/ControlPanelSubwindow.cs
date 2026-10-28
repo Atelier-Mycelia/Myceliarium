@@ -131,10 +131,17 @@ namespace AtMycelia.Myceliarium
         {
             DisposeEditTrackers();
             _editTrackers.AddRange(CreateEditTrackers());
+            
             for (int i = 0; i < _editTrackers.Count; i++)
             {
-                _editTrackers[i].Attach(this, GetEditContext, edit => EditCommitted(edit));
+                var tracker = _editTrackers[i];
+                tracker.Attach(this, GetEditContext, RaiseEditCommitted);
             }
+        }
+
+        private void RaiseEditCommitted(FieldEdit edit)
+        {
+            EditCommitted(edit);
         }
 
         private void DisposeEditTrackers()

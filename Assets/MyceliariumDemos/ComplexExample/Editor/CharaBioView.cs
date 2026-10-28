@@ -219,6 +219,15 @@ namespace ComplexExample
 
 		#endregion
 
+		/// <summary>
+		/// Re-shows the current bio's values in the fields. Unlike setting Bio, this
+		/// leaves the base snapshot alone.
+		/// </summary>
+		public void RefreshFromBio()
+		{
+			ApplyBioFieldsToSelf();
+		}
+
 		public CharaBio Bio
 		{
 			get => _bio;

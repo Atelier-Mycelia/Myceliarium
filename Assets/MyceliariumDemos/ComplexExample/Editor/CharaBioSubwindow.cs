@@ -18,6 +18,7 @@ namespace ComplexExample
 		private static readonly int _minBioCount = 10;
 		private static readonly float _entryHeight = 44f; // Twice the ListView default//
 		#endregion
+
 		public override void Init()
 		{
 			base.Init();
@@ -122,14 +123,17 @@ namespace ComplexExample
 
 			var label = (CharaBioListLabel)element;
 			var bio = _bios[index];
-			label.Text =GetDisplayNameFor(bio, index);
+			label.Text = GetDisplayNameFor(bio, index);
 		}
 
 		private string GetDisplayNameFor(CharaBio bio, int index)
 		{
 			string fullName = $"{bio.FirstName} {bio.LastName}".Trim();
-			string name = string.IsNullOrEmpty(fullName) ? "(Unnamed)" : fullName;
-			return $"{index + 1:D3}: {name}";
+			string name = string.IsNullOrEmpty(fullName) ? 
+			"(Unnamed)" : 
+			fullName;
+			string indexStr = $"{index + 1:D3}";
+			return $"{indexStr}: {name}";
 		}
 
 		public void Remove(CharaBio toRemove)
@@ -142,11 +146,92 @@ namespace ComplexExample
 			_entryListView.itemsSource = (IList)bios;
 		}
 
-		public void AddNewBioView()
+		public void AddBio(CharaBio bio)
 		{
-			var newBio = new CharaBio();
-			_bios.Add(newBio);
+			_bios.Add(bio);
 			_entryListView.RefreshItems();
+		}
+
+		public int IndexOf(CharaBio bio)
+		{
+			return _bios.IndexOf(bio);
+		}
+
+		/// <summary>
+		/// Removes the bio and refreshes. Since refreshing tops the list back up to the
+		/// minimum count with blank bios, returns the ones it added, so that undoing the
+		/// removal (RestoreBio) can take them back out.
+		/// </summary>
+		public List<CharaBio> RemoveBio(CharaBio bio)
+		{
+			_bios.Remove(bio);
+			int countWithoutPadding = _bios.Count;
+			Refresh();
+
+			var padding = new List<CharaBio>();
+			for (int i = countWithoutPadding; i < _bios.Count; i++)
+			{
+				padding.Add(_bios[i]);
+			}
+			return padding;
+		}
+
+		/// <summary>
+		/// Undoes RemoveBio: puts the bio back at its old index (and selects it) after
+		/// dropping the padding that the removal caused.
+		/// </summary>
+		public void RestoreBio(int index, CharaBio bio, IEnumerable<CharaBio> padding)
+		{
+			foreach (var blank in padding)
+			{
+				_bios.Remove(blank);
+			}
+
+			_bios.Insert(Mathf.Clamp(index, 0, _bios.Count), bio);
+			_lastSelectedIndex = _bios.IndexOf(bio);
+			Refresh();
+		}
+
+		/// <summary>
+		/// Puts the given text into the matching property of the bio and shows the result,
+		/// selecting the bio if it isn't the one on display. Used when applying undos and
+		/// redos of edits to the text fields.
+		/// </summary>
+		public void ApplyTextEdit(CharaBio bio, string fieldName, string value)
+		{
+			switch (fieldName)
+			{
+				case "FirstName": bio.FirstName = value; break;
+				case "LastName": bio.LastName = value; break;
+				case "Nickname": bio.NickName = value; break;
+				case "Summary": bio.Summary = value; break;
+				case "SexualHistory": bio.SexualHistory = value; break;
+				default:
+					Debug.LogWarning($"CharaBioSubwindow: No bio property is mapped " +
+						$"to the field '{fieldName}'.");
+					return;
+			}
+
+			int index = _bios.IndexOf(bio);
+			if (index >= 0 && index != _lastSelectedIndex)
+			{
+				_lastSelectedIndex = index;
+				_entryListView.SetSelection(index); // Shows the bio in the detail view
+			}
+
+			if (_detailView.Bio == bio)
+			{
+				_detailView.RefreshFromBio();
+			}
+			_entryListView.RefreshItems();
+		}
+
+		/// <summary>
+		/// The bio on display is what the text fields in the detail view are editing.
+		/// </summary>
+		protected override object GetEditContext(VisualElement field)
+		{
+			return _detailView?.Bio;
 		}
 
 		private void OnDeleteBioButtonClicked()
