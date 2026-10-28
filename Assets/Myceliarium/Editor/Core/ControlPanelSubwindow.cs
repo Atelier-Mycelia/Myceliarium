@@ -108,6 +108,9 @@ namespace AtMycelia.Myceliarium
         {
             yield return new TextFieldEditTracker();
             yield return new IntegerFieldEditTracker();
+            yield return new LongFieldEditTracker();
+            yield return new FloatFieldEditTracker();
+            yield return new DoubleFieldEditTracker();
             yield return new ObjectFieldEditTracker();
             yield return new ToggleEditTracker();
             yield return new EnumFieldEditTracker();

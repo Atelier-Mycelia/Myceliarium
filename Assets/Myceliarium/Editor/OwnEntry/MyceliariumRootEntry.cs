@@ -9,7 +9,7 @@ namespace AtMycelia.Myceliarium
         public override bool IsTopLevel => true;
 
         public override string SortingName => "Myceliarium";
-        public static readonly string VersionString = "v0.5.1";
+        public static readonly string VersionString = "v0.6.1";
 
         public override bool IsMeantToHaveSubwindow => false;
 

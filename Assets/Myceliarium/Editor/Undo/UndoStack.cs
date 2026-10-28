@@ -104,7 +104,9 @@ namespace AtMycelia.Myceliarium
                 _undoable.RemoveAt(0);
                 // Every position moves down by one, and the one before the oldest command
                 // can no longer be gotten back to.
-                _cleanPosition = _cleanPosition > 0 ? _cleanPosition - 1 : Unreachable;
+                _cleanPosition = _cleanPosition > 0 ? 
+                _cleanPosition - 1 : 
+                Unreachable;
             }
             _redoable.Clear();
             Changed();
