@@ -107,9 +107,9 @@ namespace ComplexExample
 		}
 
 		/// <summary>
-		/// The user finished typing in one of the detail view's text fields. The
-		/// view has already put the text into the bio, so this just records how to
-		/// switch between the old and new text.
+		/// The user finished typing in one of the detail view's text or integer fields.
+		/// The view has already put the value into the bio, so this just records how to
+		/// switch between the old and new value.
 		/// </summary>
 		protected override void OnSubwindowEdit(FieldEdit edit)
 		{
@@ -118,14 +118,14 @@ namespace ComplexExample
 				return;
 			}
 
-			var command = edit.ToCommand(ApplyTextEdit);
+			var command = edit.ToCommand(ApplyFieldEdit);
 			RecordUndoable(command);
 		}
 
-		private void ApplyTextEdit(FieldEdit edit, object value)
+		private void ApplyFieldEdit(FieldEdit edit, object value)
 		{
 			var bio = (CharaBio)edit.Context;
-			BioSubwindow.ApplyTextEdit(bio, edit.Field.name, (string)value);
+			BioSubwindow.ApplyEdit(bio, edit.Field.name, value);
 			HasUnsavedChanges = true;
 		}
 

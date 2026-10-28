@@ -264,6 +264,40 @@ namespace AtMycelia.Myceliarium.Tests
         }
 
         [Test]
+        public void IntegerTracker_ChangedValue_ReportsBoxedInts()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new IntegerFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+            var field = new IntegerField { value = 20 };
+
+            tracker.BeginEdit(field);
+            field.value = 2;
+            field.value = 25; // Several keystrokes, still one edit
+            tracker.CommitPending();
+
+            Assert.That(reported.Count, Is.EqualTo(1));
+            Assert.That(reported[0].OldValue, Is.EqualTo(20));
+            Assert.That(reported[0].NewValue, Is.EqualTo(25));
+        }
+
+        [Test]
+        public void IntegerTracker_ValueBackToOriginal_ReportsNothing()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new IntegerFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+            var field = new IntegerField { value = 20 };
+
+            tracker.BeginEdit(field);
+            field.value = 21;
+            field.value = 20;
+            tracker.CommitPending();
+
+            Assert.That(reported, Is.Empty);
+        }
+
+        [Test]
         public void FieldEdit_ToCommand_AppliesNewOnExecuteAndOldOnUndo()
         {
             var edit = new FieldEdit(new TextField(), null, "old", "new");

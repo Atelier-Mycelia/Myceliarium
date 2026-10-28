@@ -193,19 +193,20 @@ namespace ComplexExample
 		}
 
 		/// <summary>
-		/// Puts the given text into the matching property of the bio and shows the result,
-		/// selecting the bio if it isn't the one on display. Used when applying undos and
-		/// redos of edits to the text fields.
+		/// Puts the given value (a string, or an int for the age) into the matching
+		/// property of the bio and shows the result, selecting the bio if it isn't the
+		/// one on display. Used when applying undos and redos of edits to the fields.
 		/// </summary>
-		public void ApplyTextEdit(CharaBio bio, string fieldName, string value)
+		public void ApplyEdit(CharaBio bio, string fieldName, object value)
 		{
 			switch (fieldName)
 			{
-				case "FirstName": bio.FirstName = value; break;
-				case "LastName": bio.LastName = value; break;
-				case "Nickname": bio.NickName = value; break;
-				case "Summary": bio.Summary = value; break;
-				case "SexualHistory": bio.SexualHistory = value; break;
+				case "FirstName": bio.FirstName = (string)value; break;
+				case "LastName": bio.LastName = (string)value; break;
+				case "Nickname": bio.NickName = (string)value; break;
+				case "Age": bio.Age = (int)value; break;
+				case "Summary": bio.Summary = (string)value; break;
+				case "SexualHistory": bio.SexualHistory = (string)value; break;
 				default:
 					Debug.LogWarning($"CharaBioSubwindow: No bio property is mapped " +
 						$"to the field '{fieldName}'.");

@@ -107,6 +107,7 @@ namespace AtMycelia.Myceliarium
         protected virtual IEnumerable<IFieldEditTracker> CreateEditTrackers()
         {
             yield return new TextFieldEditTracker();
+            yield return new IntegerFieldEditTracker();
         }
 
         /// <summary>
