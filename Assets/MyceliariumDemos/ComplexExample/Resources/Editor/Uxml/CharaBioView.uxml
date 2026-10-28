@@ -14,6 +14,11 @@
 		<ui:VisualElement name="SecondInfoRow" class="info-row">
 			<ui:IntegerField label="Age" value="42" name="Age" class="first-row-entry" />
 		</ui:VisualElement>
+		<ui:VisualElement name="ThirdInfoRow" class="info-row">
+			<ui:Toggle label="Alive" value="true" name="IsAlive" class="first-row-entry" />
+			<ui:EnumField label="Alignment" name="Alignment" class="first-row-entry" />
+			<ui:DropdownField label="Occupation" name="Occupation" class="first-row-entry" />
+		</ui:VisualElement>
 		<ui:TextField label="Summary" value="Insert summary here" name="Summary" is-delayed="true" multiline="true" class="summary" />
 		<ui:TextField label="Sexual &#10;History" value="Depraved secrets go here" name="SexualHistory" is-delayed="true" multiline="true" class="sexual-history" />
 	</ui:VisualElement>

@@ -1,4 +1,5 @@
 using AtMycelia.Myceliarium;
+using System.Collections.Generic;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -48,11 +49,17 @@ namespace ComplexExample
 			_ageField = this.Q<IntegerField>("Age");
 			_summaryField = this.Q<TextField>("Summary");
 			_sexualHistoryField = this.Q<TextField>("SexualHistory");
+			_isAliveField = this.Q<Toggle>("IsAlive");
+			_alignmentField = this.Q<EnumField>("Alignment");
+			_occupationField = this.Q<DropdownField>("Occupation");
 		}
 
 		private VisualElement _mugshotField;
 		private TextField _firstNameField, _lastNameField, _nicknameField;
 		private IntegerField _ageField;
+		private Toggle _isAliveField;
+		private EnumField _alignmentField;
+		private DropdownField _occupationField;
 		private TextField _summaryField, _sexualHistoryField;
 		private ObjectField _mugshotPicker;
 
@@ -62,6 +69,9 @@ namespace ComplexExample
 				_nicknameField.isDelayed = _summaryField.isDelayed = 
 				_sexualHistoryField.isDelayed = false;
 			// ^We do this to ensure that the values are current by the time FocusOut fires
+
+			_alignmentField.Init(CharaAlignment.Neutral); // Sets the enum type and choices
+			_occupationField.choices = new List<string>(CharaBio.Occupations);
 		}
 
 		private void ApplyBioFieldsToSelf()
@@ -74,6 +84,9 @@ namespace ComplexExample
 				_ageField.SetValueWithoutNotify(_bio.Age);
 				_summaryField.SetValueWithoutNotify(_bio.Summary);
 				_sexualHistoryField.SetValueWithoutNotify(_bio.SexualHistory);
+				_isAliveField.SetValueWithoutNotify(_bio.IsAlive);
+				_alignmentField.SetValueWithoutNotify(_bio.Alignment);
+				_occupationField.SetValueWithoutNotify(_bio.Occupation);
 				ApplyMugshotToField(_bio.Mugshot);
 				this.name = $"{_bio.FirstName}_{_bio.LastName}_CharaBioView";
 			}
@@ -100,6 +113,9 @@ namespace ComplexExample
 			_ageField.SetValueWithoutNotify(0);
 			_summaryField.SetValueWithoutNotify(string.Empty);
 			_sexualHistoryField.SetValueWithoutNotify(string.Empty);
+			_isAliveField.SetValueWithoutNotify(true);
+			_alignmentField.SetValueWithoutNotify(CharaAlignment.Neutral);
+			_occupationField.SetValueWithoutNotify(CharaBio.DefaultOccupation);
 			ApplyMugshotToField(null);
 		}
 
@@ -116,6 +132,7 @@ namespace ComplexExample
 
 			SetSubsForFocusOuts(wantsSubsActive);
 			SetSubsForMugshotPicker(wantsSubsActive);
+			SetSubsForChoiceFields(wantsSubsActive);
 		}
 
 		private void OnSaveCompleted(IControlPanelEntry entry)
@@ -217,6 +234,44 @@ namespace ComplexExample
 			SignalStateChangeAsAppropriate();
 		}
 
+		#endregion
+
+		#region Toggle, Enum and Dropdown Fields
+		// These have no typing session to wait out, so unlike the text fields they
+		// write to the bio as soon as the user changes them.
+		private void SetSubsForChoiceFields(bool wantsSubsActive)
+		{
+			if (wantsSubsActive)
+			{
+				_isAliveField.RegisterValueChangedCallback(OnIsAliveChanged);
+				_alignmentField.RegisterValueChangedCallback(OnAlignmentChanged);
+				_occupationField.RegisterValueChangedCallback(OnOccupationChanged);
+			}
+			else
+			{
+				_isAliveField.UnregisterValueChangedCallback(OnIsAliveChanged);
+				_alignmentField.UnregisterValueChangedCallback(OnAlignmentChanged);
+				_occupationField.UnregisterValueChangedCallback(OnOccupationChanged);
+			}
+		}
+
+		private void OnIsAliveChanged(ChangeEvent<bool> evt)
+		{
+			_bio.IsAlive = evt.newValue;
+			SignalStateChangeAsAppropriate();
+		}
+
+		private void OnAlignmentChanged(ChangeEvent<System.Enum> evt)
+		{
+			_bio.Alignment = (CharaAlignment)evt.newValue;
+			SignalStateChangeAsAppropriate();
+		}
+
+		private void OnOccupationChanged(ChangeEvent<string> evt)
+		{
+			_bio.Occupation = evt.newValue;
+			SignalStateChangeAsAppropriate();
+		}
 		#endregion
 
 		/// <summary>

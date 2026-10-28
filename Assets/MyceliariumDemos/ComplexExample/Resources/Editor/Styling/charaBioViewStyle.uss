@@ -11,6 +11,8 @@
 	--first-row-entry-width: 150px;
 	--first-row-entry-height: 40px;
 
+	--info-entry-width: 227px; /* Matches the spacing the name fields ended up with */
+
 	--little-to-the-sides: 0px 5px 0px 5px;
 	--closer-to-name-label: -45px;
 	--summary-and-history-margin-left: -47px;
@@ -100,11 +102,50 @@ it from receiving clicks.
 	height: 50px;
 }
 
+/*
+Every entry in the rows of small fields (name, age, alive/alignment/occupation) gets the
+same fixed width. That keeps the columns lined up across rows, which wouldn't happen if
+each entry sized itself to its content (a toggle is much narrower than a text field).
+*/
+.first-row-entry
+{
+	width: var(--info-entry-width);
+	flex-grow: 0;
+	flex-shrink: 0;
+}
+
 .first-row-entry > #unity-text-input
 {
 	width: var(--first-row-entry-width);
 	height: var(--first-row-entry-height);
 	margin-left: var(--closer-to-name-label);
+}
+
+/*
+The same for the inputs of the other kinds of fields. Not done with a list of selectors
+because USS doesn't support those, and the enum field's input has a different class than
+the dropdown's anyway; every BaseField's input has this one.
+*/
+.first-row-entry > .unity-base-field__input
+{
+	width: var(--first-row-entry-width);
+	height: var(--first-row-entry-height);
+	margin-left: var(--closer-to-name-label);
+	flex-grow: 0;
+	/*
+	The popup fields' inputs otherwise get squeezed down to their content (the width
+	above is only a preferred one that flexbox is free to shrink), unlike the text inputs.
+	*/
+	flex-shrink: 0;
+	min-width: var(--first-row-entry-width);
+}
+
+/* Declared after the rule above, which would otherwise stretch the checkbox's holder. */
+.first-row-entry > .unity-toggle__input
+{
+	width: auto;
+	height: auto;
+	min-width: 0px;
 }
 
 .first-row-entry > Label

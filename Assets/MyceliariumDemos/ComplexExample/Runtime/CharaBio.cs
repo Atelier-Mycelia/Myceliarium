@@ -1,8 +1,16 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace ComplexExample
 {
+	public enum CharaAlignment
+	{
+		Lawful,
+		Neutral,
+		Chaotic,
+	}
+
 	/// <summary>
 	/// Holds information for a character's biography, including name, age,
 	/// and other relevant details.
@@ -18,7 +26,37 @@ namespace ComplexExample
 		[Tooltip("A brief summary of the character's background or personality.")]
 		[SerializeField] protected string _summary = string.Empty;
 		[SerializeField] protected string _sexualHistory = string.Empty; // Because why not?
-		
+		[SerializeField] protected bool _isAlive = true;
+		[SerializeField] protected CharaAlignment _alignment = CharaAlignment.Neutral;
+		[SerializeField] protected string _occupation = DefaultOccupation;
+
+		/// <summary>
+		/// What the occupation dropdown offers. The first one is the default.
+		/// </summary>
+		public static readonly IReadOnlyList<string> Occupations = new[]
+		{
+			"Unemployed", "Adventurer", "Merchant", "Scholar", "Soldier", "Thief", "Healer",
+		};
+		public static string DefaultOccupation => Occupations[0];
+
+		public virtual bool IsAlive
+		{
+			get { return _isAlive; }
+			set { _isAlive = value; }
+		}
+
+		public virtual CharaAlignment Alignment
+		{
+			get { return _alignment; }
+			set { _alignment = value; }
+		}
+
+		public virtual string Occupation
+		{
+			get { return _occupation; }
+			set { _occupation = value; }
+		}
+
 		public virtual Sprite Mugshot         
 		{
 			get { return _mugshot; }
@@ -70,6 +108,9 @@ namespace ComplexExample
 			_age = 0;
 			_summary = string.Empty;
 			_sexualHistory = string.Empty;
+			_isAlive = true;
+			_alignment = CharaAlignment.Neutral;
+			_occupation = DefaultOccupation;
 		}
 
 		public CharaBio(CharaBio other)
@@ -91,6 +132,9 @@ namespace ComplexExample
 			_age = other._age;
 			_summary = other._summary;
 			_sexualHistory = other._sexualHistory;
+			_isAlive = other._isAlive;
+			_alignment = other._alignment;
+			_occupation = other._occupation;
 		}
 
 		public bool Equals(CharaBio other)
@@ -102,7 +146,10 @@ namespace ComplexExample
 				   _nickName == other._nickName &&
 				   _age == other._age &&
 				   _summary == other._summary &&
-				   _sexualHistory == other._sexualHistory;
+				   _sexualHistory == other._sexualHistory &&
+				   _isAlive == other._isAlive &&
+				   _alignment == other._alignment &&
+				   _occupation == other._occupation;
 		}
 	}
 }

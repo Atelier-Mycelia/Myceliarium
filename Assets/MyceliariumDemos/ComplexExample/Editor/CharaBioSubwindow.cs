@@ -206,6 +206,9 @@ namespace ComplexExample
 				case "Nickname": bio.NickName = (string)value; break;
 				case "Age": bio.Age = (int)value; break;
 				case "MugshotPicker": bio.Mugshot = value as Sprite; break;
+				case "IsAlive": bio.IsAlive = (bool)value; break;
+				case "Alignment": bio.Alignment = (CharaAlignment)value; break;
+				case "Occupation": bio.Occupation = (string)value; break;
 				case "Summary": bio.Summary = (string)value; break;
 				case "SexualHistory": bio.SexualHistory = (string)value; break;
 				default:

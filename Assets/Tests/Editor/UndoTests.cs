@@ -323,6 +323,46 @@ namespace AtMycelia.Myceliarium.Tests
         }
 
         [Test]
+        public void ToggleTracker_Change_ReportsBoxedBools()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new ToggleEditTracker();
+            tracker.Attach(new VisualElement(), field => "ctx", reported.Add);
+
+            tracker.ReportChange(new Toggle(), false, true);
+
+            Assert.That(reported.Count, Is.EqualTo(1));
+            Assert.That(reported[0].OldValue, Is.EqualTo(false));
+            Assert.That(reported[0].NewValue, Is.EqualTo(true));
+            Assert.That(reported[0].Context, Is.EqualTo("ctx"));
+        }
+
+        [Test]
+        public void ToggleTracker_SameValue_ReportsNothing()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new ToggleEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+
+            tracker.ReportChange(new Toggle(), true, true);
+
+            Assert.That(reported, Is.Empty);
+        }
+
+        [Test]
+        public void DropdownTracker_Change_ReportsStrings()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new DropdownFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+
+            tracker.ReportChange(new DropdownField(), "Red", "Blue");
+
+            Assert.That(reported[0].OldValue, Is.EqualTo("Red"));
+            Assert.That(reported[0].NewValue, Is.EqualTo("Blue"));
+        }
+
+        [Test]
         public void ObjectTracker_SameObject_ReportsNothing()
         {
             var reported = new List<FieldEdit>();
