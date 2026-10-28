@@ -1,3 +1,5 @@
+using System;
+
 namespace AtMycelia.Myceliarium
 {
     public sealed class MyceliariumAboutEntry : ControlPanelEntry, IAtMyceliaControlPanelEntry
@@ -9,17 +11,8 @@ namespace AtMycelia.Myceliarium
 
         public override bool IsMeantToHaveSubwindow => true;
 
-        protected override void PrepareLeftSidebarTab()
-        {
-            Tab = new MyceliariumAboutTab();
-            Tab.Init();
-        }
-
-        protected override void PrepareSubwindow()
-        {
-            _subwindow ??= new MyceliariumAboutSubwindow();
-            _subwindow.Init();
-        }
+        protected override Type SidebarTabType => typeof(MyceliariumAboutTab);
+        protected override Type SubwindowType => typeof(MyceliariumAboutSubwindow);
 
         public override void Select()
         {

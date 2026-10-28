@@ -140,6 +140,7 @@ namespace AtMycelia.Myceliarium.Tests
             public bool IsInitted => false;
             public bool HasSubentries => false;
             public bool HasUnsavedChanges => false;
+            public IControlPanelEntryLoader Loader => null;
 
             public void Dispose() { }
 
@@ -163,6 +164,7 @@ namespace AtMycelia.Myceliarium.Tests
             public bool IsInitted => false;
             public bool HasSubentries => false;
             public bool HasUnsavedChanges => false;
+            public IControlPanelEntryLoader Loader => null;
 
             public void Dispose() { }
 

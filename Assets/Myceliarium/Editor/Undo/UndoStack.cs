@@ -73,13 +73,7 @@ namespace AtMycelia.Myceliarium
             }
 
             command.Execute();
-            _undoable.Add(command);
-            if (_undoable.Count > _capacity)
-            {
-                _undoable.RemoveAt(0);
-            }
-            _redoable.Clear();
-            Changed();
+            AddUndoable(command);
         }
 
         /// <summary>
@@ -93,14 +87,52 @@ namespace AtMycelia.Myceliarium
                 throw new ArgumentNullException(nameof(command));
             }
 
+            AddUndoable(command);
+        }
+
+        private void AddUndoable(IUndoableCommand command)
+        {
+            // Discarding the redoable commands also discards the positions after them
+            if (_cleanPosition > _undoable.Count)
+            {
+                _cleanPosition = Unreachable;
+            }
+
             _undoable.Add(command);
             if (_undoable.Count > _capacity)
             {
                 _undoable.RemoveAt(0);
+                // Every position moves down by one, and the one before the oldest command
+                // can no longer be gotten back to.
+                _cleanPosition = _cleanPosition > 0 ? _cleanPosition - 1 : Unreachable;
             }
             _redoable.Clear();
             Changed();
         }
+
+        #region Clean point
+        // The position in the history (how many commands are applied) at which the state
+        // was last known to be saved. Undoing or redoing back to it makes the stack clean
+        // again; anything that makes that position impossible to get back to leaves it
+        // dirty until the next MarkClean.
+        private const int Unreachable = -1;
+        private int _cleanPosition;
+
+        /// <summary>
+        /// Whether the state is the one that was last marked clean (initially, the state
+        /// before any commands).
+        /// </summary>
+        public bool IsClean => _cleanPosition == _undoable.Count;
+
+        /// <summary>
+        /// Says that the state as it is now is the saved one.
+        /// </summary>
+        public void MarkClean()
+        {
+            _cleanPosition = _undoable.Count;
+            Changed();
+        }
+        #endregion
 
         /// <returns>Whether anything was undone.</returns>
         public bool Undo()
@@ -136,6 +168,11 @@ namespace AtMycelia.Myceliarium
             return true;
         }
 
+        /// <summary>
+        /// Forgets all commands. The state itself isn't touched, so a clean stack stays
+        /// clean, while a dirty one stays dirty (until MarkClean) since there's no longer
+        /// a way back to the clean state.
+        /// </summary>
         public void Clear()
         {
             if (!CanUndo && !CanRedo)
@@ -143,6 +180,7 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
+            _cleanPosition = IsClean ? 0 : Unreachable;
             _undoable.Clear();
             _redoable.Clear();
             Changed();

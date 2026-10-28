@@ -167,7 +167,8 @@ namespace AtMycelia.Myceliarium.Tests
             public override bool IsMeantToHaveSubwindow => false;
             public override string SortingName => nameof(RootEntry);
 
-            protected override void PrepareLeftSidebarTab() => Tab = new FakeTab();
+            protected override Type SidebarTabType => typeof(FakeTab);
+            protected override void PrepareMainSidebarTab() => Tab = new FakeTab();
 
             protected override IEnumerable<IControlPanelEntry> CreateSubentries()
             {
@@ -179,7 +180,8 @@ namespace AtMycelia.Myceliarium.Tests
         {
             public override string SortingName => nameof(ChildEntry);
 
-            protected override void PrepareLeftSidebarTab() => Tab = new FakeTab();
+            protected override Type SidebarTabType => typeof(FakeTab);
+            protected override void PrepareMainSidebarTab() => Tab = new FakeTab();
 
             protected override void PrepareSubwindow()
             {

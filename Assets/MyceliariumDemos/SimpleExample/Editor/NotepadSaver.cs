@@ -18,7 +18,7 @@ namespace SimpleExample
             var contentsOnDisk = SOUtils.EnsureSOExists<NoteContents>("SimpleExample", 
                 "NotepadContents");
             var entry = toSaveFor as NotepadEntry;
-            contentsOnDisk.Text = entry.WorkingState.Text;
+            contentsOnDisk.Text = entry.WorkingText;
 
             contentsOnDisk.MarkDirtyAndSave();
             onComplete?.Invoke();

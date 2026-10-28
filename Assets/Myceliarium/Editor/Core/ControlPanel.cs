@@ -66,10 +66,10 @@ namespace AtMycelia.Myceliarium
             _saveCoordinator.SaveAll();
         }
 
+        private readonly SaveCoordinator _saveCoordinator = new SaveCoordinator();
+
         protected IReadOnlyDictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>> Savers =>
             _saveCoordinator.Savers;
-
-        private readonly SaveCoordinator _saveCoordinator = new SaveCoordinator();
 
         protected virtual void OnCloseRequested(IControlPanel cPanel)
         {
@@ -97,6 +97,15 @@ namespace AtMycelia.Myceliarium
             // Fresh entries start out clean without signalling anything, so check again
             _unsavedChangesTracker?.Refresh();
         }
+
+        private readonly EntryCollection _entries = new EntryCollection();
+
+        private readonly ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
+
+        private UnsavedChangesTracker _unsavedChangesTracker;
+
+        private readonly ControlPanelTabSelectionController _selectionController =
+            new ControlPanelTabSelectionController();
 
         /// <summary>
         /// Called when this panel's footer reports a language change. Does nothing by
@@ -147,13 +156,6 @@ namespace AtMycelia.Myceliarium
             RootPrep();
         }
 
-        private void AbortInit()
-        {
-            UnityDebug.LogError($"{DisplayName} failed to initialize. " +
-                $"Aborting GUI creation.");
-            this.Close();
-        }
-
         /// <summary>
         /// By default, this func has success set to true. When overriding this, you
         /// might want it to be false if some critical initialization fails, so that
@@ -178,6 +180,141 @@ namespace AtMycelia.Myceliarium
         {
             minSize = MinWindowSize;
             maxSize = MaxWindowSize;
+        }
+
+        private void AbortInit()
+        {
+            UnityDebug.LogError($"{DisplayName} failed to initialize. " +
+                $"Aborting GUI creation.");
+            this.Close();
+        }
+
+        protected virtual void RootPrep()
+        {
+            TryAddBaseWindow(out bool success);
+            if (!success)
+            {
+                AbortInit();
+                return;
+            }
+
+            RegisterVisualElements();
+            SetLocalSubs(false);
+            SetLocalSubs(true);
+            DoEntryPreps();
+            RefreshFooter();
+            PrepUnsavedChangesSync();
+        }
+
+        private void TryAddBaseWindow(out bool success)
+        {
+            success = false;
+
+            ValidateUxml(out success, out VisualTreeAsset vTreeAsset);
+            if (!success)
+            {
+                return;
+            }
+
+            VisualElement baseWindow = vTreeAsset.Instantiate();
+            Root.Add(baseWindow);
+            success = true;
+        }
+
+        private void ValidateUxml(out bool success, out VisualTreeAsset vTreeAsset)
+        {
+            vTreeAsset = Resources.Load<VisualTreeAsset>(PathToUxml);
+            bool loaded = vTreeAsset != null;
+            success = loaded;
+            if (!loaded)
+            {
+                UnityDebug.LogError($"Failed to load uxml at path {PathToUxml}. " +
+                    $"Please ensure the path is correct and the file exists.");
+            }
+        }
+
+        protected virtual void RegisterVisualElements()
+        {
+            _bottomBar = Root.Q<VisualElement>("BottomBar");
+        }
+
+        protected VisualElement _bottomBar;
+
+        private void DoEntryPreps()
+        {
+            PrepAttacher();
+            RegisterSubentries();
+            PrepSelectionController();
+            RefreshSaverCache();
+        }
+
+        private void PrepAttacher()
+        {
+            _attacher.Dispose();
+            _attacher.Init(rootVisualElement);
+
+            _entries.SortTopLevel(Sort);
+            _attacher.Attach(_entries.TopLevel);
+        }
+
+        /// <summary>
+        /// Default implementation sorts the entries by SortingOrder first,
+        /// then by SortingName. Subclasses can override to provide
+        /// different sorting logic for the entries before they are
+        /// attached to the control panel.
+        /// </summary>
+        protected virtual void Sort(IList<IControlPanelEntry> entries)
+        {
+            EntryCollection.SortByDefault(entries);
+        }
+
+        protected virtual void RegisterSubentries()
+        {
+            _entries.RebuildFlattened();
+        }
+
+        private void PrepSelectionController()
+        {
+            _selectionController.Dispose();
+            _selectionController.Init(_entries);
+        }
+
+        protected virtual void RefreshSaverCache()
+        {
+            _saveCoordinator.Refresh(SaverSuperType, _entries.AllWithSubwindows);
+        }
+
+        protected virtual void RefreshFooter()
+        {
+            _footer?.Dispose();
+            _footer = ControlPanelFooterRegistry.CreateFooterOfType(FooterSuperType);
+            if (_footer == null)
+            {
+                UnityDebug.LogError($"Failed to create footer of type {FooterSuperType}. " +
+                    $"Please ensure that a concrete class implementing that interface exists.");
+                return;
+            }
+            _footer.Init(this);
+        }
+
+        protected IControlPanelFooter _footer;
+
+        /// <summary>
+        /// Unity reads hasUnsavedChanges when the window is closed through its own X button
+        /// (prompting Save/Discard/Cancel), so it has to be current before that happens.
+        /// The tracker keeps it in step by reacting to the entries' signals.
+        /// </summary>
+        private void PrepUnsavedChangesSync()
+        {
+            _unsavedChangesTracker?.Dispose();
+            
+            _unsavedChangesTracker = new UnsavedChangesTracker(_entries, UpdateHasUnsavedChanges);
+            void UpdateHasUnsavedChanges(bool dirty)
+            {
+                hasUnsavedChanges = dirty;
+            }
+
+            _unsavedChangesTracker.Start();
         }
 
         protected virtual void RefreshTopLevelEntryCache()
@@ -207,147 +344,17 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         protected virtual Type FooterSuperType => typeof(IControlPanelFooter);
 
-        protected virtual void RefreshFooter()
-        {
-            _footer?.Dispose();
-            _footer = ControlPanelFooterRegistry.CreateFooterOfType(FooterSuperType);
-            if (_footer == null)
-            {
-                UnityDebug.LogError($"Failed to create footer of type {FooterSuperType}. " +
-                    $"Please ensure that a concrete class implementing that interface exists.");
-                return;
-            }
-            _footer.Init(this);
-        }
-
-        protected IControlPanelFooter _footer;
-
-        protected virtual void RefreshSaverCache()
-        {
-            _saveCoordinator.Refresh(SaverSuperType, _entries.AllWithSubwindows);
-        }
-
-        protected virtual void RootPrep()
-        {
-            TryAddBaseWindow(out bool success);
-            if (!success)
-            {
-                AbortInit();
-                return;
-            }
-
-            RegisterVisualElements();
-            SetLocalSubs(false);
-            SetLocalSubs(true);
-            DoEntryPreps();
-            RefreshFooter();
-            PrepUnsavedChangesSync();
-        }
-
-        #region Registering base window
-        private void TryAddBaseWindow(out bool success)
-        {
-            success = false;
-
-            ValidateUxml(out success, out VisualTreeAsset vTreeAsset);
-            if (!success)
-            {
-                return;
-            }
-
-            VisualElement baseWindow = vTreeAsset.Instantiate();
-            Root.Add(baseWindow);
-            success = true;
-        }
-
-        private void ValidateUxml(out bool success, out VisualTreeAsset vTreeAsset)
-        {
-            vTreeAsset = Resources.Load<VisualTreeAsset>(PathToUxml);
-            bool loaded = vTreeAsset != null;
-            success = loaded;
-            if (!loaded)
-            {
-                UnityDebug.LogError($"Failed to load uxml at path {PathToUxml}. " +
-                    $"Please ensure the path is correct and the file exists.");
-            }
-        }
-        #endregion
-
         public virtual VisualElement Root => rootVisualElement;
 
         public IReadOnlyList<IControlPanelEntry> TopLevelEntries => _entries.TopLevel;
-        protected virtual void RegisterVisualElements()
-        {
-            _bottomBar = Root.Q<VisualElement>("BottomBar");
-        }
-
-        protected VisualElement _bottomBar;
-
-        /// <summary>
-        /// Unity reads hasUnsavedChanges when the window is closed through its own X button
-        /// (prompting Save/Discard/Cancel), so it has to be current before that happens.
-        /// The tracker keeps it in step by reacting to the entries' signals.
-        /// </summary>
-        private void PrepUnsavedChangesSync()
-        {
-            _unsavedChangesTracker?.Dispose();
-            _unsavedChangesTracker = new UnsavedChangesTracker(_entries,
-                dirty => hasUnsavedChanges = dirty);
-            _unsavedChangesTracker.Start();
-        }
-
-        private UnsavedChangesTracker _unsavedChangesTracker;
-
-
-        #region Entry Preps
-        private void DoEntryPreps()
-        {
-            PrepAttacher();
-            RegisterSubentries();
-            PrepSelectionController();
-            RefreshSaverCache();
-        }
-
-        private void PrepAttacher()
-        {
-            _attacher.Dispose();
-            _attacher.Init(rootVisualElement);
-
-            _entries.SortTopLevel(Sort);
-            _attacher.Attach(_entries.TopLevel);
-        }
-
-        private void PrepSelectionController()
-        {
-            _selectionController.Dispose();
-            _selectionController.Init(_entries);
-        }
-
-        private readonly ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
-        private readonly ControlPanelTabSelectionController _selectionController =
-            new ControlPanelTabSelectionController();
-
-        /// <summary>
-        /// Default implementation sorts the entries by SortingOrder first,
-        /// then by SortingName. Subclasses can override to provide
-        /// different sorting logic for the entries before they are
-        /// attached to the control panel.
-        /// </summary>
-        protected virtual void Sort(IList<IControlPanelEntry> entries)
-        {
-            EntryCollection.SortByDefault(entries);
-        }
-
-        protected virtual void RegisterSubentries()
-        {
-            _entries.RebuildFlattened();
-        }
-
         protected IReadOnlyList<IControlPanelEntry> AllEntriesWithSubwindows =>
             _entries.AllWithSubwindows;
 
-        private readonly EntryCollection _entries = new EntryCollection();
-        #endregion
+        protected virtual void OnDisable()
+        {
+            SetGlobalSubs(false);
+            SetLocalSubs(false);
+        }
 
         protected virtual void OnDestroy()
         {
@@ -360,12 +367,6 @@ namespace AtMycelia.Myceliarium
             _footer = null;
 
             _unsavedChangesTracker?.Dispose();
-        }
-
-        protected virtual void OnDisable()
-        {
-            SetGlobalSubs(false);
-            SetLocalSubs(false);
         }
 
         public bool Contains(IControlPanelEntry entry)
