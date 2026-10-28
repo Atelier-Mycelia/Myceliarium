@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace AtMycelia.Myceliarium
@@ -8,15 +9,11 @@ namespace AtMycelia.Myceliarium
         public override bool IsTopLevel => true;
 
         public override string SortingName => "Myceliarium";
-        public static readonly string VersionString = "v0.3.2";
+        public static readonly string VersionString = "v0.6.1";
 
         public override bool IsMeantToHaveSubwindow => false;
 
-        protected override void PrepareLeftSidebarTab()
-        {
-            Tab = new MyceliariumRootTab();
-            Tab.Init();
-        }
+        protected override Type SidebarTabType => typeof(MyceliariumRootTab);
 
         protected override IEnumerable<IControlPanelEntry> CreateSubentries()
         {

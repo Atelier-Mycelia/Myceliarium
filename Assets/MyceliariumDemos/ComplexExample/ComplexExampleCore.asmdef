@@ -1,0 +1,18 @@
+{
+    "name": "ComplexExampleCore",
+    "rootNamespace": "",
+    "references": [
+        "GUID:2cb4e7e4862ca4247954da8e50e0090d",
+        "GUID:315f594c192fac84b811333747e5ecb0",
+        "GUID:545d5e6f2e39eb840a1084bebacdc8e2"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

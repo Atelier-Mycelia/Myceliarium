@@ -1,0 +1,517 @@
+using System.Collections.Generic;
+using NUnit.Framework;
+using UnityEngine.TestTools;
+using UnityEditor.UIElements;
+using UnityEngine.UIElements;
+
+namespace AtMycelia.Myceliarium.Tests
+{
+    public class UndoTests
+    {
+        private sealed class Counter
+        {
+            public int Value;
+
+            public IUndoableCommand Add(int amount)
+            {
+                return new DelegateCommand(() => Value += amount, () => Value -= amount);
+            }
+        }
+
+        private sealed class UndoTestEntry : ControlPanelEntry
+        {
+            public UndoTestEntry()
+            {
+                Init(); // Which is when its logic gets made
+            }
+
+            public override string SortingName => "UndoTest";
+            public override bool IsMeantToHaveSubwindow => false;
+            protected override System.Type SidebarTabType => null;
+            protected override void PrepareMainSidebarTab() { }
+
+            public void Do(IUndoableCommand command) => Logic.History.Push(command);
+        }
+
+        #region UndoStack
+        [Test]
+        public void Push_ExecutesAndEnablesUndo()
+        {
+            var stack = new UndoStack();
+            var counter = new Counter();
+
+            stack.Push(counter.Add(5));
+
+            Assert.That(counter.Value, Is.EqualTo(5));
+            Assert.That(stack.CanUndo, Is.True);
+            Assert.That(stack.CanRedo, Is.False);
+        }
+
+        [Test]
+        public void UndoThenRedo_RestoresState()
+        {
+            var stack = new UndoStack();
+            var counter = new Counter();
+            stack.Push(counter.Add(5));
+
+            Assert.That(stack.Undo(), Is.True);
+            Assert.That(counter.Value, Is.EqualTo(0));
+            Assert.That(stack.CanRedo, Is.True);
+
+            Assert.That(stack.Redo(), Is.True);
+            Assert.That(counter.Value, Is.EqualTo(5));
+        }
+
+        [Test]
+        public void Push_AfterUndo_DiscardsRedoHistory()
+        {
+            var stack = new UndoStack();
+            var counter = new Counter();
+            stack.Push(counter.Add(1));
+            stack.Undo();
+
+            stack.Push(counter.Add(10));
+
+            Assert.That(stack.CanRedo, Is.False);
+        }
+
+        [Test]
+        public void UndoAndRedo_WhenEmpty_ReturnFalse()
+        {
+            var stack = new UndoStack();
+
+            Assert.That(stack.Undo(), Is.False);
+            Assert.That(stack.Redo(), Is.False);
+        }
+
+        [Test]
+        public void Push_BeyondCapacity_DropsOldest()
+        {
+            var stack = new UndoStack(2);
+            var counter = new Counter();
+            stack.Push(counter.Add(1));
+            stack.Push(counter.Add(10));
+            stack.Push(counter.Add(100));
+
+            stack.Undo();
+            stack.Undo();
+
+            Assert.That(stack.CanUndo, Is.False);
+            Assert.That(counter.Value, Is.EqualTo(1)); // The oldest one was forgotten
+        }
+
+        [Test]
+        public void Push_CommandThatThrows_IsNotRecorded()
+        {
+            var stack = new UndoStack();
+            var bad = new DelegateCommand(() => throw new System.InvalidOperationException(), () => { });
+
+            Assert.Throws<System.InvalidOperationException>(() => stack.Push(bad));
+
+            Assert.That(stack.CanUndo, Is.False);
+        }
+
+        [Test]
+        public void Clear_RemovesBothHistories_AndRaisesChanged()
+        {
+            var stack = new UndoStack();
+            var counter = new Counter();
+            stack.Push(counter.Add(1));
+            stack.Push(counter.Add(1));
+            stack.Undo();
+            int changes = 0;
+            stack.Changed += () => changes++;
+
+            stack.Clear();
+
+            Assert.That(stack.CanUndo, Is.False);
+            Assert.That(stack.CanRedo, Is.False);
+            Assert.That(changes, Is.EqualTo(1));
+        }
+        #endregion
+
+        #region Default entry logic
+        [Test]
+        public void Entry_WithNoUndoableState_CannotUndoOrRedo()
+        {
+            var entry = new UndoTestEntry();
+
+            Assert.That(entry.Logic.CanUndo, Is.False);
+            Assert.That(entry.Logic.CanRedo, Is.False);
+        }
+
+        [Test]
+        public void Entry_UndoWithNothingToUndo_LogsWarning()
+        {
+            var entry = new UndoTestEntry();
+
+            LogAssert.Expect(UnityEngine.LogType.Warning, new System.Text.RegularExpressions.Regex("undo"));
+            LogAssert.Expect(UnityEngine.LogType.Warning, new System.Text.RegularExpressions.Regex("redo"));
+
+            entry.Logic.Undo();
+            entry.Logic.Redo();
+        }
+
+        [Test]
+        public void Entry_CommandPushedOnTheLogicsHistory_IsUndoable()
+        {
+            var entry = new UndoTestEntry();
+            var counter = new Counter();
+
+            entry.Do(counter.Add(3));
+            entry.Logic.Undo();
+
+            Assert.That(counter.Value, Is.EqualTo(0));
+            Assert.That(entry.Logic.CanRedo, Is.True);
+        }
+        #endregion
+
+        #region UndoStack.Record
+        [Test]
+        public void Record_DoesNotExecute_ButCanBeUndone()
+        {
+            var stack = new UndoStack();
+            var counter = new Counter { Value = 5 }; // As if the edit already happened
+
+            stack.Record(counter.Add(5));
+
+            Assert.That(counter.Value, Is.EqualTo(5));
+            stack.Undo();
+            Assert.That(counter.Value, Is.EqualTo(0));
+        }
+        #endregion
+
+        #region TextFieldEditTracker
+        private static TextFieldEditTracker AttachTracker(List<FieldEdit> reported,
+            object context = null)
+        {
+            var tracker = new TextFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => context, reported.Add);
+            return tracker;
+        }
+
+        [Test]
+        public void TextTracker_ChangedValue_ReportsOneEditWithOldAndNew()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = AttachTracker(reported);
+            var field = new TextField { value = "a" };
+
+            tracker.BeginEdit(field);
+            field.value = "ab";
+            field.value = "abc"; // Several keystrokes, still one edit
+            tracker.CommitPending();
+
+            Assert.That(reported.Count, Is.EqualTo(1));
+            Assert.That(reported[0].OldValue, Is.EqualTo("a"));
+            Assert.That(reported[0].NewValue, Is.EqualTo("abc"));
+            Assert.That(reported[0].Field, Is.SameAs(field));
+        }
+
+        [Test]
+        public void TextTracker_UnchangedValue_ReportsNothing()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = AttachTracker(reported);
+            var field = new TextField { value = "a" };
+
+            tracker.BeginEdit(field);
+            field.value = "b";
+            field.value = "a";
+            tracker.CommitPending();
+
+            Assert.That(reported, Is.Empty);
+        }
+
+        [Test]
+        public void TextTracker_CommitPendingTwice_ReportsOnce()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = AttachTracker(reported);
+            var field = new TextField { value = "a" };
+            tracker.BeginEdit(field);
+            field.value = "b";
+
+            tracker.CommitPending();
+            tracker.CommitPending();
+
+            Assert.That(reported.Count, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void TextTracker_BeginningAnotherField_CommitsThePreviousOne()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = AttachTracker(reported);
+            var first = new TextField { value = "a" };
+            var second = new TextField { value = "x" };
+            tracker.BeginEdit(first);
+            first.value = "b";
+
+            tracker.BeginEdit(second);
+
+            Assert.That(reported.Count, Is.EqualTo(1));
+            Assert.That(reported[0].Field, Is.SameAs(first));
+        }
+
+        [Test]
+        public void TextTracker_ContextIsCapturedWhenEditStarts()
+        {
+            var reported = new List<FieldEdit>();
+            object current = "first target";
+            var tracker = new TextFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => current, reported.Add);
+            var textField = new TextField { value = "a" };
+
+            tracker.BeginEdit(textField);
+            current = "second target"; // Selection changed before focus-out
+            textField.value = "b";
+            tracker.CommitPending();
+
+            Assert.That(reported[0].Context, Is.EqualTo("first target"));
+        }
+
+        [Test]
+        public void IntegerTracker_ChangedValue_ReportsBoxedInts()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new IntegerFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+            var field = new IntegerField { value = 20 };
+
+            tracker.BeginEdit(field);
+            field.value = 2;
+            field.value = 25; // Several keystrokes, still one edit
+            tracker.CommitPending();
+
+            Assert.That(reported.Count, Is.EqualTo(1));
+            Assert.That(reported[0].OldValue, Is.EqualTo(20));
+            Assert.That(reported[0].NewValue, Is.EqualTo(25));
+        }
+
+        [Test]
+        public void IntegerTracker_ValueBackToOriginal_ReportsNothing()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new IntegerFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+            var field = new IntegerField { value = 20 };
+
+            tracker.BeginEdit(field);
+            field.value = 21;
+            field.value = 20;
+            tracker.CommitPending();
+
+            Assert.That(reported, Is.Empty);
+        }
+
+        [Test]
+        public void LongTracker_ChangedValue_ReportsBoxedLongs()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new LongFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+            var field = new LongField { value = 5_000_000_000L };
+
+            tracker.BeginEdit(field);
+            field.value = 6_000_000_000L;
+            tracker.CommitPending();
+
+            Assert.That(reported.Count, Is.EqualTo(1));
+            Assert.That(reported[0].OldValue, Is.EqualTo(5_000_000_000L));
+            Assert.That(reported[0].NewValue, Is.EqualTo(6_000_000_000L));
+        }
+
+        [Test]
+        public void FloatTracker_ChangedValue_ReportsBoxedFloats()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new FloatFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+            var field = new FloatField { value = 1.5f };
+
+            tracker.BeginEdit(field);
+            field.value = 2.25f;
+            tracker.CommitPending();
+
+            Assert.That(reported.Count, Is.EqualTo(1));
+            Assert.That(reported[0].OldValue, Is.EqualTo(1.5f));
+            Assert.That(reported[0].NewValue, Is.EqualTo(2.25f));
+        }
+
+        [Test]
+        public void DoubleTracker_ChangedValue_ReportsBoxedDoubles()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new DoubleFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+            var field = new DoubleField { value = 0.1 };
+
+            tracker.BeginEdit(field);
+            field.value = 0.2;
+            tracker.CommitPending();
+
+            Assert.That(reported.Count, Is.EqualTo(1));
+            Assert.That(reported[0].OldValue, Is.EqualTo(0.1));
+            Assert.That(reported[0].NewValue, Is.EqualTo(0.2));
+        }
+
+        [Test]
+        public void FloatTracker_ValueBackToOriginal_ReportsNothing()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new FloatFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+            var field = new FloatField { value = 1.5f };
+
+            tracker.BeginEdit(field);
+            field.value = 3f;
+            field.value = 1.5f;
+            tracker.CommitPending();
+
+            Assert.That(reported, Is.Empty);
+        }
+
+        [Test]
+        public void ObjectTracker_Change_ReportsEditWithContext()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new ObjectFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => "the bio", reported.Add);
+            var field = new ObjectField();
+            var picked = UnityEngine.ScriptableObject.CreateInstance<UnityEngine.ScriptableObject>();
+
+            try
+            {
+                tracker.ReportChange(field, null, picked);
+
+                Assert.That(reported.Count, Is.EqualTo(1));
+                Assert.That(reported[0].OldValue, Is.Null);
+                Assert.That(reported[0].NewValue, Is.SameAs(picked));
+                Assert.That(reported[0].Context, Is.EqualTo("the bio"));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(picked);
+            }
+        }
+
+        [Test]
+        public void ToggleTracker_Change_ReportsBoxedBools()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new ToggleEditTracker();
+            tracker.Attach(new VisualElement(), field => "ctx", reported.Add);
+
+            tracker.ReportChange(new Toggle(), false, true);
+
+            Assert.That(reported.Count, Is.EqualTo(1));
+            Assert.That(reported[0].OldValue, Is.EqualTo(false));
+            Assert.That(reported[0].NewValue, Is.EqualTo(true));
+            Assert.That(reported[0].Context, Is.EqualTo("ctx"));
+        }
+
+        [Test]
+        public void ToggleTracker_SameValue_ReportsNothing()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new ToggleEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+
+            tracker.ReportChange(new Toggle(), true, true);
+
+            Assert.That(reported, Is.Empty);
+        }
+
+        [Test]
+        public void DropdownTracker_Change_ReportsStrings()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new DropdownFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+
+            tracker.ReportChange(new DropdownField(), "Red", "Blue");
+
+            Assert.That(reported[0].OldValue, Is.EqualTo("Red"));
+            Assert.That(reported[0].NewValue, Is.EqualTo("Blue"));
+        }
+
+        [Test]
+        public void ObjectTracker_SameObject_ReportsNothing()
+        {
+            var reported = new List<FieldEdit>();
+            var tracker = new ObjectFieldEditTracker();
+            tracker.Attach(new VisualElement(), field => null, reported.Add);
+
+            tracker.ReportChange(new ObjectField(), null, null);
+
+            Assert.That(reported, Is.Empty);
+        }
+
+        [Test]
+        public void FieldEdit_ToCommand_AppliesNewOnExecuteAndOldOnUndo()
+        {
+            var edit = new FieldEdit(new TextField(), null, "old", "new");
+            string state = "new"; // Already applied by the user
+            var stack = new UndoStack();
+
+            stack.Record(edit.ToCommand((e, value) => state = (string)value));
+            stack.Undo();
+            Assert.That(state, Is.EqualTo("old"));
+
+            stack.Redo();
+            Assert.That(state, Is.EqualTo("new"));
+        }
+        #endregion
+
+        #region ControlPanelUndoRouter
+        [Test]
+        public void Router_NoEntry_DoesNothing()
+        {
+            Assert.That(ControlPanelUndoRouter.Route(null, redo: false), Is.False);
+        }
+
+        [Test]
+        public void Router_Undo_AppliesToDisplayedEntryOnly()
+        {
+            var shown = new UndoTestEntry();
+            var other = new UndoTestEntry();
+            var shownCounter = new Counter();
+            var otherCounter = new Counter();
+            shown.Do(shownCounter.Add(1));
+            other.Do(otherCounter.Add(1));
+
+            bool handled = ControlPanelUndoRouter.Route(shown, redo: false);
+
+            Assert.That(handled, Is.True);
+            Assert.That(shownCounter.Value, Is.EqualTo(0));
+            Assert.That(otherCounter.Value, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Router_Redo_AppliesRedo()
+        {
+            var entry = new UndoTestEntry();
+            var counter = new Counter();
+            entry.Do(counter.Add(1));
+            entry.Logic.Undo();
+
+            bool handled = ControlPanelUndoRouter.Route(entry, redo: true);
+
+            Assert.That(handled, Is.True);
+            Assert.That(counter.Value, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void Router_NothingToUndo_DoesNotCallUndo()
+        {
+            var entry = new UndoTestEntry();
+
+            bool handled = ControlPanelUndoRouter.Route(entry, redo: false);
+
+            Assert.That(handled, Is.False);
+            // No warning is expected here: the router checks CanUndo first.
+        }
+        #endregion
+    }
+}

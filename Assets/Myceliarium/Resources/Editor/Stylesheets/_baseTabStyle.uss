@@ -3,40 +3,50 @@
     --default-icon: resource('Editor/Icons/defaultTabIcon');
     --default-icon-left-offset: 10px;
     --default-icon-width: 60px;
+    --default-tab-height: 50px;
+    --default-button-border-radius: 6px;
+    --default-button-font-size: 32px;
+    --default-bg-color: rgb(60, 60, 60);
+    --default-color: rgb(222, 222, 222);
+    --default-hover-color: rgb(70, 70, 70);
+    --default-active-color: rgb(50, 50, 50);
+    --default-selected-color: rgb(80, 120, 180);
+    --default-selected-text-color: rgb(222, 222, 222);
+    --default-selected-border-color: black;
 }
 
 .tabRoot {
-    height: 60px;
+    height: var(--default-tab-height);
     flex-direction: row;
     margin-bottom: 5px;
 }
 
 .tabButton {
+    border-radius: var(--default-button-border-radius);
+    background-color: var(--default-bg-color);
+    color: var(--default-color);
+    font-size: var(--default-button-font-size);
+    padding-left: 60px;
+
     flex-direction: row;
     width: 100%;
     justify-content: flex-start;
     align-items: center;
-    border-radius: 5px;
+    
     -unity-text-align: middle-left;
     padding: 3px 5px 3px 72px;
-    margin: 0;
-    font-size: 32px;
-    padding-left: 60px;
-    background-color: rgb(60, 60, 60);
-    color: rgb(222, 222, 222);
+    margin: 0px;
 }
 
 .tabIcon {
     background-image: var(--default-icon);
     -unity-background-scale-mode: stretch-to-fill;
-    padding-top: 0;
-    padding-bottom: 0;
-    padding-right: 0;
-    padding-left: 0;
+    padding: 0px;
     position: relative;
+    margin: 0px;
     height: 100%;
     width: 100%;
-    margin: 0;
+    
 }
 
 .tabIconHolder {
@@ -49,6 +59,54 @@
     padding-left: 5px;
 }
 
-.tab-selected {
-    background-color: var(--default-tab-selected-color);
+/* The button paints over the root, so the states must target the button itself. */
+.tabButton:hover {
+    background-color: var(--default-hover-color);
+}
+
+.tabButton:active {
+    background-color: var(--default-active-color);
+}
+
+/* Declared after the states above so a selected tab keeps its color while hovered. */
+.tabButton.selected {
+    background-color: var(--default-selected-color);
+    color: var(--default-selected-text-color);
+    border-color: var(--default-selected-border-color);
+}
+
+/* ---- Tabs with a Foldout as their main clickable (see ControlPanelTab) ---- */
+/* Sizing to fit subtabs is done in ControlPanelTab.MarkRootAsHavingSubtabs. */
+
+.tabRoot.tab-foldout-root > .unity-foldout {
+    padding: 0; /* Otherwise the subtabs get indented/inset too. Pad the header instead. */
+    align-items: stretch; /* .tabButton centers its children, which would shrink-wrap the subtabs */
+}
+
+.tabRoot.tab-foldout-root > .unity-foldout .unity-foldout__content {
+    margin-left: 0;
+    width: 100%;
+}
+
+/* ---- Subtabs nested in a Foldout tab ---- */
+/* Subtabs bring their own stylesheets, and the parent's cascade onto them too. */
+
+.unity-foldout__content > VisualElement {
+    width: 100%;
+    flex-shrink: 0;
+}
+
+.unity-foldout__content .tabRoot {
+    width: 100%;
+    height: 100%;
+    margin: 0 0 5px 0;
+}
+
+.unity-foldout__content .tabButton {
+    width: 100%;
+    height: 100%; /* Not the parent's fixed .tabButton height */
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    -unity-text-align: middle-left;
 }

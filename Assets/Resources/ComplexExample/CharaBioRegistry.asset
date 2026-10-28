@@ -1,0 +1,90 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78071d8c86fe6a0478e2488d80bf168b, type: 3}
+  m_Name: CharaBioRegistry
+  m_EditorClassIdentifier: 
+  _characterBios:
+  - _mugshot: {fileID: 21300000, guid: 820e67d880296be46b04a313c49e34db, type: 3}
+    _firstName: Miane
+    _lastName: Celia
+    _nickName: Mia
+    _age: 53
+    _summary: 'Eccentric alchemist who is among the best in her field. Has a strange
+      sense of humor.
+
+      Isn''t too fond of either half of her mixed heritage.'
+    _sexualHistory: Made out with a cute brown myconid girl once... and liked it!
+    _isAlive: 0
+    _alignment: 0
+    _occupation: Scholar
+  - _mugshot: {fileID: 21300000, guid: fd76888fcb950ed4ea88ddffa7f7e97b, type: 3}
+    _firstName: Nelveritia
+    _lastName: Celia
+    _nickName: Nel
+    _age: 30
+    _summary: 'Vampire myconid known as the Archivist of the Myceliarium. Even when
+      in a good mood, she
+
+      has a perpetually unimpressed expression.'
+    _sexualHistory: '- Accidentally lost her kiss-virginity to Ammie'
+    _isAlive: 0
+    _alignment: 2
+    _occupation: Adventurer
+  - _mugshot: {fileID: 21300000, guid: b4c96b2b369c16345b8645835f9292d0, type: 3}
+    _firstName: Amanelia
+    _lastName: Celia
+    _nickName: Ammie
+    _age: 20
+    _summary: 'Cheery, ditzy and surprisingly innocent Myconid girl. Though her heritage
+      is plain compared
+
+      to her siblings'', she''s among the more alchemically
+      talented of them.'
+    _sexualHistory: '- Accidentally lost her kiss-virginity to Nel'
+    _isAlive: 1
+    _alignment: 1
+    _occupation: Unemployed
+  - _mugshot: {fileID: 0}
+    _firstName: Heidenblut
+    _lastName: Celia
+    _nickName: Hyde
+    _age: 30
+    _summary: 'Vampire myconid who greatly values the preservation of knowledge,
+      often going out adventuring to
+
+      find tomes to bring back to the Myceliarium.'
+    _sexualHistory: None. Despite his tendency to flirt, he's a "no sex until marriage"
+      type.
+    _isAlive: 1
+    _alignment: 1
+    _occupation: Unemployed
+  - _mugshot: {fileID: 0}
+    _firstName: Agaris
+    _lastName: Celia
+    _nickName: Gary
+    _age: 20
+    _summary: Amanelia's twin brother. Usually the one gathering materials for their
+      atelier. Has a dry sense of humor.
+    _sexualHistory: None. He's a no-sex-before-marriage type.
+    _isAlive: 1
+    _alignment: 1
+    _occupation: Unemployed
+  - _mugshot: {fileID: 0}
+    _firstName: 
+    _lastName: 
+    _nickName: 
+    _age: 0
+    _summary: 
+    _sexualHistory: 
+    _isAlive: 1
+    _alignment: 1
+    _occupation: Unemployed

@@ -1,0 +1,14 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/ComplexExample/Resources/Editor/Styling/charaBioSubwindowStyle.uss?fileID=7433441132597879392&amp;guid=8b1f17cd713c10a468854a43fcf80e65&amp;type=3#charaBioSubwindowStyle" />
+    <ui:VisualElement name="Root" style="flex-grow: 1; flex-direction: row;">
+        <ui:VisualElement name="Sidebar" class="sidebar">
+            <ui:Label tabindex="-1" text="Bio List" parse-escape-sequences="true" display-tooltip-when-elided="true" name="BioListheader" class="header" />
+            <ui:VisualElement name="Controls" class="controls">
+                <ui:Button text="Add New" parse-escape-sequences="true" display-tooltip-when-elided="true" name="NewBioButton" class="control-button" />
+                <ui:Button text="Delete" parse-escape-sequences="true" display-tooltip-when-elided="true" name="DeleteBioButton" class="control-button" />
+            </ui:VisualElement>
+            <ui:ListView name="EntryListView" reorderable="true" show-border="true" class="entry-list" />
+        </ui:VisualElement>
+        <ui:VisualElement name="DetailHolder" class="detail-holder" />
+    </ui:VisualElement>
+</ui:UXML>

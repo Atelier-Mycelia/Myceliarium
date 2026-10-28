@@ -1,17 +1,23 @@
 using System;
 using System.Collections.Generic;
+using ModuleFactory = AtMycelia.Myceliarium.ControlPanelModuleFactory;
 
 namespace AtMycelia.Myceliarium
 {
     /// <summary>
-    /// These handle the logic for their own entries in the appropriate Control 
-    /// Panel, represented by a tab on the left sidebar and its associated 
+    /// These handle the logic for their own entries in the appropriate Control
+    /// Panel, represented by a tab on the sidebar and its associated
     /// subwindow in the appropriate holder.
-    /// 
-    /// These should be automatically found through reflection and added to the 
+    ///
+    /// An entry is an orchestrator: it creates its modules (tab, subwindow, loader and
+    /// logic, from the types its subclass names), wires them together and drives the
+    /// load/select/deselect flow. The working state, undo history and unsaved changes
+    /// belong to its logic module.
+    ///
+    /// These should be automatically found through reflection and added to the
     /// CP when appropriate.
     /// </summary>
-    public abstract class ControlPanelEntry : IControlPanelEntry, IDisposable
+    public abstract class ControlPanelEntry : IControlPanelEntry, IEntryLogicOwner, IDisposable
     {
         public virtual bool IsTestOnly => false;
 
@@ -28,6 +34,14 @@ namespace AtMycelia.Myceliarium
 
         public virtual bool ShouldPreloadOnInit => false; // opt-in, default false
 
+        #region Overridable submodules
+        protected abstract Type SidebarTabType { get; } // Every entry needs its own tab.
+        protected virtual Type SubwindowType => null;
+        protected virtual Type LoaderType => typeof(DefaultControlPanelEntryLoader);
+        protected virtual Type LogicType => typeof(DefaultControlPanelEntryLogic);
+        #endregion
+
+        #region Lifecycle
         public virtual void Init(bool forceReinit = false)
         {
             if (forceReinit)
@@ -41,16 +55,17 @@ namespace AtMycelia.Myceliarium
 
             if (forceReinit || !_isInitted)
             {
-                PrepareLeftSidebarTab();
-                PrepareSubentries();
+                PrepareMainSidebarTab();
+                _subentries.Prepare(CreateSubentries, Tab);
                 PrepareSubwindow();
                 PrepareLoader();
+                PrepareLogic(); // After the others, as it talks to them
                 _subwindow?.Hide();
                 if (ShouldPreloadOnInit)
                 {
                     HandleLoading();
                 }
-                SetCurrentStateAsBase();
+                Logic.MarkSaved();
                 SetSubs(false); // Taking reinitting into account
                 SetSubs(true);
                 _isInitted = true;
@@ -82,13 +97,14 @@ namespace AtMycelia.Myceliarium
 
             SetSubs(false);
 
+            // Before the tab and subwindow, since it unsubscribes from the latter
+            Logic?.Dispose();
+            Logic = null; // Its state is rebuilt (and its history dropped) by a reinit
+
             // The subentry instances themselves are kept, so that reinitializing this
             // entry (Dispose, then Init with forceReinit) brings back the same objects
             // rather than replacing them.
-            for (int i = 0; i < _subentries.Count; i++)
-            {
-                _subentries[i].Dispose();
-            }
+            _subentries.DisposeAll();
 
             _tab?.Dispose();
             _subwindow?.Dispose();
@@ -98,123 +114,102 @@ namespace AtMycelia.Myceliarium
             RemoveFromHierarchy();
             _isDisposed = true;
         }
+        #endregion
 
-        protected abstract void PrepareLeftSidebarTab();
+        #region Modules
+        // Each module is made the same way: one instance of the type that the subclass
+        // names, which gets its Init call if it came out valid.
+
+        protected virtual void PrepareMainSidebarTab()
+        {
+            _tab = ModuleFactory.Create<IControlPanelTab>(SidebarTabType, "tab");
+            _tab?.Init();
+        }
 
         protected IControlPanelTab _tab;
 
+        // Virtual because not all entries have subwindows tied to them. Such subwindowless
+        // ones are usually those meant to have other entries nested under them.
+        protected virtual void PrepareSubwindow()
+        {
+            if (SubwindowType == null)
+            {
+                return;
+            }
+
+            _subwindow = ModuleFactory.Create<IControlPanelSubwindow>(SubwindowType,
+            "subwindow");
+            _subwindow?.Init();
+        }
+
+        protected IControlPanelSubwindow _subwindow;
+
         /// <summary>
-        /// Override this to give the entry subentries. It's called only once, the first
-        /// time the entry is initialized, and the instances it returns are kept for the
-        /// entry's lifetime: reinitializing the entry reinitializes those same instances
-        /// instead of creating new ones. The default has none.
+        /// Initializes this instance's loader. The base implementation goes
+        /// with the default one, which does nothing but trigger the onLoadComplete
+        /// callback. Subclasses can override this to provide a custom loader if needed.
+        /// </summary>
+        protected virtual void PrepareLoader()
+        {
+            Loader = ModuleFactory.Create<IControlPanelEntryLoader>(
+                LoaderType, "loader");
+        }
+
+        public IControlPanelEntryLoader Loader { get; protected set; }
+
+        /// <summary>
+        /// Creates the logic module: the part that owns the working state the user
+        /// edits, its undo history and its unsaved changes flag. Every entry has one;
+        /// if the one named by LogicType can't be made, the default (which has no state)
+        /// takes its place. Gets called on every (re)initialization, so a reinit starts
+        /// with fresh state.
+        /// </summary>
+        protected virtual void PrepareLogic()
+        {
+            Logic = ModuleFactory.Create<IControlPanelEntryLogic>(LogicType, "logic")
+                ?? new DefaultControlPanelEntryLogic();
+            Logic.Init(this);
+        }
+
+        public IControlPanelEntryLogic Logic { get; protected set; }
+        
+        #endregion
+
+        #region Subentries
+        /// <summary>
+        /// Override this to give the entry subentries. It's called only once: the first
+        /// time the entry is initialized. The instances it returns are kept for the
+        /// entry's lifetime, meaning that reinitializing the entry reinitializes
+        /// those same instances instead of creating new ones. The default has none.
         /// </summary>
         protected virtual IEnumerable<IControlPanelEntry> CreateSubentries()
         {
             return Array.Empty<IControlPanelEntry>();
         }
 
-        /// <summary>
-        /// Creates the subentries if that hasn't happened yet, (re)initializes them, and
-        /// registers their tabs under this entry's tab. Private on purpose: this is the
-        /// only place subentries get added, which is what keeps their instances stable.
-        /// See CreateSubentries.
-        /// </summary>
-        private void PrepareSubentries()
-        {
-            if (!_subentriesCreated)
-            {
-                _subentries.AddRange(CreateSubentries());
-                _subentriesCreated = true;
-            }
-
-            for (int i = 0; i < _subentries.Count; i++)
-            {
-                var subentry = _subentries[i];
-                // Subentries that have been initialized before (and so maybe disposed
-                // along with this entry) need the forced reinit to come back up.
-                subentry.Init(forceReinit: subentry.IsInitted);
-                if (subentry.Tab != null)
-                {
-                    Tab.Register(subentry.Tab);
-                }
-            }
-        }
-
-        private bool _subentriesCreated;
-
         public virtual IReadOnlyList<IControlPanelEntry> GetSubentries(bool recursive = false)
         {
-            List<IControlPanelEntry> result;
-
-            if (recursive)
-            {
-                result = new List<IControlPanelEntry>(_subentries);
-                for (int i = 0; i < _subentries.Count; i++)
-                {
-                    var directChild = _subentries[i];
-                    if (directChild == null)
-                    {
-                        string logMessage = $"Subentry at index {i} of {GetType().Name} was null. " +
-                            $"This should not happen if Init() has been called.";
-                        throw new InvalidOperationException(logMessage);
-                    }
-
-                    // This is a depth-first traversal of the subentry tree.
-                    // Note that this will include the direct child itself in the result, so
-                    // we don't need to add it separately.
-                    // This is because GetSubentries(true) will return a list that includes
-                    // the entry itself as well as its subentries.
-                    var childSubs = directChild.GetSubentries(true);
-                    result.AddRange(childSubs);
-                }
-            }
-            else
-            {
-                result = _subentries; // So we won't need as many allocations
-            }
-
-            return result;
-        }
-        private readonly List<IControlPanelEntry> _subentries = new List<IControlPanelEntry>();
-
-        protected virtual void PrepareSubwindow() { }
-
-        /// <summary>
-        /// Initializes the loader for the control panel entry. The base implementation goes
-        /// with the default loader, which does nothing but trigger the callback. Subclasses
-        /// can override this to provide a custom loader if needed.
-        /// </summary>
-        protected virtual void PrepareLoader()
-        {
-            Loader = new DefaultControlPanelEntryLoader();
+            return _subentries.Get(recursive, GetType().Name);
         }
 
-        protected IControlPanelEntryLoader Loader { get; set; }
+        public virtual bool HasSubentries => _subentries.Any;
+        private readonly SubentryGroup _subentries = new SubentryGroup();
+        #endregion
 
-        /// <summary>
-        /// For entries that have state that the user is meant to be able to edit. 
-        /// This is to help decide when to show a "Save" button, and when to warn
-        /// the user about unsaved changes.
-        /// </summary>
-        protected virtual void SetCurrentStateAsBase()
-        {
-            HasUnsavedChanges = false;
-        }
-
-        public virtual bool IsMeantToHaveSubwindow => true; 
+        public virtual bool IsMeantToHaveSubwindow => true;
         // ^Most tabs are expected to have subwindows, so...
 
-        protected IControlPanelSubwindow _subwindow;
-
+        /// <summary>
+        /// For the navigation side of things: the panel opening and the tab being
+        /// clicked. What the logic needs to react to is its own business.
+        /// </summary>
         protected virtual void SetSubs(bool on)
         {
-            // The tab is null if this was never initialized (or already disposed), in
-            // which case there's nothing of its to (un)subscribe from.
             if (on)
             {
                 ControlPanelSignals.ControlPanelOpened += OnControlPanelOpened;
-                ControlPanelSignals.SaveCompleted += OnSaveCompleted;
+                // The tab is null if this was never initialized (or already disposed), in
+                // which case there's nothing for it to (un)subscribe from.
                 if (_tab != null)
                 {
                     _tab.Clicked += OnTabClicked;
@@ -223,7 +218,6 @@ namespace AtMycelia.Myceliarium
             else
             {
                 ControlPanelSignals.ControlPanelOpened -= OnControlPanelOpened;
-                ControlPanelSignals.SaveCompleted -= OnSaveCompleted;
                 if (_tab != null)
                 {
                     _tab.Clicked -= OnTabClicked;
@@ -235,15 +229,6 @@ namespace AtMycelia.Myceliarium
         {
             // Default implementation does nothing. Subclasses can override this if they need to respond to
             // the Control Panel being opened.
-        }
-
-        protected virtual void OnSaveCompleted(IControlPanelEntry entry)
-        {
-            if (entry == this)
-            {
-                SetCurrentStateAsBase();
-                HasUnsavedChanges = false;
-            }
         }
 
         protected void OnTabClicked(IControlPanelTab tabClicked)
@@ -262,6 +247,8 @@ namespace AtMycelia.Myceliarium
             }
             protected set => _tab = value;
         }
+
+        public IControlPanelSubwindow SubwindowIfAny => _subwindow;
 
         public virtual IControlPanelSubwindow Subwindow
         {
@@ -293,6 +280,7 @@ namespace AtMycelia.Myceliarium
             _subwindow?.Root.RemoveFromHierarchy();
         }
 
+        #region Selection and Loading
         public virtual void Select()
         {
             if (_tab == null || _tab.IsSelected)
@@ -302,22 +290,25 @@ namespace AtMycelia.Myceliarium
 
             if (this.IsMeantToHaveSubwindow)
             {
-                #region Deselect Subentries
                 // So their subwindows don't get in the way of ours
-                for (int i = 0; i < _subentries.Count; i++)
-                {
-                    var subentry = _subentries[i];
-                    subentry.Deselect();
-                }
-                #endregion
+                _subentries.DeselectAll();
             }
 
             _tab.IsSelected = true;
+
+            if (Logic.HasUnsavedChanges)
+            {
+                // Loading would replace the user's unsaved edits (and the history that
+                // goes with them), so the subwindow is just shown as it was left.
+                _subwindow?.Show();
+                return;
+            }
+
             HandleLoading();
         }
 
         /// <summary>
-        /// Meant to be overridden by subclasses that need to do some loading 
+        /// Meant to be overridden by subclasses that need to do some loading
         /// before their subwindow is shown. When overriding ControlPanelEntry's
         /// directly, best NOT call the base implementation.
         /// </summary>
@@ -333,17 +324,20 @@ namespace AtMycelia.Myceliarium
             }
         }
 
-        protected object _lastLoadResult;
-
         /// <summary>
-        /// If your entry cares about the load result, this is where it's expected to start
-        /// working with it.
+        /// Hands the loader's result to the logic (which marks it as the saved state),
+        /// then shows the subwindow. Subclasses that need the subwindow to get something
+        /// from the logic before it's shown can override this.
         /// </summary>
         protected virtual void OnLoadingDone()
         {
+            if (Loader != null)
+            {
+                var loadResult = Loader.GetLoadResult<object>();
+                Logic.Load(loadResult);
+            }
             _subwindow?.Refresh();
             _subwindow?.Show();
-            SetCurrentStateAsBase();
         }
 
         public virtual void Deselect()
@@ -356,41 +350,19 @@ namespace AtMycelia.Myceliarium
             _subwindow?.Hide();
             _tab.IsSelected = false;
         }
+        #endregion
 
-        public virtual bool HasSubentries => _subentries.Count > 0;
         /// <summary>
-        /// Setting this raises ControlPanelSignals.UnsavedChangesChanged when the value
-        /// actually changes. Subclasses that override this to compute their own value
-        /// should call NotifyUnsavedChangesChanged whenever it may have changed.
+        /// Whether the logic's state differs from the last loaded or saved one.
         /// </summary>
-        public virtual bool HasUnsavedChanges
-        {
-            get => _hasUnsavedChanges;
-            protected set
-            {
-                if (_hasUnsavedChanges == value)
-                {
-                    return;
-                }
-
-                _hasUnsavedChanges = value;
-                NotifyUnsavedChangesChanged();
-            }
-        }
-        private bool _hasUnsavedChanges;
-
-        protected void NotifyUnsavedChangesChanged()
-        {
-            ControlPanelSignals.UnsavedChangesChanged(this);
-        }
-
+        public virtual bool HasUnsavedChanges => Logic != null && Logic.HasUnsavedChanges;
     }
 
     public interface IControlPanelEntry : IDisposable
     {
         /// <summary>
-        /// Functions as the constructor for this entry. Should be called once when the 
-        /// entry is first created, and can be called again if the entry needs to 
+        /// Functions as the constructor for this entry. Should be called once when the
+        /// entry is first created, and can be called again if the entry needs to
         /// be reinitialized (say, after being Disposed).
         /// </summary>
         void Init(bool forceReinit = false);
@@ -405,13 +377,13 @@ namespace AtMycelia.Myceliarium
 
         /// <summary>
         /// Decides how this entry is sorted in the Control Panel's left sidebar.
-        /// Lower numbers are sorted higher. When two entries have the same sorting order,
-        /// they are sorted alphabetically by their SortingName.
+        /// Lower numbers are sorted higher. When two entries have the same 
+        /// sorting order, they are sorted alphabetically by their SortingName.
         /// </summary>
         int SortingOrder { get; }
         /// <summary>
-        /// When two ControlPanelEntries have the same SortingOrder, they are then sorted
-        /// based on this. Alphabetically.
+        /// When two ControlPanelEntries have the same SortingOrder, they are then 
+        /// sorted based on this. Alphabetically.
         /// </summary>
         string SortingName { get; }
 
@@ -419,7 +391,7 @@ namespace AtMycelia.Myceliarium
 
         bool IsMeantToHaveSubwindow { get; }
         IControlPanelSubwindow Subwindow { get; }
-
+        IControlPanelEntryLoader Loader { get; }
         bool IsTopLevel { get; }
 
         bool HasSubentries { get; }

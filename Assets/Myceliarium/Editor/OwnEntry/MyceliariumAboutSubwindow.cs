@@ -7,16 +7,21 @@ namespace AtMycelia.Myceliarium
     {
         public override string PathToUxml => "Editor/Uxml/MyceliariumAboutSubwindow";
         
-        private UitkLabel _versionLabel;
-        private UitkLabel _copyrightLabel;
-        private UitkLabel _multiLinksLabel;
-
         protected override void RegisterVisualElements()
         {
             _versionLabel = Root.Q<UitkLabel>("VersionLabel");
             _copyrightLabel = Root.Q<UitkLabel>("CopyrightLabel");
             _multiLinksLabel = Root.Q<UitkLabel>("MultiLinksLabel");
         }
+
+        private UitkLabel _versionLabel;
+        private UitkLabel _copyrightLabel;
+        private UitkLabel _multiLinksLabel;
+
+		protected override void ConfigureVisualElements()
+		{
+			// No config needed, hence this being a no-op.
+		}
 
         public string VersionText
         {
