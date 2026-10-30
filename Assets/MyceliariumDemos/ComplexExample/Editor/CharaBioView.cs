@@ -275,6 +275,24 @@ namespace ComplexExample
 		#endregion
 
 		/// <summary>
+		/// Writes what the fields hold into the current bio. Needed when the bio is
+		/// about to be swapped out while a field still has focus, since its focus-out
+		/// would otherwise come after the swap and the typed value would be lost.
+		/// </summary>
+		public void FlushFieldsToBio()
+		{
+			_bio.FirstName = _firstNameField.value;
+			_bio.LastName = _lastNameField.value;
+			_bio.NickName = _nicknameField.value;
+			_bio.Age = _ageField.value;
+			_bio.IsAlive = _isAliveField.value;
+			_bio.Alignment = (CharaAlignment)_alignmentField.value;
+			_bio.Occupation = _occupationField.value;
+			_bio.Summary = _summaryField.value;
+			_bio.SexualHistory = _sexualHistoryField.value;
+		}
+
+		/// <summary>
 		/// Re-shows the current bio's values in the fields. Unlike setting Bio, this
 		/// leaves the base snapshot alone.
 		/// </summary>

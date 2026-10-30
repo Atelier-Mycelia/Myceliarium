@@ -61,6 +61,12 @@ namespace ComplexExample
 			}
 
 			_lastSelectedIndex = selectedIndex;
+
+			// A field may still have focus, so its edit isn't finished yet. Settle it
+			// on the bio it belongs to before the view switches to another one.
+			_detailView.FlushFieldsToBio();
+			CommitPendingEdits();
+			_entryListView.RefreshItems(); // The flushed names show in the list labels
 			_detailView.Bio = _bios[selectedIndex];
 
 			if (validSelection)

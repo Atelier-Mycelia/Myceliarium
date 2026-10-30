@@ -49,15 +49,42 @@ namespace AtMycelia.Myceliarium
         /// <summary>
         /// Has every saver save each of its compatible entries.
         /// </summary>
-        public void SaveAll()
+        /// <param name="onAllCompleted">Called once, after every saver has reported
+        /// (through the onComplete callback of Save) that it's done. Called right away
+        /// if there's nothing to save. Savers are expected to invoke that callback.</param>
+        public void SaveAll(Action onAllCompleted = null)
         {
+            int pending = 0;
             foreach (var kvp in _savers)
+            {
+                pending += kvp.Value.Count;
+            }
+
+            if (pending == 0)
+            {
+                onAllCompleted?.Invoke();
+                return;
+            }
+
+            void OnOneCompleted()
+            {
+                pending--;
+                if (pending == 0)
+                {
+                    onAllCompleted?.Invoke();
+                }
+            }
+
+            // Copied, in case a saver completes synchronously and a handler refreshes this
+            var pairs = new List<KeyValuePair<IControlPanelEntrySaver, IList<IControlPanelEntry>>>(
+                _savers);
+            foreach (var kvp in pairs)
             {
                 var saver = kvp.Key;
                 var compatibleEntries = kvp.Value;
                 for (int i = 0; i < compatibleEntries.Count; i++)
                 {
-                    saver.Save(compatibleEntries[i]);
+                    saver.Save(compatibleEntries[i], OnOneCompleted);
                 }
             }
         }

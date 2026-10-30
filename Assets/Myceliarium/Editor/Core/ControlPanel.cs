@@ -35,7 +35,28 @@ namespace AtMycelia.Myceliarium
         {
             SetGlobalSubs(true);
             saveChangesMessage = $"{DisplayName} has unsaved changes. Save them before closing?";
+            
             ControlPanelSignals.ControlPanelOpened.Invoke(this);
+        }
+
+        /// <summary>
+        /// Closes without any dialog, discarding unsaved changes, since a prompt would
+        /// block the reload. The panel gets reopened afterwards.
+        /// </summary>
+        private void CloseForAssemblyReload()
+        {
+            ControlPanelLifecycleGuard.RememberToReopen(GetType());
+            DiscardChanges();
+            hasUnsavedChanges = false; // So that Close doesn't show Unity's prompt
+            Close();
+        }
+
+        /// <summary>
+        /// Saves every entry, then calls onAllCompleted once all the savers are done.
+        /// </summary>
+        internal void SaveAllThen(System.Action onAllCompleted)
+        {
+            _saveCoordinator.SaveAll(onAllCompleted);
         }
 
         protected virtual void SetGlobalSubs(bool on)
@@ -46,6 +67,7 @@ namespace AtMycelia.Myceliarium
                 ControlPanelSignals.CloseRequested += OnCloseRequested;
                 ControlPanelSignals.ReinitRequested += OnReinitRequested;
                 ControlPanelSignals.LanguageChanged += OnLanguageChanged;
+                AssemblyReloadEvents.beforeAssemblyReload += CloseForAssemblyReload;
             }
             else
             {
@@ -53,6 +75,7 @@ namespace AtMycelia.Myceliarium
                 ControlPanelSignals.CloseRequested -= OnCloseRequested;
                 ControlPanelSignals.ReinitRequested -= OnReinitRequested;
                 ControlPanelSignals.LanguageChanged -= OnLanguageChanged;
+                AssemblyReloadEvents.beforeAssemblyReload -= CloseForAssemblyReload;
             }
         }
 

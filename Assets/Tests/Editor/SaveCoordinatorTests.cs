@@ -68,7 +68,48 @@ namespace AtMycelia.Myceliarium.Tests
             Assert.DoesNotThrow(() => new SaveCoordinator().SaveAll());
         }
 
+        [Test]
+        public void SaveAll_NothingToSave_CompletesImmediately()
+        {
+            int completed = 0;
+
+            new SaveCoordinator().SaveAll(() => completed++);
+
+            Assert.That(completed, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void SaveAll_WaitsForEverySaverBeforeCompleting()
+        {
+            var a = new FakeEntry();
+            var b = new FakeEntry();
+            var saver = new DeferredSaver();
+            var coordinator = new SaveCoordinator();
+            coordinator.Refresh(new List<IControlPanelEntrySaver> { saver },
+                new List<IControlPanelEntry> { a, b });
+            int completed = 0;
+
+            coordinator.SaveAll(() => completed++);
+            saver.Callbacks[0]();
+            Assert.That(completed, Is.EqualTo(0));
+
+            saver.Callbacks[1]();
+            Assert.That(completed, Is.EqualTo(1));
+        }
+
         #region Test Doubles
+        private class DeferredSaver : IControlPanelEntrySaver
+        {
+            public readonly List<Action> Callbacks = new List<Action>();
+
+            public void Save(IControlPanelEntry toSaveFor, Action onComplete = null)
+            {
+                Callbacks.Add(onComplete);
+            }
+
+            public bool IsCompatibleWith(IControlPanelEntry toSaveFor) => true;
+        }
+
         private class FakeSaver : IControlPanelEntrySaver
         {
             private readonly Func<IControlPanelEntry, bool> _isCompatible;
