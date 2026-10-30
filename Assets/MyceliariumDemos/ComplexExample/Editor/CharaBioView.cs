@@ -144,29 +144,20 @@ namespace ComplexExample
 		#region Focus-Out Subs
 		private void SetSubsForFocusOuts(bool wantsSubsActive)
 		{
+			// FocusOutEvent bubbles, so one callback on the root hears every field
 			if (wantsSubsActive)
 			{
-				_firstNameField.RegisterCallback<FocusOutEvent>(OnFirstNameFocusOut);
-				_lastNameField.RegisterCallback<FocusOutEvent>(OnLastNameFocusOut);
-				_nicknameField.RegisterCallback<FocusOutEvent>(OnNicknameFocusOut);
-				_ageField.RegisterCallback<FocusOutEvent>(OnAgeFocusOut);
-				_summaryField.RegisterCallback<FocusOutEvent>(OnSummaryFocusOut);
-				_sexualHistoryField.RegisterCallback<FocusOutEvent>(OnSexualHistoryFocusOut);
+				RegisterCallback<FocusOutEvent>(OnAnyFocusOut);
 			}
 			else
 			{
-				_firstNameField.UnregisterCallback<FocusOutEvent>(OnFirstNameFocusOut);
-				_lastNameField.UnregisterCallback<FocusOutEvent>(OnLastNameFocusOut);
-				_nicknameField.UnregisterCallback<FocusOutEvent>(OnNicknameFocusOut);
-				_ageField.UnregisterCallback<FocusOutEvent>(OnAgeFocusOut);
-				_summaryField.UnregisterCallback<FocusOutEvent>(OnSummaryFocusOut);
-				_sexualHistoryField.UnregisterCallback<FocusOutEvent>(OnSexualHistoryFocusOut);
+				UnregisterCallback<FocusOutEvent>(OnAnyFocusOut);
 			}
 		}
 
-		private void OnFirstNameFocusOut(FocusOutEvent evt)
+		private void OnAnyFocusOut(FocusOutEvent evt)
 		{
-			_bio.FirstName = _firstNameField.value;
+			FlushFieldsToBio();
 			SignalStateChangeAsAppropriate();
 		}
 
@@ -176,36 +167,6 @@ namespace ComplexExample
 			{
 				CharaBioViewSignals.BioStateChanged(_baseBioSnapshot, _bio);
 			}
-		}
-
-		private void OnLastNameFocusOut(FocusOutEvent evt)
-		{
-			_bio.LastName = _lastNameField.value;
-			SignalStateChangeAsAppropriate();
-		}
-
-		private void OnNicknameFocusOut(FocusOutEvent evt)
-		{
-			_bio.NickName = _nicknameField.value;
-			SignalStateChangeAsAppropriate();
-		}
-
-		private void OnAgeFocusOut(FocusOutEvent evt)
-		{
-			_bio.Age = _ageField.value;
-			SignalStateChangeAsAppropriate();
-		}
-
-		private void OnSummaryFocusOut(FocusOutEvent evt)
-		{
-			_bio.Summary = _summaryField.value;
-			SignalStateChangeAsAppropriate();
-		}
-
-		private void OnSexualHistoryFocusOut(FocusOutEvent evt)
-		{
-			_bio.SexualHistory = _sexualHistoryField.value;
-			SignalStateChangeAsAppropriate();
 		}
 
 		#endregion
@@ -238,46 +199,44 @@ namespace ComplexExample
 
 		#region Toggle, Enum and Dropdown Fields
 		// These have no typing session to wait out, so unlike the text fields they
-		// write to the bio as soon as the user changes them.
+		// write to the bio as soon as the user changes them. ChangeEvents bubble too, but
+		// are typed, so it takes one registration per type. The string one also comes
+		// from the text fields, hence the target check.
 		private void SetSubsForChoiceFields(bool wantsSubsActive)
 		{
 			if (wantsSubsActive)
 			{
-				_isAliveField.RegisterValueChangedCallback(OnIsAliveChanged);
-				_alignmentField.RegisterValueChangedCallback(OnAlignmentChanged);
-				_occupationField.RegisterValueChangedCallback(OnOccupationChanged);
+				RegisterCallback<ChangeEvent<bool>>(OnChoiceChanged);
+				RegisterCallback<ChangeEvent<System.Enum>>(OnChoiceChanged);
+				RegisterCallback<ChangeEvent<string>>(OnOccupationChanged);
 			}
 			else
 			{
-				_isAliveField.UnregisterValueChangedCallback(OnIsAliveChanged);
-				_alignmentField.UnregisterValueChangedCallback(OnAlignmentChanged);
-				_occupationField.UnregisterValueChangedCallback(OnOccupationChanged);
+				UnregisterCallback<ChangeEvent<bool>>(OnChoiceChanged);
+				UnregisterCallback<ChangeEvent<System.Enum>>(OnChoiceChanged);
+				UnregisterCallback<ChangeEvent<string>>(OnOccupationChanged);
 			}
 		}
 
-		private void OnIsAliveChanged(ChangeEvent<bool> evt)
+		private void OnChoiceChanged<T>(ChangeEvent<T> evt)
 		{
-			_bio.IsAlive = evt.newValue;
-			SignalStateChangeAsAppropriate();
-		}
-
-		private void OnAlignmentChanged(ChangeEvent<System.Enum> evt)
-		{
-			_bio.Alignment = (CharaAlignment)evt.newValue;
+			FlushFieldsToBio();
 			SignalStateChangeAsAppropriate();
 		}
 
 		private void OnOccupationChanged(ChangeEvent<string> evt)
 		{
-			_bio.Occupation = evt.newValue;
-			SignalStateChangeAsAppropriate();
+			if (evt.target == _occupationField)
+			{
+				OnChoiceChanged(evt);
+			}
 		}
 		#endregion
 
 		/// <summary>
 		/// Writes what the fields hold into the current bio. Needed when the bio is
 		/// about to be swapped out while a field still has focus, since its focus-out
-		/// would otherwise come after the swap and the typed value would be lost.
+		/// would otherwise come after the swap (leading to the typed value being lost).
 		/// </summary>
 		public void FlushFieldsToBio()
 		{
