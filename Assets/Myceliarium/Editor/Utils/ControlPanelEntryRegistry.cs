@@ -24,12 +24,36 @@ namespace AtMycelia.Myceliarium
 
         private static void InitializeDelayed()
         {
+            // Both triggers above may fire for the same reload; one pass covers them
+            if (!_readiness.TryBeginPass())
+            {
+                return;
+            }
+
             EditorApplication.delayCall += () =>
             {
-                RefreshRegistry();
-                CreateAllEntries();
+                try
+                {
+                    RefreshRegistry();
+                    CreateAllEntries();
+                }
+                finally
+                {
+                    _readiness.EndPass();
+                }
             };
         }
+
+        /// <summary>
+        /// Runs the action once the registry has finished filling itself (right away
+        /// if it already has). Use this instead of guessing at how long that takes.
+        /// </summary>
+        public static void WhenReady(Action action)
+        {
+            _readiness.RunWhenReady(action);
+        }
+
+        private static readonly ReadinessGate _readiness = new ReadinessGate();
 
         /// <summary>
         /// Rebuilds the cached list of entry types. By default this uses Unity's

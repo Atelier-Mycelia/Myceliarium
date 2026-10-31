@@ -8,7 +8,9 @@ namespace AtMycelia.Myceliarium
     /// <summary>
     /// Handles the editor-wide moments that would otherwise strand unsaved work in open
     /// ControlPanels: entering Play Mode (the user gets asked what to do with unsaved
-    /// changes) and assembly reloads (panels close themselves and come back afterwards).
+    /// changes) and assembly reloads (panels close themselves and come back afterwards,
+    /// since a panel that survives a reload comes back without its entries). Panels know
+    /// nothing about either; they just offer <see cref="IGuardedPanel"/>.
     /// </summary>
     [InitializeOnLoad]
     public static class ControlPanelLifecycleGuard
@@ -20,53 +22,46 @@ namespace AtMycelia.Myceliarium
         {
             EditorApplication.playModeStateChanged -= OnPlayModeStateChanged;
             EditorApplication.playModeStateChanged += OnPlayModeStateChanged;
+
+            AssemblyReloadEvents.beforeAssemblyReload -= CloseAllForAssemblyReload;
+            AssemblyReloadEvents.beforeAssemblyReload += CloseAllForAssemblyReload;
+
             EditorApplication.delayCall += ReopenRememberedPanels;
         }
 
-        #region Play Mode
-        private static bool _resolving;
-
-        private static void OnPlayModeStateChanged(PlayModeStateChange change)
+        // Panels are looked up when needed rather than tracked through their open/close
+        // signals, because restored windows can enable before this class is initialized.
+        private static List<IGuardedPanel> FindPanels(bool onlyDirty)
         {
-            if (change != PlayModeStateChange.ExitingEditMode || _resolving)
-            {
-                return;
-            }
-
-            if (_skipNextCheck)
-            {
-                _skipNextCheck = false;
-                return;
-            }
-
-            var dirtyPanels = FindPanelsWithUnsavedChanges();
-            if (dirtyPanels.Count == 0)
-            {
-                return;
-            }
-
-            // Play Mode can't be vetoed outright, so it's stopped here and restarted
-            // later if the user's answer allows for it.
-            _resolving = true;
-            EditorApplication.isPlaying = false;
-            EditorApplication.delayCall += () => AskAbout(dirtyPanels);
-        }
-
-        private static List<ControlPanel> FindPanelsWithUnsavedChanges()
-        {
-            var result = new List<ControlPanel>();
+            var result = new List<IGuardedPanel>();
             var panels = Resources.FindObjectsOfTypeAll<ControlPanel>();
             for (int i = 0; i < panels.Length; i++)
             {
-                if (panels[i].hasUnsavedChanges)
+                IGuardedPanel panel = panels[i];
+                if (!onlyDirty || panel.IsDirty)
                 {
-                    result.Add(panels[i]);
+                    result.Add(panel);
                 }
             }
             return result;
         }
 
-        private static void AskAbout(List<ControlPanel> dirtyPanels)
+        #region Play Mode
+        private static readonly PlayModeGate _playModeGate = new PlayModeGate(
+            () => FindPanels(onlyDirty: true),
+            AskAboutUnsavedChanges,
+            playing => EditorApplication.isPlaying = playing,
+            action => EditorApplication.delayCall += () => action());
+
+        private static void OnPlayModeStateChanged(PlayModeStateChange change)
+        {
+            if (change == PlayModeStateChange.ExitingEditMode)
+            {
+                _playModeGate.OnExitingEditMode();
+            }
+        }
+
+        private static UnsavedChangesChoice AskAboutUnsavedChanges()
         {
             int choice = EditorUtility.DisplayDialogComplex(
                 "Unsaved changes",
@@ -77,64 +72,29 @@ namespace AtMycelia.Myceliarium
             switch (choice)
             {
                 case SaveChoice:
-                    SaveThenPlay(dirtyPanels);
-                    break;
+                    return UnsavedChangesChoice.Save;
                 case DiscardChoice:
-                    Discard(dirtyPanels);
-                    EnterPlayMode();
-                    break;
+                    return UnsavedChangesChoice.Discard;
                 default:
-                    _resolving = false;
-                    break;
+                    return UnsavedChangesChoice.KeepEditing;
             }
         }
 
         private const int SaveChoice = 0;
         private const int DiscardChoice = 2;
-
-        private static void SaveThenPlay(List<ControlPanel> dirtyPanels)
-        {
-            int pending = dirtyPanels.Count;
-            for (int i = 0; i < dirtyPanels.Count; i++)
-            {
-                dirtyPanels[i].SaveAllThen(OnPanelSaved);
-            }
-
-            void OnPanelSaved()
-            {
-                pending--;
-                if (pending == 0)
-                {
-                    EnterPlayMode();
-                }
-            }
-        }
-
-        private static void Discard(List<ControlPanel> dirtyPanels)
-        {
-            for (int i = 0; i < dirtyPanels.Count; i++)
-            {
-                dirtyPanels[i].DiscardChanges();
-            }
-        }
-
-        private static void EnterPlayMode()
-        {
-            // Deferred because savers invoke onComplete before they raise SaveCompleted,
-            // so the panels would still look dirty right now and ask all over again.
-            EditorApplication.delayCall += () =>
-            {
-                _resolving = false;
-                _skipNextCheck = true;
-                EditorApplication.isPlaying = true;
-            };
-        }
-
-        private static bool _skipNextCheck;
         #endregion
 
         #region Assembly Reloads
-        internal static void RememberToReopen(Type panelType)
+        private static void CloseAllForAssemblyReload()
+        {
+            foreach (IGuardedPanel panel in FindPanels(onlyDirty: false))
+            {
+                RememberToReopen(panel.GetType());
+                panel.CloseForAssemblyReload();
+            }
+        }
+
+        private static void RememberToReopen(Type panelType)
         {
             string name = panelType.AssemblyQualifiedName;
             string existing = SessionState.GetString(ReopenSessionKey, string.Empty);
@@ -153,35 +113,10 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
-            // The entry registry fills itself on delayCalls of its own (twice, in fact:
-            // the second pass replaces the entry instances), so a panel opened before
-            // they're done would come up with no entries, or with stale ones.
-            int ticksSinceEntriesAppeared = 0;
-            int ticksWaited = 0;
-            EditorApplication.CallbackFunction waitForRegistry = null;
-            waitForRegistry = () =>
-            {
-                ticksWaited++;
-                if (ControlPanelEntryRegistry.Entries.Count > 0)
-                {
-                    ticksSinceEntriesAppeared++;
-                }
-
-                bool settled = ticksSinceEntriesAppeared >= TicksToSettleAfterEntries;
-                bool gaveUp = ticksWaited >= MaxTicksToWaitForEntries;
-                if (!settled && !gaveUp)
-                {
-                    return;
-                }
-
-                EditorApplication.update -= waitForRegistry;
-                OpenPanels(remembered);
-            };
-            EditorApplication.update += waitForRegistry;
+            // A panel opened before the registry is done would come up with no entries,
+            // or with stale ones.
+            ControlPanelEntryRegistry.WhenReady(() => OpenPanels(remembered));
         }
-
-        private const int TicksToSettleAfterEntries = 3;
-        private const int MaxTicksToWaitForEntries = 300;
 
         private static void OpenPanels(string remembered)
         {
