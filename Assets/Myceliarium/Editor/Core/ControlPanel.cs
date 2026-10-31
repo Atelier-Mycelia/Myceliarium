@@ -10,7 +10,7 @@ namespace AtMycelia.Myceliarium
     /// <summary>
     /// Serves as a hub for the Database-esque UI that other plugins may want to set up.
     /// </summary>
-    public abstract class ControlPanel : EditorWindow, IControlPanel
+    public abstract class ControlPanel : EditorWindow, IControlPanel, IGuardedPanel
     {
         #region Configurable Properties
         protected abstract string DisplayName { get; }
@@ -39,25 +39,26 @@ namespace AtMycelia.Myceliarium
             ControlPanelSignals.ControlPanelOpened.Invoke(this);
         }
 
-        /// <summary>
-        /// Closes without any dialog, discarding unsaved changes, since a prompt would
-        /// block the reload. The panel gets reopened afterwards.
-        /// </summary>
-        private void CloseForAssemblyReload()
+        #region IGuardedPanel
+        bool IGuardedPanel.IsDirty => hasUnsavedChanges;
+
+        void IGuardedPanel.SaveThen(System.Action onSaved)
         {
-            ControlPanelLifecycleGuard.RememberToReopen(GetType());
+            _saveCoordinator.SaveAll(onSaved);
+        }
+
+        void IGuardedPanel.Discard()
+        {
+            DiscardChanges();
+        }
+
+        void IGuardedPanel.CloseForAssemblyReload()
+        {
             DiscardChanges();
             hasUnsavedChanges = false; // So that Close doesn't show Unity's prompt
             Close();
         }
-
-        /// <summary>
-        /// Saves every entry, then calls onAllCompleted once all the savers are done.
-        /// </summary>
-        internal void SaveAllThen(System.Action onAllCompleted)
-        {
-            _saveCoordinator.SaveAll(onAllCompleted);
-        }
+        #endregion
 
         protected virtual void SetGlobalSubs(bool on)
         {
@@ -67,7 +68,6 @@ namespace AtMycelia.Myceliarium
                 ControlPanelSignals.CloseRequested += OnCloseRequested;
                 ControlPanelSignals.ReinitRequested += OnReinitRequested;
                 ControlPanelSignals.LanguageChanged += OnLanguageChanged;
-                AssemblyReloadEvents.beforeAssemblyReload += CloseForAssemblyReload;
             }
             else
             {
@@ -75,7 +75,6 @@ namespace AtMycelia.Myceliarium
                 ControlPanelSignals.CloseRequested -= OnCloseRequested;
                 ControlPanelSignals.ReinitRequested -= OnReinitRequested;
                 ControlPanelSignals.LanguageChanged -= OnLanguageChanged;
-                AssemblyReloadEvents.beforeAssemblyReload -= CloseForAssemblyReload;
             }
         }
 
