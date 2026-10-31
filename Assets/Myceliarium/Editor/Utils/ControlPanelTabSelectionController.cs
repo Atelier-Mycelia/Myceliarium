@@ -63,25 +63,37 @@ namespace AtMycelia.Myceliarium
 
         private void OnEntryTabClicked(IControlPanelEntry entryForClicked)
         {
+            TrySelect(entryForClicked);
+        }
+
+        /// <summary>
+        /// Selects the entry the way a click on its tab would. Returns false (doing
+        /// nothing) if it isn't one of ours, or isn't meant to have a subwindow.
+        /// </summary>
+        public bool TrySelect(IControlPanelEntry entry)
+        {
             bool ignoreIt = _entries == null ||
-                !WeHave(entryForClicked) ||
-                !entryForClicked.IsMeantToHaveSubwindow;
+                entry == null ||
+                !WeHave(entry) ||
+                !entry.IsMeantToHaveSubwindow;
             if (ignoreIt)
             {
-                return;
+                return false;
             }
 
-            bool currentlyShowingEntry = _entryBeingDisplayed != null;
-            bool switchToOtherOne = entryForClicked != _entryBeingDisplayed;
-
+            bool switchToOtherOne = entry != _entryBeingDisplayed;
             if (switchToOtherOne)
             {
-                _entryBeingDisplayed = entryForClicked;
+                _entryBeingDisplayed = entry;
                 DeselectAllEntries();
                 _entryBeingDisplayed.Select();
                 LastSelected = _entryBeingDisplayed;
+                DifferentEntrySelected.Invoke(_entryBeingDisplayed);
             }
+            return true;
         }
+
+        public event Action<IControlPanelEntry> DifferentEntrySelected = delegate {};
 
         private IControlPanelEntry LastSelected { get; set; }
 

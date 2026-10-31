@@ -11,7 +11,7 @@ namespace ComplexExample
 
 		protected override Type EntrySuperType => typeof(ICustomExampleEntry);
 
-		protected override Type SaverSuperType => typeof(CharaBioSaver);
+		protected override Type SaverSuperType => typeof(ICustomExampleSaver);
 
 		[MenuItem("Window/Complex Example/Control Panel")]
 		public static void BringUp()
@@ -38,6 +38,14 @@ namespace ComplexExample
 		}
 
 		public static ComplexExampleControlPanel S { get; private set; }
+
+	}
+
+	/// <summary>
+	/// Marks the savers that belong to the ComplexExample panel.
+	/// </summary>
+	public interface ICustomExampleSaver : IControlPanelEntrySaver
+	{
 
 	}
 

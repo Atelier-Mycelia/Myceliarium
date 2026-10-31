@@ -1,0 +1,67 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="../Styling/skillViewStyle.uss" />
+    <ui:VisualElement name="Root" class="skill-view">
+        <ui:VisualElement name="LeftColumn" class="column column-wide">
+            <ui:VisualElement name="GeneralSettings" class="section">
+                <ui:Label text="General Settings" class="section-header" />
+                <ui:VisualElement class="row row-top-aligned">
+                    <uie:ObjectField name="IconPicker" class="icon-picker" />
+                    <ui:TextField name="SkillName" label="Name" class="field" />
+                </ui:VisualElement>
+                <ui:TextField name="Description" label="Description" multiline="true" class="field multiline-field" />
+                <ui:VisualElement class="row">
+                    <ui:DropdownField name="SkillType" label="Skill Type" class="field" />
+                    <ui:IntegerField name="MpCost" label="MP Cost" class="field" />
+                    <ui:IntegerField name="TpCost" label="TP Cost" class="field" />
+                </ui:VisualElement>
+                <ui:VisualElement class="row">
+                    <ui:EnumField name="Scope" label="Scope" class="field" />
+                    <ui:EnumField name="Occasion" label="Occasion" class="field" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement name="Invocation" class="section">
+                <ui:Label text="Invocation" class="section-header" />
+                <ui:VisualElement class="row">
+                    <ui:IntegerField name="Speed" label="Speed" class="field" />
+                    <ui:IntegerField name="SuccessRate" label="Success (%)" class="field" />
+                </ui:VisualElement>
+                <ui:VisualElement class="row">
+                    <ui:IntegerField name="Repeats" label="Repeat" class="field" />
+                    <ui:IntegerField name="TpGain" label="TP Gain" class="field" />
+                </ui:VisualElement>
+                <ui:VisualElement class="row">
+                    <ui:EnumField name="HitType" label="Hit Type" class="field" />
+                    <ui:DropdownField name="Animation" label="Animation" class="field" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement name="Message" class="section">
+                <ui:Label text="Message" class="section-header" />
+                <ui:TextField name="Message1" label="Line 1" class="field" />
+                <ui:TextField name="Message2" label="Line 2" class="field" />
+            </ui:VisualElement>
+            <ui:VisualElement name="RequiredWeapon" class="section">
+                <ui:Label text="Required Weapon" class="section-header" />
+                <ui:VisualElement class="row">
+                    <ui:DropdownField name="WeaponType1" label="Weapon Type 1" class="field" />
+                    <ui:DropdownField name="WeaponType2" label="Weapon Type 2" class="field" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:VisualElement name="RightColumn" class="column column-narrow">
+            <ui:VisualElement name="Damage" class="section">
+                <ui:Label text="Damage" class="section-header" />
+                <ui:EnumField name="DamageType" label="Type" class="field" />
+                <ui:DropdownField name="Element" label="Element" class="field" />
+                <ui:TextField name="Formula" label="Formula" class="field" />
+                <ui:VisualElement class="row">
+                    <ui:IntegerField name="Variance" label="Variance (%)" class="field" />
+                    <ui:Toggle name="CriticalHits" label="Critical Hits" class="field" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement name="NoteSection" class="section">
+                <ui:Label text="Note" class="section-header" />
+                <ui:TextField name="Note" multiline="true" class="field multiline-field note-field" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

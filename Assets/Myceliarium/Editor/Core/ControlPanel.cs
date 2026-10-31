@@ -78,7 +78,7 @@ namespace AtMycelia.Myceliarium
             }
         }
 
-        protected virtual void OnSaveRequested(IControlPanel cPanel)
+		protected virtual void OnSaveRequested(IControlPanel cPanel)
         {
             if (!ReferenceEquals(cPanel, this))
             {
@@ -137,6 +137,16 @@ namespace AtMycelia.Myceliarium
         {
         }
 
+        protected void OnDifferentEntrySelected(IControlPanelEntry entry)
+		{
+			if (_lastSelection == null)
+            {
+                return;
+            }
+
+            _lastSelection.Remember(entry);
+		}
+
         /// <summary>
         /// Called by Unity when the user picks "Save" in the prompt shown for closing
         /// the window (e.g. via its X button) while hasUnsavedChanges is true.
@@ -159,11 +169,25 @@ namespace AtMycelia.Myceliarium
         }
 
         /// <summary>
-        /// Local to the VisualElements registered under this ControlPanel. The footers'
-        /// elements are handled by the footers themselves.
+        /// Local to the VisualElements or other fields registered under this
+        /// ControlPanel. The footers' elements are handled by the footers themselves.
         /// </summary>
-        protected virtual void SetLocalSubs(bool on)
+        protected virtual void SetLocalSubs(bool wantsSubsActive)
         {
+            if (wantsSubsActive)
+            {
+                if (_selectionController != null)
+                {
+                    _selectionController.DifferentEntrySelected += OnDifferentEntrySelected;
+                }
+            }
+            else
+            {
+                if (_selectionController != null)
+                {
+                    _selectionController.DifferentEntrySelected -= OnDifferentEntrySelected;
+                }
+            }
         }
 
         public virtual void CreateGUI()
@@ -221,11 +245,12 @@ namespace AtMycelia.Myceliarium
             }
 
             RegisterVisualElements();
-            SetLocalSubs(false);
-            SetLocalSubs(true);
             DoEntryPreps();
             RefreshFooter();
             PrepUnsavedChangesSync();
+            RestoreLastSelection();
+            SetLocalSubs(false);
+            SetLocalSubs(true);
         }
 
         private void TryAddBaseWindow(out bool success)
@@ -299,6 +324,23 @@ namespace AtMycelia.Myceliarium
         {
             _selectionController.Dispose();
             _selectionController.Init(_entries);
+            var ourType = GetType();
+            _lastSelection ??= LastSelectionMemory.InEditorPrefs(ourType);
+        }
+
+        private LastSelectionMemory _lastSelection;
+
+        /// <summary>
+        /// Brings back the entry that was selected when this panel was last open. Does
+        /// nothing for panels too small for that to matter; see LastSelectionMemory.
+        /// </summary>
+        private void RestoreLastSelection()
+        {
+            var toRestore = _lastSelection.FindToRestore(_entries.AllWithSubwindows);
+            if (toRestore != null)
+            {
+                _selectionController.TrySelect(toRestore);
+            }
         }
 
         protected virtual void RefreshSaverCache()
