@@ -116,6 +116,34 @@ namespace AtMycelia.Myceliarium.Tests
         }
 
         [Test]
+        public void Save_WhenAnyPanelFailsToSave_DoesNotStartPlayMode()
+        {
+            var failing = new FakePanel { SavesSucceed = false };
+            _dirtyPanels.Add(failing);
+            _dirtyPanels.Add(new FakePanel());
+            _answer = UnsavedChangesChoice.Save;
+
+            _gate.OnExitingEditMode();
+            RunDeferred();
+
+            Assert.That(_playingRequests, Is.EqualTo(new[] { false }));
+        }
+
+        [Test]
+        public void Save_AfterAFailure_TheNextAttemptIsCheckedAgain()
+        {
+            _dirtyPanels.Add(new FakePanel { SavesSucceed = false });
+            _answer = UnsavedChangesChoice.Save;
+            _gate.OnExitingEditMode();
+            RunDeferred();
+
+            _gate.OnExitingEditMode();
+            RunDeferred();
+
+            Assert.That(_asked, Is.EqualTo(2));
+        }
+
+        [Test]
         public void Save_RestartsPlayModeOnALaterTickThanTheSaveCompleting()
         {
             _dirtyPanels.Add(new FakePanel());
@@ -189,16 +217,17 @@ namespace AtMycelia.Myceliarium.Tests
         private class FakePanel : IGuardedPanel
         {
             public bool CompleteSavesAutomatically = true;
+            public bool SavesSucceed = true;
             public int Saves;
             public int Discards;
-            private Action _onSaved;
+            private Action<bool> _onFinished;
 
             public bool IsDirty => true;
 
-            public void SaveThen(Action onSaved)
+            public void SaveThen(Action<bool> onFinished)
             {
                 Saves++;
-                _onSaved = onSaved;
+                _onFinished = onFinished;
                 if (CompleteSavesAutomatically)
                 {
                     CompleteSave();
@@ -207,7 +236,7 @@ namespace AtMycelia.Myceliarium.Tests
 
             public void CompleteSave()
             {
-                _onSaved?.Invoke();
+                _onFinished?.Invoke(SavesSucceed);
             }
 
             public void Discard()

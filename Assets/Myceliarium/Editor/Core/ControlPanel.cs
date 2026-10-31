@@ -42,9 +42,13 @@ namespace AtMycelia.Myceliarium
         #region IGuardedPanel
         bool IGuardedPanel.IsDirty => hasUnsavedChanges;
 
-        void IGuardedPanel.SaveThen(System.Action onSaved)
+        void IGuardedPanel.SaveThen(System.Action<bool> onFinished)
         {
-            _saveCoordinator.SaveAll(onSaved);
+            _saveCoordinator.SaveAll(failedEntries =>
+            {
+                LogFailedSaves(failedEntries);
+                onFinished(failedEntries.Count == 0);
+            });
         }
 
         void IGuardedPanel.Discard()
@@ -85,7 +89,16 @@ namespace AtMycelia.Myceliarium
                 return;
             }
 
-            _saveCoordinator.SaveAll();
+            _saveCoordinator.SaveAll(LogFailedSaves);
+        }
+
+        private void LogFailedSaves(IReadOnlyList<IControlPanelEntry> failedEntries)
+        {
+            for (int i = 0; i < failedEntries.Count; i++)
+            {
+                Debug.LogWarning($"{DisplayName} could not save " +
+                    $"{failedEntries[i].GetType().Name}; its changes are still unsaved.");
+            }
         }
 
         private readonly SaveCoordinator _saveCoordinator = new SaveCoordinator();
