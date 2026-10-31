@@ -37,17 +37,17 @@ namespace AtMycelia.Myceliarium.Tests
         [Test]
         public void TabClicked_SwitchingBetweenTwoEntries_HidesPreviousAndShowsNew()
         {
-            var entryA = new FakeEntry();
-            var entryB = new FakeEntry();
-            _controller.Init(new List<IControlPanelEntry> { entryA, entryB });
+            var firstEntry = new FakeEntry();
+            var secondEntry = new FakeEntry();
+            _controller.Init(new List<IControlPanelEntry> { firstEntry, secondEntry });
 
-            entryA.Tab.InvokeClicked();
-            entryB.Tab.InvokeClicked();
+            firstEntry.Tab.InvokeClicked();
+            secondEntry.Tab.InvokeClicked();
 
-            Assert.That(((FakeSubwindow)entryA.Subwindow).IsShown, Is.False);
-            Assert.That(((FakeSubwindow)entryB.Subwindow).IsShown, Is.True);
-            Assert.That(entryA.Tab.IsSelected, Is.False);
-            Assert.That(entryB.Tab.IsSelected, Is.True);
+            Assert.That(((FakeSubwindow)firstEntry.Subwindow).IsShown, Is.False);
+            Assert.That(((FakeSubwindow)secondEntry.Subwindow).IsShown, Is.True);
+            Assert.That(firstEntry.Tab.IsSelected, Is.False);
+            Assert.That(secondEntry.Tab.IsSelected, Is.True);
         }
 
         [Test]
@@ -87,6 +87,73 @@ namespace AtMycelia.Myceliarium.Tests
             entry.Tab.InvokeClicked();
 
             Assert.That(entry.Tab.IsSelected, Is.False);
+        }
+        #endregion
+
+        #region Programmatic selection
+        [Test]
+        public void TrySelect_KnownEntry_SelectsItLikeAClickWould()
+        {
+            var entry = new FakeEntry();
+            _controller.Init(new List<IControlPanelEntry> { entry });
+
+            bool result = _controller.TrySelect(entry);
+
+            Assert.That(result, Is.True);
+            Assert.That(entry.Tab.IsSelected, Is.True);
+            Assert.That(((FakeSubwindow)entry.Subwindow).IsShown, Is.True);
+            Assert.That(_controller.DisplayedEntry, Is.SameAs(entry));
+        }
+
+        [Test]
+        public void TrySelect_UnknownEntry_DoesNothingAndReturnsFalse()
+        {
+            var known = new FakeEntry();
+            var unknown = new FakeEntry();
+            _controller.Init(new List<IControlPanelEntry> { known });
+
+            bool result = _controller.TrySelect(unknown);
+
+            Assert.That(result, Is.False);
+            Assert.That(unknown.Tab.IsSelected, Is.False);
+        }
+
+        [Test]
+        public void TrySelect_Null_ReturnsFalse()
+        {
+            _controller.Init(new List<IControlPanelEntry> { new FakeEntry() });
+
+            Assert.That(_controller.TrySelect(null), Is.False);
+        }
+
+        [Test]
+        public void TrySelect_DeselectsTheOneThatWasSelected()
+        {
+            var firstEntry = new FakeEntry();
+            var secondEntry = new FakeEntry();
+            _controller.Init(new List<IControlPanelEntry> { firstEntry, secondEntry });
+            firstEntry.Tab.InvokeClicked();
+
+            _controller.TrySelect(secondEntry);
+
+            Assert.That(firstEntry.Tab.IsSelected, Is.False);
+            Assert.That(secondEntry.Tab.IsSelected, Is.True);
+        }
+
+        [Test]
+        public void EntrySelected_RaisedOnClicksAndTrySelect_ButNotForTheAlreadyDisplayedOne()
+        {
+            var firstEntry = new FakeEntry();
+            var secondEntry = new FakeEntry();
+            _controller.Init(new List<IControlPanelEntry> { firstEntry, secondEntry });
+            var selected = new List<IControlPanelEntry>();
+            _controller.DifferentEntrySelected += selected.Add;
+
+            firstEntry.Tab.InvokeClicked();
+            firstEntry.Tab.InvokeClicked();
+            _controller.TrySelect(secondEntry);
+            _controller.DifferentEntrySelected -= selected.Add;
+            Assert.That(selected, Is.EqualTo(new[] { firstEntry, secondEntry }));
         }
         #endregion
 
@@ -202,7 +269,7 @@ namespace AtMycelia.Myceliarium.Tests
             _controller.Init(new List<IControlPanelEntry> { entry });
             entry.Tab.InvokeClicked();
 
-            // Second Init resets _entryBeingDisplayed to null, so clicking the same
+            // Second Init resets _secondEntryeingDisplayed to null, so clicking the same
             // entry again should be treated as a fresh switch (Show called twice total).
             var subwindow = (FakeSubwindow)entry.Subwindow;
             Assert.That(subwindow.ShowCallCount, Is.EqualTo(2));

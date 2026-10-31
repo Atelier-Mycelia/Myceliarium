@@ -6,7 +6,7 @@ using AtMycelia;
 
 namespace ComplexExample
 {
-	public class CharaBioSaver : ControlPanelEntrySaver
+	public class CharaBioSaver : ControlPanelEntrySaver, ICustomExampleSaver
 	{
 		public override bool IsCompatibleWith(IControlPanelEntry toSaveFor)//
 		{
