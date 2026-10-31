@@ -38,7 +38,7 @@ MonoBehaviour:
     weaponType2: None
     note: 
   - skillName: Defend
-    icon: {fileID: 0}
+    icon: {fileID: 240973750, guid: a5e645d0b2507ac42807ef8e886f7d45, type: 3}
     description: Take a defensive stance until the next turn.
     skillType: None
     mpCost: 0
