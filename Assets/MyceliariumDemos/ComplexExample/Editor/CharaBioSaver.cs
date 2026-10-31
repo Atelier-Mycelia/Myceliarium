@@ -8,20 +8,26 @@ namespace ComplexExample
 {
 	public class CharaBioSaver : ControlPanelEntrySaver, ICustomExampleSaver
 	{
-		public override bool IsCompatibleWith(IControlPanelEntry toSaveFor)//
+		public override bool IsCompatibleWith(IControlPanelEntry toSaveFor)
 		{
 			return toSaveFor is CharaBioEntry;
 		}
 
-		protected override IEnumerator SaveProcess(IControlPanelEntry toSaveFor, Action onComplete)
+		protected override IEnumerator SaveProcess(EntrySaveRequest request)
 		{
-			var entry = toSaveFor as CharaBioEntry;
+			var entry = request.Entry as CharaBioEntry;
+			OverwriteRegistryOnDisk(entry);
+			yield break;
+		}
+
+		private void OverwriteRegistryOnDisk(CharaBioEntry entry)
+		{
 			CharaBioRegistry registry = entry.BioRegistry;
 			registry.Clear();
 
 			var biosInUi = entry.CharaBiosInUi;
-			
 			var bioCopies = new List<CharaBio>();
+			
 			for (int i = 0; i < biosInUi.Count; i++)
 			{
 				var sourceBio = biosInUi[i];
@@ -32,9 +38,6 @@ namespace ComplexExample
 			// on-disk registry, which would be confusing.
 			registry.AddRange(bioCopies);
 			registry.MarkDirtyAndSave();
-			onComplete?.Invoke();
-			ControlPanelSignals.SaveCompleted(entry);
-			yield return null;
 		}
 
 	}

@@ -257,25 +257,25 @@ namespace AtMycelia.Myceliarium.Tests
         #region Test Doubles
         private abstract class AbstractSaver : IControlPanelEntrySaver
         {
-            public abstract void Save(IControlPanelEntry toSaveFor, Action onComplete = null);
+            public abstract void Save(EntrySaveRequest request);
             public abstract bool IsCompatibleWith(IControlPanelEntry toSaveFor);
         }
 
         private class FakeSaverA : IControlPanelEntrySaver
         {
-            public void Save(IControlPanelEntry toSaveFor, Action onComplete = null) { }
+            public void Save(EntrySaveRequest request) { }
             public bool IsCompatibleWith(IControlPanelEntry toSaveFor) => true;
         }
 
         private class FakeSaverB : IControlPanelEntrySaver
         {
-            public void Save(IControlPanelEntry toSaveFor, Action onComplete = null) { }
+            public void Save(EntrySaveRequest request) { }
             public bool IsCompatibleWith(IControlPanelEntry toSaveFor) => true;
         }
 
         private class FakeAtMyceliaSaver : IAtMyceliaControlPanelEntrySaver
         {
-            public void Save(IControlPanelEntry toSaveFor, Action onComplete = null) { }
+            public void Save(EntrySaveRequest request) { }
             public bool IsCompatibleWith(IControlPanelEntry toSaveFor) => true;
         }
         #endregion

@@ -13,9 +13,15 @@ namespace ComplexExample
 			return toSaveFor is SkillEntry;
 		}
 
-		protected override IEnumerator SaveProcess(IControlPanelEntry toSaveFor, Action onComplete)
+		protected override IEnumerator SaveProcess(EntrySaveRequest request)
 		{
-			var entry = toSaveFor as SkillEntry;
+			var entry = request.Entry as SkillEntry;
+			OverwriteRegistryOnDisk(entry);
+			yield break;
+		}
+
+		private void OverwriteRegistryOnDisk(SkillEntry entry)
+		{
 			SkillRegistry registry = entry.SkillRegistry;
 			registry.Clear();
 
@@ -24,13 +30,11 @@ namespace ComplexExample
 			var skillCopies = new List<Skill>();
 			foreach (var skill in entry.SkillsInUi)
 			{
-				skillCopies.Add(new Skill(skill));
+				var copy = new Skill(skill);
+				skillCopies.Add(copy);
 			}
 			registry.AddRange(skillCopies);
 			registry.MarkDirtyAndSave();
-			onComplete?.Invoke();
-			ControlPanelSignals.SaveCompleted(entry);
-			yield return null;
 		}
 	}
 }

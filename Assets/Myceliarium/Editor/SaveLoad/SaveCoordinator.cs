@@ -49,10 +49,11 @@ namespace AtMycelia.Myceliarium
         /// <summary>
         /// Has every saver save each of its compatible entries.
         /// </summary>
-        /// <param name="onAllCompleted">Called once, after every saver has reported
-        /// (through the onComplete callback of Save) that it's done. Called right away
-        /// if there's nothing to save. Savers are expected to invoke that callback.</param>
-        public void SaveAll(Action onAllCompleted = null)
+        /// <param name="onAllFinished">Called once, after every save has been reported
+        /// as either a success or a failure (see <see cref="EntrySaveRequest"/>), with
+        /// the entries that couldn't be saved (none, if all went well). Called right away
+        /// if there's nothing to save. Savers are expected to report every request.</param>
+        public void SaveAll(Action<IReadOnlyList<IControlPanelEntry>> onAllFinished = null)
         {
             int pending = 0;
             foreach (var kvp in _savers)
@@ -60,19 +61,26 @@ namespace AtMycelia.Myceliarium
                 pending += kvp.Value.Count;
             }
 
+            var failed = new List<IControlPanelEntry>();
             if (pending == 0)
             {
-                onAllCompleted?.Invoke();
+                onAllFinished?.Invoke(failed);
                 return;
             }
 
-            void OnOneCompleted()
+            void OnOneFinished()
             {
                 pending--;
                 if (pending == 0)
                 {
-                    onAllCompleted?.Invoke();
+                    onAllFinished?.Invoke(failed);
                 }
+            }
+
+            void OnOneFailed(IControlPanelEntry entry)
+            {
+                failed.Add(entry);
+                OnOneFinished();
             }
 
             // Copied, in case a saver completes synchronously and a handler refreshes this
@@ -84,7 +92,10 @@ namespace AtMycelia.Myceliarium
                 var compatibleEntries = kvp.Value;
                 for (int i = 0; i < compatibleEntries.Count; i++)
                 {
-                    saver.Save(compatibleEntries[i], OnOneCompleted);
+                    // One per entry, as savers get to it a few frames later
+                    var request = new EntrySaveRequest(compatibleEntries[i], OnOneFinished,
+                        OnOneFailed);
+                    saver.Save(request);
                 }
             }
         }

@@ -71,12 +71,63 @@ namespace AtMycelia.Myceliarium.Tests
         [Test]
         public void SaveAll_NothingToSave_CompletesImmediately()
         {
-            int completed = 0;
+            int finished = 0;
+            IReadOnlyList<IControlPanelEntry> failed = null;
 
-            new SaveCoordinator().SaveAll(() => completed++);
+            new SaveCoordinator().SaveAll(failedEntries =>
+            {
+                finished++;
+                failed = failedEntries;
+            });
 
-            Assert.That(completed, Is.EqualTo(1));
+            Assert.That(finished, Is.EqualTo(1));
+            Assert.That(failed, Is.Empty);
         }
+
+        [Test]
+        public void SaveAll_GivesEachEntryItsOwnRequest()
+        {
+            var a = new FakeEntry();
+            var b = new FakeEntry();
+            var saver = new DeferredSaver();
+            var coordinator = new SaveCoordinator();
+            coordinator.Refresh(new List<IControlPanelEntrySaver> { saver },
+                new List<IControlPanelEntry> { a, b });
+
+            coordinator.SaveAll();
+
+            Assert.That(saver.Requests.Count, Is.EqualTo(2));
+            Assert.That(saver.Requests[0], Is.Not.SameAs(saver.Requests[1]));
+            Assert.That(saver.Requests[0].Entry, Is.SameAs(a));
+            Assert.That(saver.Requests[1].Entry, Is.SameAs(b));
+        }
+
+        [Test]
+        public void SaveAll_AFailureStillLetsItFinish_AndNamesTheFailedEntries()
+        {
+            var a = new FakeEntry();
+            var b = new FakeEntry();
+            var saver = new DeferredSaver();
+            var coordinator = new SaveCoordinator();
+            coordinator.Refresh(new List<IControlPanelEntrySaver> { saver },
+                new List<IControlPanelEntry> { a, b });
+            int finished = 0;
+            IReadOnlyList<IControlPanelEntry> failed = null;
+            coordinator.SaveAll(failedEntries =>
+            {
+                finished++;
+                failed = failedEntries;
+            });
+
+            saver.Requests[0].ReportFailure();
+            Assert.That(finished, Is.EqualTo(0));
+
+            saver.Requests[1].ReportSuccess();
+
+            Assert.That(finished, Is.EqualTo(1));
+            Assert.That(failed, Is.EqualTo(new[] { a }));
+        }
+
 
         [Test]
         public void SaveAll_WaitsForEverySaverBeforeCompleting()
@@ -87,24 +138,24 @@ namespace AtMycelia.Myceliarium.Tests
             var coordinator = new SaveCoordinator();
             coordinator.Refresh(new List<IControlPanelEntrySaver> { saver },
                 new List<IControlPanelEntry> { a, b });
-            int completed = 0;
+            int finished = 0;
 
-            coordinator.SaveAll(() => completed++);
-            saver.Callbacks[0]();
-            Assert.That(completed, Is.EqualTo(0));
+            coordinator.SaveAll(failedEntries => finished++);
+            saver.Requests[0].ReportSuccess();
+            Assert.That(finished, Is.EqualTo(0));
 
-            saver.Callbacks[1]();
-            Assert.That(completed, Is.EqualTo(1));
+            saver.Requests[1].ReportSuccess();
+            Assert.That(finished, Is.EqualTo(1));
         }
 
         #region Test Doubles
         private class DeferredSaver : IControlPanelEntrySaver
         {
-            public readonly List<Action> Callbacks = new List<Action>();
+            public readonly List<EntrySaveRequest> Requests = new List<EntrySaveRequest>();
 
-            public void Save(IControlPanelEntry toSaveFor, Action onComplete = null)
+            public void Save(EntrySaveRequest request)
             {
-                Callbacks.Add(onComplete);
+                Requests.Add(request);
             }
 
             public bool IsCompatibleWith(IControlPanelEntry toSaveFor) => true;
@@ -124,10 +175,10 @@ namespace AtMycelia.Myceliarium.Tests
                 _isCompatible = isCompatible;
             }
 
-            public void Save(IControlPanelEntry toSaveFor, Action onComplete = null)
+            public void Save(EntrySaveRequest request)
             {
-                Saved.Add(toSaveFor);
-                onComplete?.Invoke();
+                Saved.Add(request.Entry);
+                request.ReportSuccess();
             }
 
             public bool IsCompatibleWith(IControlPanelEntry toSaveFor) => _isCompatible(toSaveFor);

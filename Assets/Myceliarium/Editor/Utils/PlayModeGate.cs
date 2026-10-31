@@ -93,17 +93,29 @@ namespace AtMycelia.Myceliarium
         private void SaveThenRestart(IReadOnlyList<IGuardedPanel> dirtyPanels)
         {
             int pending = dirtyPanels.Count;
-            
+            bool anyFailed = false;
+
             for (int i = 0; i < dirtyPanels.Count; i++)
             {
                 var panel = dirtyPanels[i];
-                panel.SaveThen(OnPanelSaved);
+                panel.SaveThen(OnPanelFinished);
             }
 
-            void OnPanelSaved()
+            void OnPanelFinished(bool allSaved)
             {
+                anyFailed |= !allSaved;
                 pending--;
-                if (pending == 0)
+                if (pending > 0)
+                {
+                    return;
+                }
+
+                if (anyFailed)
+                {
+                    // Starting Play Mode would leave the unsaved changes behind
+                    _state = State.Idle;
+                }
+                else
                 {
                     Restart();
                 }
@@ -112,8 +124,8 @@ namespace AtMycelia.Myceliarium
 
         private void Restart()
         {
-            // Deferred because savers invoke onComplete before they raise SaveCompleted,
-            // so the panels would still look dirty right now and ask all over again.
+            // Deferred so that whatever reacts to the saves (panels updating their
+            // unsaved changes state, for one) has settled by the time Play Mode starts.
             _defer(() =>
             {
                 _state = State.Restarting;
@@ -138,9 +150,10 @@ namespace AtMycelia.Myceliarium
         bool IsDirty { get; }
 
         /// <summary>
-        /// Saves everything, then calls onSaved once all the savers are done.
+        /// Saves everything, then calls onFinished once all the savers are done, telling
+        /// whether everything got saved.
         /// </summary>
-        void SaveThen(Action onSaved);
+        void SaveThen(Action<bool> onFinished);
 
         void Discard();
 

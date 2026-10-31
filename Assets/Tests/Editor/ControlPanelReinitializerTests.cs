@@ -195,7 +195,7 @@ namespace AtMycelia.Myceliarium.Tests
 
         private class FakeSaver : IControlPanelEntrySaver
         {
-            public void Save(IControlPanelEntry toSaveFor, Action onComplete = null) { }
+            public void Save(EntrySaveRequest request) { }
             public bool IsCompatibleWith(IControlPanelEntry toSaveFor) => true;
         }
 
