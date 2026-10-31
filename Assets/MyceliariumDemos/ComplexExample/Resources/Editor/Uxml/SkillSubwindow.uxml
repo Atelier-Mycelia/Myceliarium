@@ -1,0 +1,14 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="../Styling/skillSubwindowStyle.uss" />
+    <ui:VisualElement name="Root" style="flex-grow: 1; flex-direction: row;">
+        <ui:VisualElement name="Sidebar" class="sidebar">
+            <ui:Label text="Skills" name="SkillListHeader" class="header" />
+            <ui:VisualElement name="Controls" class="controls">
+                <ui:Button text="Add New" name="NewSkillButton" class="control-button" />
+                <ui:Button text="Delete" name="DeleteSkillButton" class="control-button" />
+            </ui:VisualElement>
+            <ui:ListView name="SkillListView" show-border="true" class="entry-list" />
+        </ui:VisualElement>
+        <ui:VisualElement name="DetailHolder" class="detail-holder" />
+    </ui:VisualElement>
+</ui:UXML>

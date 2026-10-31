@@ -128,13 +128,13 @@ namespace AtMycelia.Myceliarium.Tests
         {
             var root = CreateValidRoot(out var mainTabSet, out _);
             _attacher.Init(root);
-            var entryA = new FakeEntry();
-            var entryB = new FakeEntry();
+            var firstEntry = new FakeEntry();
+            var secondEntry = new FakeEntry();
 
-            _attacher.Attach(new List<IControlPanelEntry> { entryA, entryB });
+            _attacher.Attach(new List<IControlPanelEntry> { firstEntry, secondEntry });
 
-            Assert.That(mainTabSet.Contains(entryA.Tab.Root), Is.True);
-            Assert.That(mainTabSet.Contains(entryB.Tab.Root), Is.True);
+            Assert.That(mainTabSet.Contains(firstEntry.Tab.Root), Is.True);
+            Assert.That(mainTabSet.Contains(secondEntry.Tab.Root), Is.True);
         }
         #endregion
 

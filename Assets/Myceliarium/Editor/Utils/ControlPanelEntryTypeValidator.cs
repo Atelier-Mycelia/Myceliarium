@@ -62,10 +62,10 @@ namespace AtMycelia.Myceliarium
             }
 
             var duplicateNames = string.Join(", ", GetNames(duplicates));
-            throw new InvalidOperationException(
-                $"Duplicate IControlPanelEntry types found: {duplicateNames}. " +
+            string errorMessage = $"Duplicate IControlPanelEntry types found: {duplicateNames}. " +
                 $"Each entry type should only ever appear once across all top-level " +
-                $"entries and their subentries within a single ControlPanel.");
+                $"entries and their subentries within a single ControlPanel.";
+            throw new InvalidOperationException(errorMessage);
         }
 
         private static IEnumerable<string> GetNames(IList<Type> types)

@@ -80,7 +80,13 @@ namespace ComplexExample
 			var loadResult = Loader.GetLoadResult<CharaBioRegistry>();
 			BioLogic.Load(loadResult);
 			BioSubwindow.ShowMultiBios(BioLogic.Bios);
-			BioSubwindow.Show();
+
+			// Loading also happens when the panel opens, when this may not be the
+			// selected entry, and its subwindow shouldn't cover that of the one that is.
+			if (_tab.IsSelected)
+			{
+				BioSubwindow.Show();
+			}
 		}
 
 		/// <summary>

@@ -35,7 +35,9 @@ namespace ComplexExample
 		/// </summary>
 		public static readonly IReadOnlyList<string> Occupations = new[]
 		{
-			"Unemployed", "Adventurer", "Merchant", "Scholar", "Soldier", "Thief", "Healer",
+			"Unemployed", "Alchemist", "Adventurer", 
+			"Hunter", "Merchant", "Scholar", 
+			"Soldier", "Thief", "Healer",
 		};
 		public static string DefaultOccupation => Occupations[0];
 
