@@ -372,9 +372,11 @@ namespace AtMycelia.Myceliarium.Tests
             }
 
             public override string SortingName => nameof(TestEntry);
-            public override bool IsMeantToHaveSubwindow => _meantToHaveSubwindow;
 
             protected override Type SidebarTabType => typeof(FakeTab);
+            protected override Type SubwindowType => _meantToHaveSubwindow ?
+                typeof(FakeSubwindow) :
+                null;
 
             public int LoadingCallCount { get; private set; }
 
@@ -389,7 +391,7 @@ namespace AtMycelia.Myceliarium.Tests
             public int CreateSubentriesCallCount { get; private set; }
             public int PrepareSubwindowCallCount { get; private set; }
 
-            protected override void PrepareMainSidebarTab()
+            protected override void PrepareTab()
             {
                 PrepareLeftSidebarTabCallCount++;
                 Tab = new FakeTab();
@@ -414,11 +416,10 @@ namespace AtMycelia.Myceliarium.Tests
         private class ParentEntry : ControlPanelEntry
         {
             public override string SortingName => nameof(ParentEntry);
-            public override bool IsMeantToHaveSubwindow => false;
             public int CreateSubentriesCallCount { get; private set; }
 
             protected override Type SidebarTabType => typeof(FakeTab);
-            protected override void PrepareMainSidebarTab() => Tab = new FakeTab();
+            protected override void PrepareTab() => Tab = new FakeTab();
 
             protected override IEnumerable<IControlPanelEntry> CreateSubentries()
             {
@@ -465,7 +466,7 @@ namespace AtMycelia.Myceliarium.Tests
 
             public T Q<T>(string name, string className) where T : VisualElement
             {
-                return null;//
+                return null;
             }
         }
         #endregion

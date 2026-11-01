@@ -9,7 +9,7 @@ namespace SimpleExample
 {
     public class SimpleControlPanel : ControlPanel
     {
-        protected override string DisplayName => "Simple Example Control Panel";//
+        protected override string DisplayName => "Simple Example Control Panel";
         protected override string PathToUxml => "Editor/Uxml/SimpleControlPanel";
 
         protected override Type EntrySuperType => typeof(ISimpleExampleEntry);

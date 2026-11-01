@@ -26,9 +26,8 @@ namespace AtMycelia.Myceliarium.Tests
             }
 
             public override string SortingName => "UndoTest";
-            public override bool IsMeantToHaveSubwindow => false;
             protected override System.Type SidebarTabType => null;
-            protected override void PrepareMainSidebarTab() { }
+            protected override void PrepareTab() { }
 
             public void Do(IUndoableCommand command) => Logic.History.Push(command);
         }

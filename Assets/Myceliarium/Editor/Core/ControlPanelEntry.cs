@@ -30,7 +30,7 @@ namespace AtMycelia.Myceliarium
         public virtual bool IsTopLevel => false;
         // ^Why false as the default? We expect that most entries will be
         // nested under others.
-        public abstract string SortingName { get; }//
+        public abstract string SortingName { get; }
 
         public virtual bool ShouldPreloadOnInit => false; // opt-in, default false
 
@@ -55,7 +55,7 @@ namespace AtMycelia.Myceliarium
 
             if (forceReinit || !_isInitted)
             {
-                PrepareMainSidebarTab();
+                PrepareTab();
                 _subentries.Prepare(CreateSubentries, Tab);
                 PrepareSubwindow();
                 PrepareLoader();
@@ -127,7 +127,7 @@ namespace AtMycelia.Myceliarium
         // Each module is made the same way: one instance of the type that the subclass
         // names, which gets its Init call if it came out valid.
 
-        protected virtual void PrepareMainSidebarTab()
+        protected virtual void PrepareTab()
         {
             _tab = ModuleFactory.Create<IControlPanelTab>(SidebarTabType, "tab");
             _tab?.Init();
@@ -203,7 +203,9 @@ namespace AtMycelia.Myceliarium
         private readonly SubentryGroup _subentries = new SubentryGroup();
         #endregion
 
-        public virtual bool IsMeantToHaveSubwindow => true;
+        public bool IsMeantToHaveSubwindow => SubwindowType != null &&
+        SubwindowType.IsConcrete() &&
+        typeof(IControlPanelSubwindow).IsAssignableFrom(SubwindowType);
         // ^Most tabs are expected to have subwindows, so...
 
         /// <summary>
