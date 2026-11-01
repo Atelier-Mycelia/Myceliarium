@@ -160,6 +160,34 @@ namespace AtMycelia.Myceliarium.Tests
         }
 
         [Test]
+        public void Logic_IsLoaded_OnlyAfterLoad()
+        {
+            var logic = new CounterLogic();
+            Assert.That(logic.IsLoaded, Is.False);
+
+            logic.Load(1);
+
+            Assert.That(logic.IsLoaded, Is.True);
+        }
+
+        [Test]
+        public void Entry_IsLoaded_FalseAfterInitUntilTheLogicLoads_AndFalseAfterDispose()
+        {
+            var entry = new LogicEntry();
+            Assert.That(entry.IsLoaded, Is.False); // Not initted, so no logic
+
+            entry.Init();
+            Assert.That(entry.IsInitted, Is.True);
+            Assert.That(entry.IsLoaded, Is.False);
+
+            entry.Logic.Load(3);
+            Assert.That(entry.IsLoaded, Is.True);
+
+            entry.Dispose();
+            Assert.That(entry.IsLoaded, Is.False);
+        }
+
+        [Test]
         public void Logic_HasUnsavedChanges_FollowsTheHistory_AndRaisesTheEvent()
         {
             var logic = new CounterLogic();

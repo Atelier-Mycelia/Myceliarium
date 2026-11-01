@@ -27,10 +27,10 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         internal IEnumerator SaveProcessSequence(EntrySaveRequest request)
         {
-            yield return GiveUiControlsTimeToFinish();
+            yield return GiveUiControlsTimeToFinish();//
 
             var entry = request.Entry;
-            if (entry.IsInitted)
+            if (entry.IsLoaded)
             {
                 Exception error = null;
                 var guarded = CoroutineGuard.Run(SaveProcess(request), thrown => error = thrown);
@@ -48,7 +48,8 @@ namespace AtMycelia.Myceliarium
 
                 ControlPanelSignals.SaveCompleted(entry);
             }
-            // ^An entry that isn't initted has nothing of the user's to save. That's not
+            // ^An entry that isn't loaded (never selected since the panel was built, say)
+            // can't have been edited, so it has nothing of the user's to save. That's not
             // a failure, but there's no saved state to announce either.
 
             request.ReportSuccess();
@@ -62,8 +63,8 @@ namespace AtMycelia.Myceliarium
 
         /// <summary>
         /// The one method subclasses override: the saving itself. It only runs when the
-        /// entry's IsInitted is true, so you shouldn't run into NREs that come from
-        /// that being false. Raising an exception here counts as the save failing.
+        /// entry's IsLoaded is true, so you shouldn't run into NREs that come from
+        /// its state not having been loaded. Raising an exception here counts as the save failing.
         /// Reporting the outcome is taken care of afterwards, so don't do that here.
         /// </summary>
         protected virtual IEnumerator SaveProcess(EntrySaveRequest request)

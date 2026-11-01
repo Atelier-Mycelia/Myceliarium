@@ -26,7 +26,7 @@ namespace ComplexExample
 			registry.Clear();
 
 			var biosInUi = entry.CharaBiosInUi;
-			var bioCopies = new List<CharaBio>();
+			var bioCopies = new List<CharaBio>();//
 			
 			for (int i = 0; i < biosInUi.Count; i++)
 			{

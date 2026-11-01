@@ -256,6 +256,7 @@ namespace AtMycelia.Myceliarium.Tests
             public bool IsTopLevel { get; }
             public bool IsMeantToHaveSubwindow { get; }
             public bool IsInitted => false;
+            public bool IsLoaded => false;
             public bool HasSubentries => _subentries.Count > 0;
             public bool HasUnsavedChanges => false;
             public IControlPanelEntryLoader Loader => null;
