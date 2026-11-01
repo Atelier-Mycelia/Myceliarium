@@ -27,7 +27,7 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         internal IEnumerator SaveProcessSequence(EntrySaveRequest request)
         {
-            yield return GiveUiControlsTimeToFinish();//
+            yield return GiveUiControlsTimeToFinish();
 
             var entry = request.Entry;
             if (entry.IsLoaded)

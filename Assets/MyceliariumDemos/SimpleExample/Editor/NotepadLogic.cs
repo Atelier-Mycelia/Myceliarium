@@ -42,7 +42,7 @@ namespace SimpleExample
         private void ApplyText(FieldEdit edit, object value)
         {
             Text = (string)value;
-            TextChangedByHistory(Text);//
+            TextChangedByHistory(Text);
         }
     }
 }

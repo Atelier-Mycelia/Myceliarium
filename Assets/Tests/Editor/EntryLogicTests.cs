@@ -43,9 +43,8 @@ namespace AtMycelia.Myceliarium.Tests
         private sealed class LogicEntry : ControlPanelEntry
         {
             public override string SortingName => "Logic";
-            public override bool IsMeantToHaveSubwindow => false;
             protected override Type SidebarTabType => null;
-            protected override void PrepareMainSidebarTab() { }
+            protected override void PrepareTab() { }
             protected override Type LogicType => typeof(CounterLogic);
 
             public CounterLogic CounterLogic => (CounterLogic)Logic;
@@ -342,9 +341,8 @@ namespace AtMycelia.Myceliarium.Tests
         private sealed class BadLogicEntry : ControlPanelEntry
         {
             public override string SortingName => "BadLogic";
-            public override bool IsMeantToHaveSubwindow => false;
             protected override Type SidebarTabType => null;
-            protected override void PrepareMainSidebarTab() { }
+            protected override void PrepareTab() { }
             protected override Type LogicType => typeof(NotALogic);
         }
         #endregion

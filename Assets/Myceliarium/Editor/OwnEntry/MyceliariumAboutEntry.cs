@@ -9,8 +9,6 @@ namespace AtMycelia.Myceliarium
 
         public override string SortingName => "Myceliarium";
 
-        public override bool IsMeantToHaveSubwindow => true;
-
         protected override Type SidebarTabType => typeof(MyceliariumAboutTab);
         protected override Type SubwindowType => typeof(MyceliariumAboutSubwindow);
 
@@ -28,7 +26,7 @@ namespace AtMycelia.Myceliarium
             }
             VersionText = $"Version: {VersionString}";
             CopyrightText = "Copyright © 2026 Atelier Mycelia. All rights reserved.";
-            MultiLinksText = string.Join("\n", Links);//
+            MultiLinksText = string.Join("\n", Links);
         }
 
         private string VersionText

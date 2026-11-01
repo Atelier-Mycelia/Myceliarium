@@ -11,8 +11,6 @@ namespace AtMycelia.Myceliarium
         public override string SortingName => "Myceliarium";
         public static readonly string VersionString = "v0.6.1";
 
-        public override bool IsMeantToHaveSubwindow => false;
-
         protected override Type SidebarTabType => typeof(MyceliariumRootTab);
 
         protected override IEnumerable<IControlPanelEntry> CreateSubentries()
