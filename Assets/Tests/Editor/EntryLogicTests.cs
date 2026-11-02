@@ -43,9 +43,8 @@ namespace AtMycelia.Myceliarium.Tests
         private sealed class LogicEntry : ControlPanelEntry
         {
             public override string SortingName => "Logic";
-            public override bool IsMeantToHaveSubwindow => false;
             protected override Type SidebarTabType => null;
-            protected override void PrepareMainSidebarTab() { }
+            protected override void PrepareTab() { }
             protected override Type LogicType => typeof(CounterLogic);
 
             public CounterLogic CounterLogic => (CounterLogic)Logic;
@@ -157,6 +156,34 @@ namespace AtMycelia.Myceliarium.Tests
             Assert.That(logic.Value, Is.EqualTo(7));
             Assert.That(logic.History.CanUndo, Is.False);
             Assert.That(logic.HasUnsavedChanges, Is.False);
+        }
+
+        [Test]
+        public void Logic_IsLoaded_OnlyAfterLoad()
+        {
+            var logic = new CounterLogic();
+            Assert.That(logic.IsLoaded, Is.False);
+
+            logic.Load(1);
+
+            Assert.That(logic.IsLoaded, Is.True);
+        }
+
+        [Test]
+        public void Entry_IsLoaded_FalseAfterInitUntilTheLogicLoads_AndFalseAfterDispose()
+        {
+            var entry = new LogicEntry();
+            Assert.That(entry.IsLoaded, Is.False); // Not initted, so no logic
+
+            entry.Init();
+            Assert.That(entry.IsInitted, Is.True);
+            Assert.That(entry.IsLoaded, Is.False);
+
+            entry.Logic.Load(3);
+            Assert.That(entry.IsLoaded, Is.True);
+
+            entry.Dispose();
+            Assert.That(entry.IsLoaded, Is.False);
         }
 
         [Test]
@@ -314,9 +341,8 @@ namespace AtMycelia.Myceliarium.Tests
         private sealed class BadLogicEntry : ControlPanelEntry
         {
             public override string SortingName => "BadLogic";
-            public override bool IsMeantToHaveSubwindow => false;
             protected override Type SidebarTabType => null;
-            protected override void PrepareMainSidebarTab() { }
+            protected override void PrepareTab() { }
             protected override Type LogicType => typeof(NotALogic);
         }
         #endregion

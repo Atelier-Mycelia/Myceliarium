@@ -16,6 +16,13 @@ namespace AtMycelia.Myceliarium
         void Init(IControlPanelEntry owner);
 
         /// <summary>
+        /// Whether Load has run, so the state is what the loader produced rather than
+        /// nothing at all. An entry that was never loaded (its tab wasn't clicked yet, say)
+        /// can't have been edited, so there's nothing in it to save.
+        /// </summary>
+        bool IsLoaded { get; }
+
+        /// <summary>
         /// Everything the user did to the state since it was last loaded or saved.
         /// </summary>
         UndoStack History { get; }
@@ -204,11 +211,14 @@ namespace AtMycelia.Myceliarium
         }
         #endregion
 
+        public bool IsLoaded { get; private set; }
+
         public virtual void Load(object loadResult)
         {
             AdoptState(loadResult);
             History.Clear();
             History.MarkClean();
+            IsLoaded = true;
         }
 
         /// <summary>

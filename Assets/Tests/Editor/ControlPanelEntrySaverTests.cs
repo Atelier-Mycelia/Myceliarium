@@ -69,9 +69,9 @@ namespace AtMycelia.Myceliarium.Tests
         }
 
         [Test]
-        public void SaveProcessSequence_EntryNotInitted_SkipsTheSaveProcess_AndStillReports()
+        public void SaveProcessSequence_EntryNotLoaded_SkipsTheSaveProcess_AndStillReports()
         {
-            _entry.IsInitted = false;
+            _entry.IsLoaded = false;
 
             RunToTheEnd();
 
@@ -164,7 +164,8 @@ namespace AtMycelia.Myceliarium.Tests
             public IControlPanelSubwindow Subwindow => null;
             public bool IsTopLevel => false;
             public bool IsMeantToHaveSubwindow => false;
-            public bool IsInitted { get; set; } = true;
+            public bool IsInitted => true;
+            public bool IsLoaded { get; set; } = true;
             public bool HasSubentries => false;
             public bool HasUnsavedChanges => false;
             public IControlPanelEntryLoader Loader => null;

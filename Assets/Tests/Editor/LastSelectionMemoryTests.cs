@@ -131,6 +131,7 @@ namespace AtMycelia.Myceliarium.Tests
             public bool IsTopLevel => true;
             public bool IsMeantToHaveSubwindow => true;
             public bool IsInitted => true;
+            public bool IsLoaded => true;
             public bool IsTestOnly => true;
             public bool HasSubentries => false;
             public bool HasUnsavedChanges => false;

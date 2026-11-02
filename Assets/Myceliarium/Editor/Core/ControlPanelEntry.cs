@@ -55,7 +55,7 @@ namespace AtMycelia.Myceliarium
 
             if (forceReinit || !_isInitted)
             {
-                PrepareMainSidebarTab();
+                PrepareTab();
                 _subentries.Prepare(CreateSubentries, Tab);
                 PrepareSubwindow();
                 PrepareLoader();
@@ -80,6 +80,13 @@ namespace AtMycelia.Myceliarium
             protected set => _isInitted = value;
         }
         private bool _isInitted;
+
+        /// <summary>
+        /// Derived from the logic, so it can't fall out of step with the state it describes.
+        /// Initted doesn't imply loaded: that happens once the entry is selected (or on
+        /// init, if ShouldPreloadOnInit is on).
+        /// </summary>
+        public virtual bool IsLoaded => Logic != null && Logic.IsLoaded;
 
         private void ResetState()
         {
@@ -120,7 +127,7 @@ namespace AtMycelia.Myceliarium
         // Each module is made the same way: one instance of the type that the subclass
         // names, which gets its Init call if it came out valid.
 
-        protected virtual void PrepareMainSidebarTab()
+        protected virtual void PrepareTab()
         {
             _tab = ModuleFactory.Create<IControlPanelTab>(SidebarTabType, "tab");
             _tab?.Init();
@@ -196,7 +203,9 @@ namespace AtMycelia.Myceliarium
         private readonly SubentryGroup _subentries = new SubentryGroup();
         #endregion
 
-        public virtual bool IsMeantToHaveSubwindow => true;
+        public bool IsMeantToHaveSubwindow => SubwindowType != null &&
+        SubwindowType.IsConcrete() &&
+        typeof(IControlPanelSubwindow).IsAssignableFrom(SubwindowType);
         // ^Most tabs are expected to have subwindows, so...
 
         /// <summary>
@@ -331,11 +340,10 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         protected virtual void OnLoadingDone()
         {
-            if (Loader != null)
-            {
-                var loadResult = Loader.GetLoadResult<object>();
-                Logic.Load(loadResult);
-            }
+            // Without a loader the logic still gets loaded (with nothing), so that the
+            // entry counts as loaded
+            var loadResult = Loader?.GetLoadResult<object>();
+            Logic.Load(loadResult);
             _subwindow?.Refresh();
             _subwindow?.Show();
         }
@@ -372,6 +380,14 @@ namespace AtMycelia.Myceliarium
         /// true after a Dispose, until the next forced Init.
         /// </summary>
         bool IsInitted { get; }
+
+        /// <summary>
+        /// Whether the entry's state has been loaded (see
+        /// <see cref="IControlPanelEntryLogic.IsLoaded"/>). Initting doesn't do that by
+        /// itself, so something that works with the loaded state (a saver, say) should
+        /// check this rather than IsInitted. False after a Dispose.
+        /// </summary>
+        bool IsLoaded { get; }
 
         bool HasUnsavedChanges { get; }
 

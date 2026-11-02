@@ -1,5 +1,9 @@
 fileFormatVersion: 2
+<<<<<<<< HEAD:Assets/Belevich.meta
 guid: 1128477ae55c64640aab2b8bb0e96204
+========
+guid: e29664138fc931340ac8d299e48f8c1c
+>>>>>>>> develop:Assets/Myceliarium/Documentation.meta
 folderAsset: yes
 DefaultImporter:
   externalObjects: {}
