@@ -11,9 +11,9 @@ This is a Unity editor-tooling framework for building RPG Maker-style database e
 - Designed with extensibility in mind
 
 ## 🎨 Example Screenshots
-[![About Page for Our Studio](https://i.postimg.cc/dVT0SYtP/myceliarium-About-Screenshot.png)](https://postimg.cc/MnqxvgQd)
-[![simple-Example-Myceliarium-Screenshot.png](https://i.postimg.cc/y8SNrHYB/simple-Example-Myceliarium-Screenshot.png)](https://postimg.cc/DSnF8RXY)
-[![chara-Bio-Screenshot.png](https://i.postimg.cc/ht7G3BPB/chara-Bio-Screenshot.png)](https://postimg.cc/qN40zW3b)
+[![About Page for Our Studio](https://i.postimg.cc/9FxK9xPp/myceliarium-About-V0-6-1.png)](https://postimg.cc/9r7L5YnR)
+[![Skills Tab Screenshot](https://i.postimg.cc/RVPytP1d/skills-Window.png)](https://postimg.cc/TpDtMJ45)
+[![Chara Bios Tab Screenshot](https://i.postimg.cc/sXywqS9v/chara-Bios-V0-6-1.png)](https://postimg.cc/67jrG8PX)
 
 ## 🚀 Getting Started
 Installation instructions, setup guides, tutorials and more can be found in the Wiki:
@@ -24,7 +24,7 @@ We use AI for:
 - Debugging
 - Small, repetitive tasks
 - Architecture improvements
-- Graphical assets (each marked with "aiGen" at the ends of their file names in the repo)
+- Graphical example assets (each marked with "aiGen" at the ends of their file names in the repo)
 
 ## 🙏 Special Thanks
 - The developers of the RPG Maker Franchise
