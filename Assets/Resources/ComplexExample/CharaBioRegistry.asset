@@ -23,9 +23,12 @@ MonoBehaviour:
 
       Isn''t too fond of either half of her mixed heritage.'
     _sexualHistory: Made out with a cute brown myconid girl once... and liked it!
+    _isAlive: 1
+    _alignment: 1
+    _occupation: Alchemist
   - _mugshot: {fileID: 21300000, guid: fd76888fcb950ed4ea88ddffa7f7e97b, type: 3}
     _firstName: Nelveritia
-    _lastName: Celia
+    _lastName: Sangrante
     _nickName: Nel
     _age: 30
     _summary: 'Vampire myconid known as the Archivist of the Myceliarium. Even when
@@ -33,6 +36,9 @@ MonoBehaviour:
 
       has a perpetually unimpressed expression.'
     _sexualHistory: '- Accidentally lost her kiss-virginity to Ammie'
+    _isAlive: 1
+    _alignment: 0
+    _occupation: Scholar
   - _mugshot: {fileID: 21300000, guid: b4c96b2b369c16345b8645835f9292d0, type: 3}
     _firstName: Amanelia
     _lastName: Celia
@@ -44,9 +50,12 @@ MonoBehaviour:
       to her siblings'', she''s among the more alchemically
       talented of them.'
     _sexualHistory: '- Accidentally lost her kiss-virginity to Nel'
+    _isAlive: 1
+    _alignment: 1
+    _occupation: Alchemist
   - _mugshot: {fileID: 0}
     _firstName: Heidenblut
-    _lastName: Celia
+    _lastName: Sangrante
     _nickName: Hyde
     _age: 30
     _summary: 'Vampire myconid who greatly values the preservation of knowledge,
@@ -55,14 +64,20 @@ MonoBehaviour:
       find tomes to bring back to the Myceliarium.'
     _sexualHistory: None. Despite his tendency to flirt, he's a "no sex until marriage"
       type.
+    _isAlive: 1
+    _alignment: 1
+    _occupation: Adventurer
   - _mugshot: {fileID: 0}
     _firstName: Agaris
-    _lastName: Celia
+    _lastName: strhtrh
     _nickName: Gary
     _age: 20
     _summary: Amanelia's twin brother. Usually the one gathering materials for their
       atelier. Has a dry sense of humor.
     _sexualHistory: None. He's a no-sex-before-marriage type.
+    _isAlive: 1
+    _alignment: 1
+    _occupation: Hunter
   - _mugshot: {fileID: 0}
     _firstName: 
     _lastName: 
@@ -70,3 +85,6 @@ MonoBehaviour:
     _age: 0
     _summary: 
     _sexualHistory: 
+    _isAlive: 1
+    _alignment: 1
+    _occupation: Unemployed

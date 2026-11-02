@@ -173,8 +173,10 @@ namespace AtMycelia.Myceliarium.Tests
             public bool IsTopLevel => true;
             public bool IsMeantToHaveSubwindow => false;
             public bool IsInitted => false;
+            public bool IsLoaded => false;
             public bool HasSubentries => _subentries.Count > 0;
             public bool HasUnsavedChanges => Dirty;
+            public IControlPanelEntryLoader Loader => null;
 
             public void Dispose() { }
             public void Init(bool forceReinit = false) { }

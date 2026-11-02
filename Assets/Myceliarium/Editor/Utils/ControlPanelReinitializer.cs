@@ -6,13 +6,13 @@ namespace AtMycelia.Myceliarium
     /// The sequence a ControlPanel goes through when its entries are reinitialized.
     /// Entries and subs get recycled instead of thrown away after their disposal, 
     /// but their tabs and subwindows still get rebuilt. Thus, the entries need to be
-    /// re-attached. The one previously selected needs to be reselected, too. <br></br>
-    /// Isolated this class from ControlPanel so it can be unit tested without a live EditorWindow.
+    /// re-attached. <br></br>
+    /// Isolated this class from ControlPanel so it can be unit tested without
+    /// a live EditorWindow.
     /// </summary>
     public static class ControlPanelReinitializer
     {
-        public static void Reinit(
-            EntryCollection entries,
+        public static void Reinit(EntryCollection entries,
             ControlPanelEntryAttacher attacher,
             ControlPanelTabSelectionController selectionController)
         {

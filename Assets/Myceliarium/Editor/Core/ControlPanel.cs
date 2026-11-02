@@ -10,7 +10,7 @@ namespace AtMycelia.Myceliarium
     /// <summary>
     /// Serves as a hub for the Database-esque UI that other plugins may want to set up.
     /// </summary>
-    public abstract class ControlPanel : EditorWindow, IControlPanel
+    public abstract class ControlPanel : EditorWindow, IControlPanel, IGuardedPanel
     {
         #region Configurable Properties
         protected abstract string DisplayName { get; }
@@ -35,8 +35,34 @@ namespace AtMycelia.Myceliarium
         {
             SetGlobalSubs(true);
             saveChangesMessage = $"{DisplayName} has unsaved changes. Save them before closing?";
+            
             ControlPanelSignals.ControlPanelOpened.Invoke(this);
         }
+
+        #region IGuardedPanel
+        bool IGuardedPanel.IsDirty => hasUnsavedChanges;
+
+        void IGuardedPanel.SaveThen(System.Action<bool> onFinished)
+        {
+            _saveCoordinator.SaveAll(failedEntries =>
+            {
+                LogFailedSaves(failedEntries);
+                onFinished(failedEntries.Count == 0);
+            });
+        }
+
+        void IGuardedPanel.Discard()
+        {
+            DiscardChanges();
+        }
+
+        void IGuardedPanel.CloseForAssemblyReload()
+        {
+            DiscardChanges();
+            hasUnsavedChanges = false; // So that Close doesn't show Unity's prompt
+            Close();
+        }
+        #endregion
 
         protected virtual void SetGlobalSubs(bool on)
         {
@@ -56,20 +82,29 @@ namespace AtMycelia.Myceliarium
             }
         }
 
-        protected virtual void OnSaveRequested(IControlPanel cPanel)
+		protected virtual void OnSaveRequested(IControlPanel cPanel)
         {
             if (!ReferenceEquals(cPanel, this))
             {
                 return;
             }
 
-            _saveCoordinator.SaveAll();
+            _saveCoordinator.SaveAll(LogFailedSaves);
         }
+
+        private void LogFailedSaves(IReadOnlyList<IControlPanelEntry> failedEntries)
+        {
+            for (int i = 0; i < failedEntries.Count; i++)
+            {
+                Debug.LogWarning($"{DisplayName} could not save " +
+                    $"{failedEntries[i].GetType().Name}; its changes are still unsaved.");
+            }
+        }
+
+        private readonly SaveCoordinator _saveCoordinator = new SaveCoordinator();
 
         protected IReadOnlyDictionary<IControlPanelEntrySaver, IList<IControlPanelEntry>> Savers =>
             _saveCoordinator.Savers;
-
-        private readonly SaveCoordinator _saveCoordinator = new SaveCoordinator();
 
         protected virtual void OnCloseRequested(IControlPanel cPanel)
         {
@@ -98,6 +133,15 @@ namespace AtMycelia.Myceliarium
             _unsavedChangesTracker?.Refresh();
         }
 
+        private readonly EntryCollection _entries = new EntryCollection();
+
+        private readonly ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
+
+        private UnsavedChangesTracker _unsavedChangesTracker;
+
+        private readonly ControlPanelTabSelectionController _selectionController =
+            new ControlPanelTabSelectionController();
+
         /// <summary>
         /// Called when this panel's footer reports a language change. Does nothing by
         /// default; override to react to it.
@@ -105,6 +149,16 @@ namespace AtMycelia.Myceliarium
         protected virtual void OnLanguageChanged(IControlPanel cPanel, string language)
         {
         }
+
+        protected void OnDifferentEntrySelected(IControlPanelEntry entry)
+		{
+			if (_lastSelection == null)
+            {
+                return;
+            }
+
+            _lastSelection.Remember(entry);
+		}
 
         /// <summary>
         /// Called by Unity when the user picks "Save" in the prompt shown for closing
@@ -128,11 +182,25 @@ namespace AtMycelia.Myceliarium
         }
 
         /// <summary>
-        /// Local to the VisualElements registered under this ControlPanel. The footers'
-        /// elements are handled by the footers themselves.
+        /// Local to the VisualElements or other fields registered under this
+        /// ControlPanel. The footers' elements are handled by the footers themselves.
         /// </summary>
-        protected virtual void SetLocalSubs(bool on)
+        protected virtual void SetLocalSubs(bool wantsSubsActive)
         {
+            if (wantsSubsActive)
+            {
+                if (_selectionController != null)
+                {
+                    _selectionController.DifferentEntrySelected += OnDifferentEntrySelected;
+                }
+            }
+            else
+            {
+                if (_selectionController != null)
+                {
+                    _selectionController.DifferentEntrySelected -= OnDifferentEntrySelected;
+                }
+            }
         }
 
         public virtual void CreateGUI()
@@ -145,13 +213,6 @@ namespace AtMycelia.Myceliarium
             }
 
             RootPrep();
-        }
-
-        private void AbortInit()
-        {
-            UnityDebug.LogError($"{DisplayName} failed to initialize. " +
-                $"Aborting GUI creation.");
-            this.Close();
         }
 
         /// <summary>
@@ -178,6 +239,159 @@ namespace AtMycelia.Myceliarium
         {
             minSize = MinWindowSize;
             maxSize = MaxWindowSize;
+        }
+
+        private void AbortInit()
+        {
+            UnityDebug.LogError($"{DisplayName} failed to initialize. " +
+                $"Aborting GUI creation.");
+            this.Close();
+        }
+
+        protected virtual void RootPrep()
+        {
+            TryAddBaseWindow(out bool success);
+            if (!success)
+            {
+                AbortInit();
+                return;
+            }
+
+            RegisterVisualElements();
+            DoEntryPreps();
+            RefreshFooter();
+            PrepUnsavedChangesSync();
+            RestoreLastSelection();
+            SetLocalSubs(false);
+            SetLocalSubs(true);
+        }
+
+        private void TryAddBaseWindow(out bool success)
+        {
+            success = false;
+
+            ValidateUxml(out success, out VisualTreeAsset vTreeAsset);
+            if (!success)
+            {
+                return;
+            }
+
+            VisualElement baseWindow = vTreeAsset.Instantiate();
+            Root.Add(baseWindow);
+            success = true;
+        }
+
+        private void ValidateUxml(out bool success, out VisualTreeAsset vTreeAsset)
+        {
+            vTreeAsset = Resources.Load<VisualTreeAsset>(PathToUxml);
+            bool loaded = vTreeAsset != null;
+            success = loaded;
+            if (!loaded)
+            {
+                UnityDebug.LogError($"Failed to load uxml at path {PathToUxml}. " +
+                    $"Please ensure the path is correct and the file exists.");
+            }
+        }
+
+        protected virtual void RegisterVisualElements()
+        {
+            _bottomBar = Root.Q<VisualElement>("BottomBar");
+        }
+
+        protected VisualElement _bottomBar;
+
+        private void DoEntryPreps()
+        {
+            PrepAttacher();
+            RegisterSubentries();
+            PrepSelectionController();
+            RefreshSaverCache();
+        }
+
+        private void PrepAttacher()
+        {
+            _attacher.Dispose();
+            _attacher.Init(rootVisualElement);
+
+            _entries.SortTopLevel(Sort);
+            _attacher.Attach(_entries.TopLevel);
+        }
+
+        /// <summary>
+        /// Default implementation sorts the entries by SortingOrder first,
+        /// then by SortingName. Subclasses can override to provide
+        /// different sorting logic for the entries before they are
+        /// attached to the control panel.
+        /// </summary>
+        protected virtual void Sort(IList<IControlPanelEntry> entries)
+        {
+            EntryCollection.SortByDefault(entries);
+        }
+
+        protected virtual void RegisterSubentries()
+        {
+            _entries.RebuildFlattened();
+        }
+
+        private void PrepSelectionController()
+        {
+            _selectionController.Dispose();
+            _selectionController.Init(_entries);
+            var ourType = GetType();
+            _lastSelection ??= LastSelectionMemory.InEditorPrefs(ourType);
+        }
+
+        private LastSelectionMemory _lastSelection;
+
+        /// <summary>
+        /// Brings back the entry that was selected when this panel was last open. Does
+        /// nothing for panels too small for that to matter; see LastSelectionMemory.
+        /// </summary>
+        private void RestoreLastSelection()
+        {
+            var toRestore = _lastSelection.FindToRestore(_entries.AllWithSubwindows);
+            if (toRestore != null)
+            {
+                _selectionController.TrySelect(toRestore);
+            }
+        }
+
+        protected virtual void RefreshSaverCache()
+        {
+            _saveCoordinator.Refresh(SaverSuperType, _entries.AllWithSubwindows);
+        }
+
+        protected virtual void RefreshFooter()
+        {
+            _footer?.Dispose();
+            _footer = ControlPanelFooterRegistry.CreateFooterOfType(FooterSuperType);
+            if (_footer == null)
+            {
+                UnityDebug.LogError($"Failed to create footer of type {FooterSuperType}. " +
+                    $"Please ensure that a concrete class implementing that interface exists.");
+                return;
+            }
+            _footer.Init(this);
+        }
+
+        protected IControlPanelFooter _footer;
+
+        /// <summary>
+        /// Unity reads hasUnsavedChanges when the window is closed through its own X button
+        /// (prompting Save/Discard/Cancel), so it has to be current before that happens.
+        /// The tracker keeps it in step by reacting to the entries' signals.
+        /// </summary>
+        private void PrepUnsavedChangesSync()
+        {
+            _unsavedChangesTracker?.Dispose();
+            
+            _unsavedChangesTracker = new UnsavedChangesTracker(_entries, UpdateHasUnsavedChanges);
+            void UpdateHasUnsavedChanges(bool dirty)
+            {
+                hasUnsavedChanges = dirty;
+            }
+
+            _unsavedChangesTracker.Start();
         }
 
         protected virtual void RefreshTopLevelEntryCache()
@@ -207,147 +421,17 @@ namespace AtMycelia.Myceliarium
         /// </summary>
         protected virtual Type FooterSuperType => typeof(IControlPanelFooter);
 
-        protected virtual void RefreshFooter()
-        {
-            _footer?.Dispose();
-            _footer = ControlPanelFooterRegistry.CreateFooterOfType(FooterSuperType);
-            if (_footer == null)
-            {
-                UnityDebug.LogError($"Failed to create footer of type {FooterSuperType}. " +
-                    $"Please ensure that a concrete class implementing that interface exists.");
-                return;
-            }
-            _footer.Init(this);
-        }
-
-        protected IControlPanelFooter _footer;
-
-        protected virtual void RefreshSaverCache()
-        {
-            _saveCoordinator.Refresh(SaverSuperType, _entries.AllWithSubwindows);
-        }
-
-        protected virtual void RootPrep()
-        {
-            TryAddBaseWindow(out bool success);
-            if (!success)
-            {
-                AbortInit();
-                return;
-            }
-
-            RegisterVisualElements();
-            SetLocalSubs(false);
-            SetLocalSubs(true);
-            DoEntryPreps();
-            RefreshFooter();
-            PrepUnsavedChangesSync();
-        }
-
-        #region Registering base window
-        private void TryAddBaseWindow(out bool success)
-        {
-            success = false;
-
-            ValidateUxml(out success, out VisualTreeAsset vTreeAsset);
-            if (!success)
-            {
-                return;
-            }
-
-            VisualElement baseWindow = vTreeAsset.Instantiate();
-            Root.Add(baseWindow);
-            success = true;
-        }
-
-        private void ValidateUxml(out bool success, out VisualTreeAsset vTreeAsset)
-        {
-            vTreeAsset = Resources.Load<VisualTreeAsset>(PathToUxml);
-            bool loaded = vTreeAsset != null;
-            success = loaded;
-            if (!loaded)
-            {
-                UnityDebug.LogError($"Failed to load uxml at path {PathToUxml}. " +
-                    $"Please ensure the path is correct and the file exists.");
-            }
-        }
-        #endregion
-
         public virtual VisualElement Root => rootVisualElement;
 
         public IReadOnlyList<IControlPanelEntry> TopLevelEntries => _entries.TopLevel;
-        protected virtual void RegisterVisualElements()
-        {
-            _bottomBar = Root.Q<VisualElement>("BottomBar");
-        }
-
-        protected VisualElement _bottomBar;
-
-        /// <summary>
-        /// Unity reads hasUnsavedChanges when the window is closed through its own X button
-        /// (prompting Save/Discard/Cancel), so it has to be current before that happens.
-        /// The tracker keeps it in step by reacting to the entries' signals.
-        /// </summary>
-        private void PrepUnsavedChangesSync()
-        {
-            _unsavedChangesTracker?.Dispose();
-            _unsavedChangesTracker = new UnsavedChangesTracker(_entries,
-                dirty => hasUnsavedChanges = dirty);
-            _unsavedChangesTracker.Start();
-        }
-
-        private UnsavedChangesTracker _unsavedChangesTracker;
-
-
-        #region Entry Preps
-        private void DoEntryPreps()
-        {
-            PrepAttacher();
-            RegisterSubentries();
-            PrepSelectionController();
-            RefreshSaverCache();
-        }
-
-        private void PrepAttacher()
-        {
-            _attacher.Dispose();
-            _attacher.Init(rootVisualElement);
-
-            _entries.SortTopLevel(Sort);
-            _attacher.Attach(_entries.TopLevel);
-        }
-
-        private void PrepSelectionController()
-        {
-            _selectionController.Dispose();
-            _selectionController.Init(_entries);
-        }
-
-        private readonly ControlPanelEntryAttacher _attacher = new ControlPanelEntryAttacher();
-        private readonly ControlPanelTabSelectionController _selectionController =
-            new ControlPanelTabSelectionController();
-
-        /// <summary>
-        /// Default implementation sorts the entries by SortingOrder first,
-        /// then by SortingName. Subclasses can override to provide
-        /// different sorting logic for the entries before they are
-        /// attached to the control panel.
-        /// </summary>
-        protected virtual void Sort(IList<IControlPanelEntry> entries)
-        {
-            EntryCollection.SortByDefault(entries);
-        }
-
-        protected virtual void RegisterSubentries()
-        {
-            _entries.RebuildFlattened();
-        }
-
         protected IReadOnlyList<IControlPanelEntry> AllEntriesWithSubwindows =>
             _entries.AllWithSubwindows;
 
-        private readonly EntryCollection _entries = new EntryCollection();
-        #endregion
+        protected virtual void OnDisable()
+        {
+            SetGlobalSubs(false);
+            SetLocalSubs(false);
+        }
 
         protected virtual void OnDestroy()
         {
@@ -362,15 +446,36 @@ namespace AtMycelia.Myceliarium
             _unsavedChangesTracker?.Dispose();
         }
 
-        protected virtual void OnDisable()
-        {
-            SetGlobalSubs(false);
-            SetLocalSubs(false);
-        }
-
         public bool Contains(IControlPanelEntry entry)
         {
             return _entries.Contains(entry);
+        }
+
+        /// <summary>
+        /// Sends an undo/redo request (from Ctrl+Z and friends while this panel is
+        /// focused) to the displayed entry only; Unity's global Undo is not involved.
+        /// </summary>
+        internal void HandleUndoRequest(bool redo)
+        {
+            // Ending the typing session first puts it on the entry's history, so the
+            // undo below takes back what was just typed. It also means the next
+            // keystroke starts a fresh edit instead of continuing a stale one.
+            bool nothingToWorkWith = rootVisualElement == null ||
+            rootVisualElement.panel == null ||
+            rootVisualElement.panel.focusController == null;
+            if (nothingToWorkWith)
+            {
+                return;
+            }
+
+            var panel = rootVisualElement.panel;
+            var focusController = panel.focusController;
+			if (focusController.focusedElement is VisualElement focusedElem)
+			{
+				focusedElem.Blur();
+			}
+
+			ControlPanelUndoRouter.Route(_selectionController.DisplayedEntry, redo);
         }
 
     }

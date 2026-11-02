@@ -18,7 +18,6 @@ namespace AtMycelia.Myceliarium
         public static Action<IControlPanel> PreControlPanelClosed = delegate { };
 
         public static Action<IControlPanelEntry> EntryTabClicked = delegate { };
-
         /// <summary>
         /// Occurs when a Control Panel (passed as the arg) requests to save its data. 
         /// This is a signal to any interested parties that they should save the data 

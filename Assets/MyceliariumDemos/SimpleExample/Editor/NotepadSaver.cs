@@ -12,18 +12,14 @@ namespace SimpleExample
             return toSaveFor is NotepadEntry;
         }
 
-        protected override IEnumerator SaveProcess(IControlPanelEntry toSaveFor, Action onComplete)
+        protected override IEnumerator SaveProcess(EntrySaveRequest request)
         {
-            yield return base.SaveProcess(toSaveFor, onComplete);
-            var contentsOnDisk = SOUtils.EnsureSOExists<NoteContents>("SimpleExample", 
+            var contentsOnDisk = SOUtils.EnsureSOExists<NoteContents>("SimpleExample",
                 "NotepadContents");
-            var entry = toSaveFor as NotepadEntry;
-            contentsOnDisk.Text = entry.WorkingState.Text;
-
+            var entry = request.Entry as NotepadEntry;
+            contentsOnDisk.Text = entry.WorkingText;
             contentsOnDisk.MarkDirtyAndSave();
-            onComplete?.Invoke();
-            ControlPanelSignals.SaveCompleted?.Invoke(toSaveFor);
-            yield return null;
+            yield break;
         }
     }
 

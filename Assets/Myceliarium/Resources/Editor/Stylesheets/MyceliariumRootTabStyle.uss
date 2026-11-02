@@ -1,8 +1,21 @@
 :root {
+
     --tab-selected-color: rgb(44, 93, 135);
     --tab-selected-text-color: rgb(222, 222, 222);
     --tab-normal-text-color: rgb(222, 222, 222);
     --tab-normal-bg-color: rgb(60, 60, 60);
+    --hover-color: rgb(100, 100, 100);
+    --active-color: rgb(50, 50, 50);
+    --normal-border-color: rgb(30, 30, 30);
+    --selected-border-color: rgb(100, 140, 200);
+    --hyphlow-tab-icon: resource("Editor/Icons/hyphlowLogo_noText");
+    --border-color: rgb(30, 30, 30);
+    --height: 60px;
+    --label-font-size: 24px;
+    --border-width: 2px;
+    --border-radius: 5px;
+    --button-height: 100px;
+    
     --default-icon: resource('Editor/Icons/defaultTabIcon');
     --mascot-icon: resource('Editor/Icons/nelSideMugshotIcon_01_aiGen');
     --logo-icon: resource('Editor/Icons/myceliariumLogo_aiGen');
@@ -11,27 +24,25 @@
 }
 
 .tabRoot {
-    height: 60px;
+    height: var(--height);
     flex-direction: row;
-    margin-bottom: 5px;
+    margin: 0px 0px 0px 0px;
     color: var(--tab-normal-text-color);
     background-color: var(--tab-normal-bg-color);
 }
 
 .tabButton {
-    font-size: 32px;
-    padding-left: 50px;
+    padding-left: 40px;
     justify-content: center;
     -unity-text-align: middle-center;
     
-    
-    border-color: rgb(30, 30, 30);
-    border-width: 2px;
+    border-color: var(--normal-border-color);
+    border-width: var(--border-width);
+    border-radius: var(--border-radius);
     transition-property: background-color;
     transition-duration: 0.2s;
     width: 100%;
     flex-direction: column;
-    height: 60px;
     flex-grow: 0;
 }
 
@@ -74,5 +85,39 @@
 
 .selected {
     background-color: var(--tab-selected-color);
+    border-color: var(--selected-border-color);
     color: var(--tab-selected-text-color);
+}
+
+.tabRoot > Toggle {
+    height: 100%;
+}
+
+.tabRoot > Toggle > VisualElement {
+    height: 100%;
+}
+
+/* Room for the icon, on the header instead of the Foldout so subtabs aren't indented */
+.tabRoot.tab-foldout-root > .unity-foldout > .unity-toggle {
+    padding-left: 50px;
+}
+
+.tabRoot > Toggle > VisualElement > Label {
+    font-size: var(--label-font-size);
+    flex-grow: 1;
+    height: 100%;
+    -unity-text-align: middle-center;
+}
+
+.tabRoot:hover {
+    border-color: var(--selected-border-color);
+}
+
+.tabRoot:active {
+    background-color: var(--active-color);
+}
+
+.tabRoot.selected {
+    background-color: var(--tab-selected-color);
+    border-color: var(--selected-border-color);
 }

@@ -1,0 +1,255 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e6d3b39c6512b324fbd2045ac974e442, type: 3}
+  m_Name: SkillRegistry
+  m_EditorClassIdentifier: 
+  _skills:
+  - skillName: Attack
+    icon: {fileID: 0}
+    description: Apply damage to enemy unit.
+    skillType: None
+    mpCost: 0
+    tpCost: 0
+    scope: 1
+    occasion: 1
+    speed: 0
+    successRate: 100
+    repeats: 1
+    tpGain: 0
+    hitType: 1
+    animation: Normal Attack
+    message1: attacked!
+    message2: 
+    damageType: 1
+    element: Normal Attack
+    formula: a.atk * 4 - b.def * 2
+    variance: 20
+    criticalHits: 1
+    weaponType1: None
+    weaponType2: None
+    note: 
+  - skillName: Defend
+    icon: {fileID: 240973750, guid: a5e645d0b2507ac42807ef8e886f7d45, type: 3}
+    description: Take a defensive stance until the next turn.
+    skillType: None
+    mpCost: 0
+    tpCost: 0
+    scope: 5
+    occasion: 1
+    speed: 2000
+    successRate: 100
+    repeats: 1
+    tpGain: 0
+    hitType: 1
+    animation: Normal Attack
+    message1: defends!
+    message2: 
+    damageType: 0
+    element: Normal Attack
+    formula: 
+    variance: 20
+    criticalHits: 1
+    weaponType1: None
+    weaponType2: None
+    note: 
+  - skillName: Fire Breath
+    icon: {fileID: 695775810, guid: 080cb6d98b00c2645b2c41df5f69bc78, type: 3}
+    description: Burns all enemies with a gout of flame.
+    skillType: Special
+    mpCost: 0
+    tpCost: 20
+    scope: 2
+    occasion: 1
+    speed: 0
+    successRate: 100
+    repeats: 1
+    tpGain: 0
+    hitType: 2
+    animation: Fire
+    message1: breathes fire!
+    message2: 
+    damageType: 1
+    element: Fire
+    formula: a.mat * 3 - b.mdf * 2
+    variance: 20
+    criticalHits: 1
+    weaponType1: None
+    weaponType2: None
+    note: 
+  - skillName: Heal
+    icon: {fileID: -651057808, guid: 080cb6d98b00c2645b2c41df5f69bc78, type: 3}
+    description: Restores some of an ally's HP.
+    skillType: Magic
+    mpCost: 5
+    tpCost: 0
+    scope: 3
+    occasion: 0
+    speed: 0
+    successRate: 100
+    repeats: 1
+    tpGain: 0
+    hitType: 0
+    animation: Heal
+    message1: casts Heal!
+    message2: 
+    damageType: 3
+    element: Holy
+    formula: a.mat * 2 + 50
+    variance: 20
+    criticalHits: 0
+    weaponType1: None
+    weaponType2: None
+    note: 
+  - skillName: Ice Breath
+    icon: {fileID: 1401011104, guid: 080cb6d98b00c2645b2c41df5f69bc78, type: 3}
+    description: Freezes all enemies with an arctic mist.
+    skillType: Magic
+    mpCost: 0
+    tpCost: 0
+    scope: 2
+    occasion: 1
+    speed: 0
+    successRate: 100
+    repeats: 1
+    tpGain: 0
+    hitType: 2
+    animation: Ice
+    message1: 
+    message2: 
+    damageType: 1
+    element: Normal Attack
+    formula: a.atk * 4 - b.def * 2
+    variance: 20
+    criticalHits: 1
+    weaponType1: None
+    weaponType2: None
+    note: 
+  - skillName: 
+    icon: {fileID: 0}
+    description: 
+    skillType: None
+    mpCost: 0
+    tpCost: 0
+    scope: 1
+    occasion: 1
+    speed: 0
+    successRate: 100
+    repeats: 1
+    tpGain: 0
+    hitType: 1
+    animation: Normal Attack
+    message1: 
+    message2: 
+    damageType: 1
+    element: Normal Attack
+    formula: a.atk * 4 - b.def * 2
+    variance: 20
+    criticalHits: 1
+    weaponType1: None
+    weaponType2: None
+    note: 
+  - skillName: 
+    icon: {fileID: 0}
+    description: 
+    skillType: None
+    mpCost: 0
+    tpCost: 0
+    scope: 1
+    occasion: 1
+    speed: 0
+    successRate: 100
+    repeats: 1
+    tpGain: 0
+    hitType: 1
+    animation: Normal Attack
+    message1: 
+    message2: 
+    damageType: 1
+    element: Normal Attack
+    formula: a.atk * 4 - b.def * 2
+    variance: 20
+    criticalHits: 1
+    weaponType1: None
+    weaponType2: None
+    note: 
+  - skillName: 
+    icon: {fileID: 0}
+    description: 
+    skillType: None
+    mpCost: 0
+    tpCost: 0
+    scope: 1
+    occasion: 1
+    speed: 0
+    successRate: 100
+    repeats: 1
+    tpGain: 0
+    hitType: 1
+    animation: Normal Attack
+    message1: 
+    message2: 
+    damageType: 1
+    element: Normal Attack
+    formula: a.atk * 4 - b.def * 2
+    variance: 20
+    criticalHits: 1
+    weaponType1: None
+    weaponType2: None
+    note: 
+  - skillName: 
+    icon: {fileID: 0}
+    description: 
+    skillType: None
+    mpCost: 0
+    tpCost: 0
+    scope: 1
+    occasion: 1
+    speed: 0
+    successRate: 100
+    repeats: 1
+    tpGain: 0
+    hitType: 1
+    animation: Normal Attack
+    message1: 
+    message2: 
+    damageType: 1
+    element: Normal Attack
+    formula: a.atk * 4 - b.def * 2
+    variance: 20
+    criticalHits: 1
+    weaponType1: None
+    weaponType2: None
+    note: 
+  - skillName: 
+    icon: {fileID: 0}
+    description: 
+    skillType: None
+    mpCost: 0
+    tpCost: 0
+    scope: 1
+    occasion: 1
+    speed: 0
+    successRate: 100
+    repeats: 1
+    tpGain: 0
+    hitType: 1
+    animation: Normal Attack
+    message1: 
+    message2: 
+    damageType: 1
+    element: Normal Attack
+    formula: a.atk * 4 - b.def * 2
+    variance: 20
+    criticalHits: 1
+    weaponType1: None
+    weaponType2: None
+    note: 

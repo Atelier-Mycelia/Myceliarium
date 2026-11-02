@@ -10,7 +10,7 @@ namespace AtMycelia.Myceliarium
     {
         #region Configurables
         private const string ResourcesFolderPath = 
-            "Assets/Resources/AtMycelia/Myceliarium/Editor";//
+            "Assets/Resources/AtMycelia/Myceliarium/Editor";
         private const string AsmDefPath = ResourcesFolderPath + 
             "/AtMycelia.Myceliarium.UserExt.asmdef";
 

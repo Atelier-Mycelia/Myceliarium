@@ -68,7 +68,99 @@ namespace AtMycelia.Myceliarium.Tests
             Assert.DoesNotThrow(() => new SaveCoordinator().SaveAll());
         }
 
+        [Test]
+        public void SaveAll_NothingToSave_CompletesImmediately()
+        {
+            int finished = 0;
+            IReadOnlyList<IControlPanelEntry> failed = null;
+
+            new SaveCoordinator().SaveAll(failedEntries =>
+            {
+                finished++;
+                failed = failedEntries;
+            });
+
+            Assert.That(finished, Is.EqualTo(1));
+            Assert.That(failed, Is.Empty);
+        }
+
+        [Test]
+        public void SaveAll_GivesEachEntryItsOwnRequest()
+        {
+            var a = new FakeEntry();
+            var b = new FakeEntry();
+            var saver = new DeferredSaver();
+            var coordinator = new SaveCoordinator();
+            coordinator.Refresh(new List<IControlPanelEntrySaver> { saver },
+                new List<IControlPanelEntry> { a, b });
+
+            coordinator.SaveAll();
+
+            Assert.That(saver.Requests.Count, Is.EqualTo(2));
+            Assert.That(saver.Requests[0], Is.Not.SameAs(saver.Requests[1]));
+            Assert.That(saver.Requests[0].Entry, Is.SameAs(a));
+            Assert.That(saver.Requests[1].Entry, Is.SameAs(b));
+        }
+
+        [Test]
+        public void SaveAll_AFailureStillLetsItFinish_AndNamesTheFailedEntries()
+        {
+            var a = new FakeEntry();
+            var b = new FakeEntry();
+            var saver = new DeferredSaver();
+            var coordinator = new SaveCoordinator();
+            coordinator.Refresh(new List<IControlPanelEntrySaver> { saver },
+                new List<IControlPanelEntry> { a, b });
+            int finished = 0;
+            IReadOnlyList<IControlPanelEntry> failed = null;
+            coordinator.SaveAll(failedEntries =>
+            {
+                finished++;
+                failed = failedEntries;
+            });
+
+            saver.Requests[0].ReportFailure();
+            Assert.That(finished, Is.EqualTo(0));
+
+            saver.Requests[1].ReportSuccess();
+
+            Assert.That(finished, Is.EqualTo(1));
+            Assert.That(failed, Is.EqualTo(new[] { a }));
+        }
+
+
+        [Test]
+        public void SaveAll_WaitsForEverySaverBeforeCompleting()
+        {
+            var a = new FakeEntry();
+            var b = new FakeEntry();
+            var saver = new DeferredSaver();
+            var coordinator = new SaveCoordinator();
+            coordinator.Refresh(new List<IControlPanelEntrySaver> { saver },
+                new List<IControlPanelEntry> { a, b });
+            int finished = 0;
+
+            coordinator.SaveAll(failedEntries => finished++);
+            saver.Requests[0].ReportSuccess();
+            Assert.That(finished, Is.EqualTo(0));
+
+            saver.Requests[1].ReportSuccess();
+            Assert.That(finished, Is.EqualTo(1));
+        }
+
         #region Test Doubles
+        private class DeferredSaver : IControlPanelEntrySaver
+        {
+            public readonly List<EntrySaveRequest> Requests = new List<EntrySaveRequest>();
+
+            public void Save(EntrySaveRequest request)
+            {
+                Requests.Add(request);
+            }
+
+            public bool IsCompatibleWith(IControlPanelEntry toSaveFor) => true;
+        }
+
         private class FakeSaver : IControlPanelEntrySaver
         {
             private readonly Func<IControlPanelEntry, bool> _isCompatible;
@@ -83,10 +175,10 @@ namespace AtMycelia.Myceliarium.Tests
                 _isCompatible = isCompatible;
             }
 
-            public void Save(IControlPanelEntry toSaveFor, Action onComplete = null)
+            public void Save(EntrySaveRequest request)
             {
-                Saved.Add(toSaveFor);
-                onComplete?.Invoke();
+                Saved.Add(request.Entry);
+                request.ReportSuccess();
             }
 
             public bool IsCompatibleWith(IControlPanelEntry toSaveFor) => _isCompatible(toSaveFor);
@@ -102,8 +194,10 @@ namespace AtMycelia.Myceliarium.Tests
             public bool IsTopLevel => false;
             public bool IsMeantToHaveSubwindow => false;
             public bool IsInitted => false;
+            public bool IsLoaded => false;
             public bool HasSubentries => false;
             public bool HasUnsavedChanges => false;
+            public IControlPanelEntryLoader Loader => null;
 
             public void Dispose() { }
 

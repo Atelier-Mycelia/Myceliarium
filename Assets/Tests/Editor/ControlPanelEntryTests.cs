@@ -165,19 +165,30 @@ namespace AtMycelia.Myceliarium.Tests
         }
         #endregion
 
-        #region HasUnsavedChanges signalling
+        #region HasUnsavedChanges (which comes from the logic)
+        private static IUndoableCommand NoOpCommand() => new DelegateCommand(() => { }, () => { });
+
         [Test]
-        public void HasUnsavedChanges_WhenItChanges_RaisesTheSignalOnce()
+        public void HasUnsavedChanges_AfterInit_IsFalse()
         {
             var entry = new TestEntry();
+            entry.Init();
+
+            Assert.That(entry.HasUnsavedChanges, Is.False);
+        }
+
+        [Test]
+        public void HasUnsavedChanges_WhenAnEditIsMade_RaisesTheSignalForTheEntry()
+        {
+            var entry = new TestEntry();
+            entry.Init();
             var raised = new List<IControlPanelEntry>();
             Action<IControlPanelEntry> handler = raised.Add;
             ControlPanelSignals.UnsavedChangesChanged += handler;
 
             try
             {
-                entry.SetDirty(true);
-                entry.SetDirty(true);
+                entry.Logic.History.Record(NoOpCommand());
             }
             finally
             {
@@ -189,17 +200,18 @@ namespace AtMycelia.Myceliarium.Tests
         }
 
         [Test]
-        public void HasUnsavedChanges_BackToFalse_RaisesTheSignalAgain()
+        public void HasUnsavedChanges_BackToTheSavedState_RaisesTheSignalAgain()
         {
             var entry = new TestEntry();
-            entry.SetDirty(true);
+            entry.Init();
+            entry.Logic.History.Record(NoOpCommand());
             int raisedCount = 0;
             Action<IControlPanelEntry> handler = _ => raisedCount++;
             ControlPanelSignals.UnsavedChangesChanged += handler;
 
             try
             {
-                entry.SetDirty(false);
+                entry.Logic.History.Undo();
             }
             finally
             {
@@ -207,26 +219,39 @@ namespace AtMycelia.Myceliarium.Tests
             }
 
             Assert.That(raisedCount, Is.EqualTo(1));
+            Assert.That(entry.HasUnsavedChanges, Is.False);
         }
 
         [Test]
-        public void NotifyUnsavedChangesChanged_RaisesTheSignal()
+        public void HasUnsavedChanges_BeforeInit_IsFalse()
+        {
+            var entry = new TestEntry(); // No logic yet
+
+            Assert.That(entry.HasUnsavedChanges, Is.False);
+        }
+
+        [Test]
+        public void Select_WithUnsavedChanges_DoesNotReload()
         {
             var entry = new TestEntry();
-            IControlPanelEntry raisedFor = null;
-            Action<IControlPanelEntry> handler = e => raisedFor = e;
-            ControlPanelSignals.UnsavedChangesChanged += handler;
+            entry.Init();
+            entry.Logic.History.Record(NoOpCommand());
 
-            try
-            {
-                entry.Notify();
-            }
-            finally
-            {
-                ControlPanelSignals.UnsavedChangesChanged -= handler;
-            }
+            entry.Select();
 
-            Assert.That(raisedFor, Is.SameAs(entry));
+            Assert.That(entry.LoadingCallCount, Is.EqualTo(0));
+            Assert.That(((FakeSubwindow)entry.Subwindow).IsVisible, Is.True);
+        }
+
+        [Test]
+        public void Select_WithoutUnsavedChanges_Loads()
+        {
+            var entry = new TestEntry();
+            entry.Init();
+
+            entry.Select();
+
+            Assert.That(entry.LoadingCallCount, Is.EqualTo(1));
         }
         #endregion
 
@@ -347,16 +372,26 @@ namespace AtMycelia.Myceliarium.Tests
             }
 
             public override string SortingName => nameof(TestEntry);
-            public override bool IsMeantToHaveSubwindow => _meantToHaveSubwindow;
 
-            public void SetDirty(bool dirty) => HasUnsavedChanges = dirty;
-            public void Notify() => NotifyUnsavedChangesChanged();
+            protected override Type SidebarTabType => typeof(FakeTab);
+            protected override Type SubwindowType => _meantToHaveSubwindow ?
+                typeof(FakeSubwindow) :
+                null;
+
+            public int LoadingCallCount { get; private set; }
+
+            // Not calling the base, which would start the loader's (asynchronous) editor
+            // coroutine. What the tests care about is whether Select decided to load.
+            protected override void HandleLoading()
+            {
+                LoadingCallCount++;
+            }
 
             public int PrepareLeftSidebarTabCallCount { get; private set; }
             public int CreateSubentriesCallCount { get; private set; }
             public int PrepareSubwindowCallCount { get; private set; }
 
-            protected override void PrepareLeftSidebarTab()
+            protected override void PrepareTab()
             {
                 PrepareLeftSidebarTabCallCount++;
                 Tab = new FakeTab();
@@ -381,10 +416,10 @@ namespace AtMycelia.Myceliarium.Tests
         private class ParentEntry : ControlPanelEntry
         {
             public override string SortingName => nameof(ParentEntry);
-            public override bool IsMeantToHaveSubwindow => false;
             public int CreateSubentriesCallCount { get; private set; }
 
-            protected override void PrepareLeftSidebarTab() => Tab = new FakeTab();
+            protected override Type SidebarTabType => typeof(FakeTab);
+            protected override void PrepareTab() => Tab = new FakeTab();
 
             protected override IEnumerable<IControlPanelEntry> CreateSubentries()
             {
@@ -431,7 +466,7 @@ namespace AtMycelia.Myceliarium.Tests
 
             public T Q<T>(string name, string className) where T : VisualElement
             {
-                return null;//
+                return null;
             }
         }
         #endregion

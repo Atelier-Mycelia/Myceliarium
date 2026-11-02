@@ -164,10 +164,10 @@ namespace AtMycelia.Myceliarium.Tests
         private class RootEntry : ControlPanelEntry
         {
             public override bool IsTopLevel => true;
-            public override bool IsMeantToHaveSubwindow => false;
             public override string SortingName => nameof(RootEntry);
 
-            protected override void PrepareLeftSidebarTab() => Tab = new FakeTab();
+            protected override Type SidebarTabType => typeof(FakeTab);
+            protected override void PrepareTab() => Tab = new FakeTab();
 
             protected override IEnumerable<IControlPanelEntry> CreateSubentries()
             {
@@ -179,7 +179,9 @@ namespace AtMycelia.Myceliarium.Tests
         {
             public override string SortingName => nameof(ChildEntry);
 
-            protected override void PrepareLeftSidebarTab() => Tab = new FakeTab();
+            protected override Type SidebarTabType => typeof(FakeTab);
+            protected override Type SubwindowType => typeof(FakeSubwindow);
+            protected override void PrepareTab() => Tab = new FakeTab();
 
             protected override void PrepareSubwindow()
             {
@@ -193,7 +195,7 @@ namespace AtMycelia.Myceliarium.Tests
 
         private class FakeSaver : IControlPanelEntrySaver
         {
-            public void Save(IControlPanelEntry toSaveFor, Action onComplete = null) { }
+            public void Save(EntrySaveRequest request) { }
             public bool IsCompatibleWith(IControlPanelEntry toSaveFor) => true;
         }
 

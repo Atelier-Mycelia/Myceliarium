@@ -128,13 +128,13 @@ namespace AtMycelia.Myceliarium.Tests
         {
             var root = CreateValidRoot(out var mainTabSet, out _);
             _attacher.Init(root);
-            var entryA = new FakeEntry();
-            var entryB = new FakeEntry();
+            var firstEntry = new FakeEntry();
+            var secondEntry = new FakeEntry();
 
-            _attacher.Attach(new List<IControlPanelEntry> { entryA, entryB });
+            _attacher.Attach(new List<IControlPanelEntry> { firstEntry, secondEntry });
 
-            Assert.That(mainTabSet.Contains(entryA.Tab.Root), Is.True);
-            Assert.That(mainTabSet.Contains(entryB.Tab.Root), Is.True);
+            Assert.That(mainTabSet.Contains(firstEntry.Tab.Root), Is.True);
+            Assert.That(mainTabSet.Contains(secondEntry.Tab.Root), Is.True);
         }
         #endregion
 
@@ -354,8 +354,10 @@ namespace AtMycelia.Myceliarium.Tests
             public bool IsTopLevel { get; }
             public bool IsMeantToHaveSubwindow => _subwindow != null || _subwindowThrows;
             public bool IsInitted { get; }
+            public bool IsLoaded => IsInitted;
             public bool HasSubentries => _subentries.Count > 0;
             public bool HasUnsavedChanges => false;
+            public IControlPanelEntryLoader Loader => null;
 
             public void Dispose() { }
             public int InitCallCount { get; private set; }
