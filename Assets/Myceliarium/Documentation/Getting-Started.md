@@ -1,5 +1,3 @@
-# Getting Started
-
 This page covers what you need to install Myceliarium and the concepts behind it. For an overview, see [Home](Home.md).
 
 ## Requirements
